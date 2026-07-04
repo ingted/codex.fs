@@ -901,13 +901,14 @@ Raw CLI stdout/stderr policy is configurable:
 `codex.fs.cli` commands:
 
 ```text
-codex.fs.cli session create [--engine codex|agy]
-codex.fs.cli session send --session <id> --prompt <text-or-file>
-codex.fs.cli session attach --session <id>
-codex.fs.cli session drain --session <id>
-codex.fs.cli run status --run <id>
-codex.fs.cli run artifacts --run <id>
-codex.fs.cli host status
+codex.fs.cli session create --engine codex|agy --host <advertiseUri>
+codex.fs.cli session send --session <id> --prompt <text-or-file> --host <advertiseUri>
+codex.fs.cli session send --session <id> --prompt @prompt.md --host <advertiseUri>
+codex.fs.cli session attach --session <id> --host <advertiseUri>
+codex.fs.cli session drain --session <id> --host <advertiseUri>
+codex.fs.cli run status --run <id> --host <advertiseUri>
+codex.fs.cli run artifacts --run <id> --host <advertiseUri>
+codex.fs.cli host status --host <advertiseUri>
 codex.fs.cli engine probe
 ```
 
@@ -937,6 +938,8 @@ val argumentParser : unit -> ArgumentParser<CliArgument>
 val examples : string list
 val helpText : unit -> string
 val tryParse : string array -> Result<unit, string>
+val tryParseHostStatus : string array -> Result<HostStatusOptions option, string>
+val tryResolvePromptText : (string -> string) -> string -> Result<string, string>
 ```
 
 Command groups:
@@ -952,9 +955,25 @@ Command groups:
 
 Rules:
 
-- `CLI-001` only defines parser/help/examples and the compiled entrypoint; real host calls belong to `CLI-002` / `CLI-003`.
+- `CLI-001` only defines parser/help/examples and the compiled entrypoint; real host calls belong to `CLI-002` / `CLI-003` / `CLI-004`.
 - No command should interpret prompt text as shell commands.
+- `--prompt @file` is a CLI client convenience. The CLI reads the file content locally and sends prompt text through host HTTP; the host endpoint does not read caller filesystem paths.
 - Examples use non-secret LAN sample URI `http://192.168.10.20:8788`.
+
+Implemented host status path:
+
+```fsharp
+module CodexFs.Cli.CliHttp
+
+val hostStatusUri : string -> string
+val getHostStatusAsync : HttpClient -> CancellationToken -> Cli.HostStatusOptions -> Task<CliHttpResult>
+```
+
+Rules:
+
+- `host status --host <advertiseUri>` calls `GET /api/codexfs/host/health`.
+- CLI must use the advertised URI. Production/clustered use must not rely on localhost-only host addresses.
+- Output is the host JSON body for early terminal usability; formatting can become a later WBS row.
 
 Implemented session send path:
 

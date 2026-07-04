@@ -139,3 +139,10 @@
 - `SingleCycleResult.PersistenceBoundaryPath` is the verifier/API handle for that boundary artifact.
 - `misc/verifyMessageToEngineReply.fsx` now validates the boundary file, reply message id, selected ack cursor and empty inbox after ack on the real PTCS + Agy path.
 - This is bounded single-cycle ordering evidence, not crash restart rehydration or sharded provider replay.
+
+## 2026-07-05 CLI-004 Terminal Self-Use
+
+- `codex.fs.cli host status --host <advertiseUri>` is now an executed command and calls host `GET /api/codexfs/host/health`.
+- `--prompt @file` is resolved in the CLI process before HTTP submission; the host receives prompt text and never reads caller filesystem paths.
+- Manual self-use evidence used LAN URI `http://10.28.112.93:10481` and real PTCS MessageFabric: host status running, session send accepted, pendingCount 1 before drain, drained, and pendingCount 0 after drain.
+- Evidence summary path: `G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\summary.json`.

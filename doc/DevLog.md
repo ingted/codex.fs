@@ -145,3 +145,12 @@
 - Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyMessageToEngineReply.fsx` passed; verifier output included `TC-OPS-002 recovery/ack ordering passed`.
 - Evidence: generated boundary artifact `G:\codex.fs\src\codex.fs\.codex.fs\e2e002-artifacts\sessions\e2e002-default\runs\run-20260704154722249-1de4b023\session-boundary.json`.
 - Traceability: WBS `OPS-002`, detail `doc/WBS.OPS-002.md`, Test `T-OPS-002`, and SD §11 updated.
+
+## 2026-07-05 00:16 +08:00 CLI-004 terminal self-use
+
+- Scope: continued under endurance rules after all prior WBS rows were complete; added `CLI-004` for real terminal self-use hardening.
+- Behavior: `codex.fs.cli host status --host <advertiseUri>` now calls the host health endpoint, and `session send --prompt @file` resolves file content in the CLI client before sending to host.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and printed `TC-CLI-004 host status and @file prompt resolver passed`.
+- Manual CLI self-use: started `codex.fs.host` on LAN URI `http://10.28.112.93:10481`, ran compiled CLI `host status`, `session send --prompt @G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\prompt.md`, `session status`, `session drain`, and final `session status`; results were running, accepted, pendingCount 1, drained, and pendingCount 0.
+- Evidence: `G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\summary.json`.
+- Traceability: WBS `CLI-004`, detail `doc/WBS.CLI-004.md`, Test `T-CLI-004`, SD §14, and KM updated.

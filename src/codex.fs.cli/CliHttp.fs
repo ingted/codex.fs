@@ -25,6 +25,11 @@ module CliHttp =
         let escapedSessionId = Uri.EscapeDataString sessionId
         $"{baseUri}/api/codexfs/session/{escapedSessionId}/messages"
 
+    /// Build the host endpoint URI for `host status`.
+    let hostStatusUri (hostUri: string) =
+        let baseUri = hostUri.TrimEnd('/')
+        $"{baseUri}/api/codexfs/host/health"
+
     /// Build the host endpoint URI for `session status`.
     let sessionStatusUri (hostUri: string) (sessionId: string) =
         let baseUri = hostUri.TrimEnd('/')
@@ -71,6 +76,13 @@ module CliHttp =
     let getSessionStatusAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
         task {
             let! response = client.GetAsync(sessionStatusUri options.Host options.SessionId, cancellationToken)
+            return! responseTextAsync response cancellationToken
+        }
+
+    /// Get host health/status through the host control endpoint.
+    let getHostStatusAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.HostStatusOptions) =
+        task {
+            let! response = client.GetAsync(hostStatusUri options.Host, cancellationToken)
             return! responseTextAsync response cancellationToken
         }
 

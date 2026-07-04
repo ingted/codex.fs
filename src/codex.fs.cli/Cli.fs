@@ -203,6 +203,11 @@ module Cli =
           /// Prompt text or @file reference.
           Prompt: string }
 
+    /// Parsed options for `host status`.
+    type HostStatusOptions =
+        { /// Advertised codex.fs.host control URI.
+          Host: string }
+
     /// Parsed options for `session status`, `session attach`, and `session drain`.
     type SessionTargetOptions =
         { /// Advertised codex.fs.host control URI.
@@ -273,3 +278,41 @@ module Cli =
             | None -> Ok None
         with :? ArguParseException as ex ->
             Error ex.Message
+
+    /// Try to extract `host status` options from argv. Other valid commands return `Ok None`.
+    let tryParseHostStatus argv =
+        try
+            let parsed = argumentParser().ParseCommandLine(argv)
+
+            match parsed.TryGetResult CliArgument.Host with
+            | Some hostCommands ->
+                match hostCommands.TryGetResult HostCommand.Status with
+                | Some hostArgs ->
+                    requireArg "--host" (hostArgs.TryGetResult HostStatusArgument.Host)
+                    |> Result.map (fun host -> Some { Host = host })
+                | None -> Ok None
+            | None -> Ok None
+        with :? ArguParseException as ex ->
+            Error ex.Message
+
+    /// Resolve prompt input. A leading `@` means the rest of the value is a file path read by the caller.
+    let tryResolvePromptText (readAllText: string -> string) (value: string) =
+        if String.IsNullOrWhiteSpace value then
+            Error "Prompt must not be blank."
+        elif value.StartsWith("@", StringComparison.Ordinal) then
+            let path = value.Substring(1)
+
+            if String.IsNullOrWhiteSpace path then
+                Error "Prompt file path after @ must not be blank."
+            else
+                try
+                    let text = readAllText path
+
+                    if String.IsNullOrWhiteSpace text then
+                        Error $"Prompt file must not be blank: {path}"
+                    else
+                        Ok text
+                with ex ->
+                    Error $"Prompt file could not be read: {path}; {ex.GetType().Name}: {ex.Message}"
+        else
+            Ok value

@@ -58,6 +58,7 @@ Status 值：
 | CLI-001 | 實作 CLI command DU/help | HOST-003 | 100 | Done | None | 2026-07-04 21:44 +08:00 | 2026-07-04 21:48 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | [@CLI-001](WBS.CLI-001.md) |
 | CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 100 | Done | None | 2026-07-04 21:51 +08:00 | 2026-07-04 21:56 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | [@CLI-002](WBS.CLI-002.md) |
 | CLI-003 | CLI attach/drain/status | CLI-002 | 100 | Done | None | 2026-07-04 22:00 +08:00 | 2026-07-04 22:09 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | [@CLI-003](WBS.CLI-003.md) |
+| CLI-004 | CLI terminal self-use hardening | CLI-003;HOST-003 | 100 | Done | None | 2026-07-05 00:10 +08:00 | 2026-07-05 00:16 +08:00 | SD §14 | T-CLI-004 | TC-CLI-004 real terminal walkthrough | [@CLI-004](WBS.CLI-004.md) |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | codex.fs.cli dotnet tool package | REL-001;HOST-001;CLI-003 | 100 | Done | None | 2026-07-04 22:35 +08:00 | 2026-07-04 22:41 +08:00 | Requirement R-001, SD §2, §14 | T-REL-002 | TC-REL-002 tool install/run help | [@REL-002](WBS.REL-002.md) |
 | REL-003 | codex.fs.host standalone tool entrypoint | REL-002;HOST-003;E2E-002 | 100 | Done | None | 2026-07-04 22:55 +08:00 | 2026-07-04 23:06 +08:00 | Requirement R-001, SD §2, §9 | T-REL-003 | TC-REL-003 host tool start/status | [@REL-003](WBS.REL-003.md) |
@@ -80,6 +81,7 @@ Status 值：
 | [@CLI-001](WBS.CLI-001.md) | Terminal client command surface is a compiled FAkka.Argu parser; real host execution is deferred to CLI-002/CLI-003. |
 | [@CLI-002](WBS.CLI-002.md) | CLI session send uses real host HTTP endpoint and PTCS MessageFabric; attach/drain/status remains CLI-003. |
 | [@CLI-003](WBS.CLI-003.md) | CLI status/attach/drain read the real session inbox through host control endpoints and drain acknowledges the cursor. |
+| [@CLI-004](WBS.CLI-004.md) | Terminal self-use verifies compiled CLI against a LAN-advertised host and hardens `host status` plus `@file` prompt input. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
 | [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |

@@ -406,7 +406,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliSendResponseText, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
+let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -418,6 +418,13 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cli
         let openApiBody = runTask (openApiResponse.Content.ReadAsStringAsync())
         let swaggerResponse = runTask (client.GetAsync(hostControlServer.Contract.SwaggerUiUri))
         let swaggerBody = runTask (swaggerResponse.Content.ReadAsStringAsync())
+        let cliHostStatusResult =
+            runTask
+                (CodexFs.Cli.CliHttp.getHostStatusAsync
+                    client
+                    CancellationToken.None
+                    { Host = hostControlServer.Contract.AdvertiseUri })
+
         let cli002RunSuffix = Guid.NewGuid().ToString("N")
         let cli002SessionId = $"cli002.{cli002RunSuffix}"
         let cli002Prompt = "CLI-002 prompt through host and PTCS MessageFabric"
@@ -443,6 +450,8 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cli
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
         assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
         assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
+        assertEqual "cli host status status" 200 cliHostStatusResult.StatusCode
+        assertTrue "cli host status success" cliHostStatusResult.IsSuccess
         assertEqual "cli send status" 202 cliSendResult.StatusCode
         assertTrue "cli send success" cliSendResult.IsSuccess
         assertEqual "cli status status" 200 cliStatusResult.StatusCode
@@ -454,7 +463,7 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cli
         assertEqual "cli after drain status" 200 cliAfterDrainStatusResult.StatusCode
         assertTrue "cli after drain success" cliAfterDrainStatusResult.IsSuccess
 
-        body, openApiBody, swaggerBody, cliSendResult.Body, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
+        body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -475,6 +484,16 @@ assertTrue "host control response no raw token" (not (hostControlResponseText.Co
 hostControlJson.Dispose()
 
 printfn "TC-HOST-003 endpoint contract passed"
+
+let cliHostStatusJson = JsonDocument.Parse(cliHostStatusText)
+let cliHostStatusRoot = cliHostStatusJson.RootElement
+
+assertEqual "cli host status response status" "running" (cliHostStatusRoot.GetProperty("status").GetString())
+assertEqual "cli host status response advertise" hostControlAdvertiseUri (cliHostStatusRoot.GetProperty("advertiseUri").GetString())
+assertEqual "cli host status response health" hostControlServer.Contract.HealthUri (cliHostStatusRoot.GetProperty("healthUri").GetString())
+assertTrue "cli host status response fabric" (cliHostStatusRoot.GetProperty("hasMessageFabric").GetBoolean())
+assertTrue "cli host status no raw token" (not (cliHostStatusText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+cliHostStatusJson.Dispose()
 
 let hostOpenApiJson = JsonDocument.Parse(hostControlOpenApiText)
 let hostOpenApiRoot = hostOpenApiJson.RootElement
@@ -544,7 +563,35 @@ assertParseOk "cli run artifacts" [| "run"; "artifacts"; "--run"; "run-001"; "--
 assertParseOk "cli engine probe" [| "engine"; "probe"; "--engine"; "agy"; "--executable"; "agy" |]
 assertParseErrorContains "cli invalid arg" "unrecognized argument" [| "session"; "send"; "--bogus" |]
 
+match CodexFs.Cli.Cli.tryParseHostStatus [| "host"; "status"; "--host"; "http://192.168.10.20:8788" |] with
+| Ok(Some options) -> assertEqual "cli host status parse host" "http://192.168.10.20:8788" options.Host
+| Ok None -> failwith "Assertion failed: cli host status parse returned None"
+| Error message -> failwith $"Assertion failed: cli host status parse failed: {message}"
+
+let resolvedDirectPrompt =
+    CodexFs.Cli.Cli.tryResolvePromptText (fun path -> failwith $"unexpected prompt file read: {path}") "direct prompt text"
+
+match resolvedDirectPrompt with
+| Ok text -> assertEqual "cli direct prompt resolve" "direct prompt text" text
+| Error message -> failwith $"Assertion failed: cli direct prompt resolve failed: {message}"
+
+let resolvedFilePrompt =
+    CodexFs.Cli.Cli.tryResolvePromptText
+        (fun path ->
+            assertEqual "cli prompt file path" "prompt.md" path
+            "CLI-004 prompt from @file")
+        "@prompt.md"
+
+match resolvedFilePrompt with
+| Ok text -> assertEqual "cli file prompt resolve" "CLI-004 prompt from @file" text
+| Error message -> failwith $"Assertion failed: cli file prompt resolve failed: {message}"
+
+match CodexFs.Cli.Cli.tryResolvePromptText (fun _ -> "") "@" with
+| Ok text -> failwith $"Assertion failed: cli blank prompt file path should fail; actual={text}"
+| Error message -> assertContains "cli blank prompt file path error" "Prompt file path after @" message
+
 printfn "TC-CLI-001 Argu parser/help passed"
+printfn "TC-CLI-004 host status and @file prompt resolver passed"
 
 let hostToolHelp = CodexFs.HostTool.HostTool.helpText ()
 
