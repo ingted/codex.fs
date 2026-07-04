@@ -36,17 +36,17 @@ Status 值：
 | CF-004 | 實作 file artifact store | CF-003 | 100 | Done | None | 2026-07-04 18:37 +08:00 | 2026-07-04 18:42 +08:00 | SD §12, §16.5 | T-CF-004 | TC-CF-004 temp FSI write/sha/no-overwrite | inline |
 | CF-005 | 實作 redaction model | CF-004 | 100 | Done | None | 2026-07-04 18:44 +08:00 | 2026-07-04 18:48 +08:00 | SD §13 | T-CF-005 | TC-CF-005 temp FSI token-like redaction | inline |
 | EN-001 | 實作 engine adapter contract | CF-002 | 100 | Done | None | 2026-07-04 18:50 +08:00 | 2026-07-04 18:53 +08:00 | SD §4, §16.2 | T-EN-001 | TC-EN-001 `CodexFs.Engine` build/XML docs | inline |
-| EN-002 | 實作 process runner/guard contract | EN-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:53 +08:00 | SD §4, SA §9 | T-EN-002 | TC-EN-002 process timeout/kill fixture | inline |
-| CDX-001 | Codex CLI probe fixtures | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex help/version fixture | inline |
+| EN-002 | 實作 process runner/guard contract | EN-001 | 100 | Done | None | 2026-07-04 18:55 +08:00 | 2026-07-04 18:56 +08:00 | SD §4, SA §9 | T-EN-002 | TC-EN-002 temp FSI success/timeout kill | inline |
+| CDX-001 | Codex CLI probe fixtures | EN-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:56 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex help/version fixture | inline |
 | CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 0 | Planned | CDX-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex argv render | inline |
 | CDX-003 | Codex artifact mapping | CDX-002 | 0 | Planned | CDX-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex output map | inline |
-| AGY-001 | Agy CLI probe fixtures | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy help/version fixture | inline |
+| AGY-001 | Agy CLI probe fixtures | EN-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:56 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy help/version fixture | inline |
 | AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 0 | Planned | AGY-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy argv render | inline |
 | AGY-003 | Agy artifact mapping | AGY-002 | 0 | Planned | AGY-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy output map | inline |
 | PTCS-001 | 定義 PTCS package/reference range | CF-001 | 0 | Planned | SD-TBD-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 PTCS restore/reference | inline |
 | PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | [@PTCS-002](WBS.PTCS-002.md) |
 | PTCS-003 | 實作 durable task handoff | PTCS-002 | 0 | Blocked | SA-TBD-004 durable profile | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | inline |
-| SESS-001 | 實作 session state/effect model | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
+| SESS-001 | 實作 session state/effect model | CF-002 | 0 | Planned | None | 未動工 | 2026-07-04 18:56 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
 | SESS-002 | 實作 prompt assembly | SESS-001 | 0 | Planned | SESS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 prompt batch assembly | inline |
 | SESS-003 | 實作 rule-based local compact | SESS-002 | 0 | Planned | SD-TBD-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement R-005, SD §17 | T-SESS-003 | TC-SESS-003 compact preserves blockers | inline |
 | HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
@@ -63,7 +63,7 @@ Status 值：
 | E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 0 | Planned | local engine availability | 未動工 | 2026-07-04 17:53 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 / planned `misc/verifyInstalledEngines.fsx` | inline |
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-002 | 0 | Planned | HOST-002/CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §10, SA §6.1 | T-E2E-002 | TC-E2E-002 / planned `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-003 | 0 | Planned | PTCS-003 optional durable path | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | inline |
-| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | EN-002/HOST-002 | 未動工 | 2026-07-04 17:53 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
+| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:56 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
 | OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Blocked | durable profile decision | 未動工 | 2026-07-04 17:53 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
 | UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 0 | Planned | E2E-002/DOC-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | inline |
 

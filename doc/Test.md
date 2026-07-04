@@ -49,17 +49,17 @@ Status 值：
 | T-CF-004 | CF-004 | TC-CF-004 temp FSI write/sha/no-overwrite | Integration | Real file artifact store on temp workspace | CF-003 | temp artifact write succeeded; SHA-256 matched; overwrite rejected by `IOException` | Pass | None | SD §12 |
 | T-CF-005 | CF-005 | TC-CF-005 temp FSI token-like redaction | Unit/Ops | Real redaction module | CF-004 | fake token-like sample redacted; safe text unchanged; one hit recorded | Pass | None | SD §13 |
 | T-EN-001 | EN-001 | TC-EN-001 `CodexFs.Engine` build/XML docs | Compile | Real package compile | CF-002 | build succeeded with 0 warnings/errors; engine contract XML docs generated | Pass | None | SD §4 |
-| T-EN-002 | EN-002 | TC-EN-002 process timeout/kill fixture | Unit/Ops | Controlled command fixture only; not production validation | EN-001 | timeout, cancellation, kill-after-grace evidence | Planned | None | SD §4, SA §9 |
-| T-CDX-001 | CDX-001 | TC-CDX-001 codex help/version fixture | Fixture | Captured fixture parser, not live CLI readiness | EN-001 | parsed surface/capabilities | Planned | EN-001 | SD §5 |
+| T-EN-002 | EN-002 | TC-EN-002 temp FSI success/timeout kill | Unit/Ops | Controlled command fixture only; not production validation | EN-001 | temp internal-only FSI verified success exit 0 and timeout outcome `TimedOut` with killed process exit -1 | Pass | None | SD §4, SA §9 |
+| T-CDX-001 | CDX-001 | TC-CDX-001 codex help/version fixture | Fixture | Captured fixture parser, not live CLI readiness | EN-001 | parsed surface/capabilities | Planned | None | SD §5 |
 | T-CDX-002 | CDX-002 | TC-CDX-002 codex argv render | Unit | Real FAkka.Argu DU/render function | CDX-001 | rendered argv + redacted display snapshots | Planned | CDX-001 | SD §5, §7 |
 | T-CDX-003 | CDX-003 | TC-CDX-003 codex output map | Fixture/Unit | Captured output fixture; live covered by E2E | CDX-002 | artifact mapping and final message path | Planned | CDX-002 | SD §5, §12 |
-| T-AGY-001 | AGY-001 | TC-AGY-001 agy help/version fixture | Fixture | Captured fixture parser, not live CLI readiness | EN-001 | parsed surface/capabilities | Planned | EN-001 | SD §6 |
+| T-AGY-001 | AGY-001 | TC-AGY-001 agy help/version fixture | Fixture | Captured fixture parser, not live CLI readiness | EN-001 | parsed surface/capabilities | Planned | None | SD §6 |
 | T-AGY-002 | AGY-002 | TC-AGY-002 agy argv render | Unit | Real FAkka.Argu DU/render function | AGY-001 | rendered argv + redacted display snapshots | Planned | AGY-001 | SD §6, §7 |
 | T-AGY-003 | AGY-003 | TC-AGY-003 agy output map | Fixture/Unit | Captured output fixture; live covered by E2E | AGY-002 | log/final/result mapping | Planned | AGY-002 | SD §6, §12 |
 | T-PTCS-001 | PTCS-001 | TC-PTCS-001 PTCS restore/reference | Compile | Real PackageReference/restore path | CF-001 | restore/build references exact PTCS version | Planned | SD-TBD-004 | SD §8, §17 |
 | T-PTCS-002 | PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | Integration | Real `CommSpaMessageFabric`; no fake mailbox | PTCS-001 | register/send/poll/wait/ack/drain evidence | Planned | PTCS-001 | SD §8 |
 | T-PTCS-003 | PTCS-003 | TC-PTCS-003 durable handoff | Integration | Real `CommSpaDurableMessageFabric` profile | PTCS-002 | SubmitAgentTaskDurableAsync ticket/result evidence | Blocked | SA-TBD-004 | SD §8 |
-| T-SESS-001 | SESS-001 | TC-SESS-001 pure decide transitions | Unit | Real `SessionBehavior.decide` | CF-002 | transition table tests | Planned | CF-002 | SD §11 |
+| T-SESS-001 | SESS-001 | TC-SESS-001 pure decide transitions | Unit | Real `SessionBehavior.decide` | CF-002 | transition table tests | Planned | None | SD §11 |
 | T-SESS-002 | SESS-002 | TC-SESS-002 prompt batch assembly | Unit | Real prompt assembly over message refs | SESS-001 | prompt content, ordering, metadata assertions | Planned | SESS-001 | SA §6, SD §11 |
 | T-SESS-003 | SESS-003 | TC-SESS-003 compact preserves blockers | Unit/Integration | Rule-based compactor first; LLM compact optional later | SESS-002 | compact summary retains blockers, ids, artifacts | Planned | SD-TBD-003 | Requirement R-005 |
 | T-HOST-001 | HOST-001 | TC-HOST-001 config parse/redaction | Unit/Ops | Real config loader; no secret echo | CF-005/PTCS-001 | config loaded, redacted diagnostics | Planned | PTCS-001 | SD §9 |
@@ -76,7 +76,7 @@ Status 值：
 | T-E2E-001 | E2E-001 | TC-E2E-001 / planned `misc/verifyInstalledEngines.fsx` | E2E | Real installed Codex/Agy where available | CDX-003/AGY-003 | probe result with capability map | Planned | local engine availability | SD §15 |
 | T-E2E-002 | E2E-002 | TC-E2E-002 / planned `misc/verifyMessageToEngineReply.fsx` | E2E | Real MessageFabric, host, installed engine, artifact store | HOST-002/CLI-002 | prompt, run manifest, final reply reference | Planned | dependencies | Requirement §10, SA §6.1 |
 | T-E2E-003 | E2E-003 | TC-E2E-003 multi-agent MessageFabric group | E2E | Real PTCS group/direct messages; durable optional | E2E-002/PTCS-003 | two session workers exchange message/reply | Planned | PTCS-003 optional | Requirement §6.3 |
-| T-OPS-001 | OPS-001 | TC-OPS-001 orphan process recovery | Ops | Controlled real OS process fixture | EN-002/HOST-002 | recovery detects or kills orphan process | Planned | dependencies | SA §9 |
+| T-OPS-001 | OPS-001 | TC-OPS-001 orphan process recovery | Ops | Controlled real OS process fixture | EN-002/HOST-002 | recovery detects or kills orphan process | Planned | HOST-002 | SA §9 |
 | T-OPS-002 | OPS-002 | TC-OPS-002 recovery/ack ordering | Ops/Integration | Real selected durability profile | PTCS-003/SESS-001 | no ack before durable artifact/reply evidence | Blocked | durable profile decision | SA §9, SD §11 |
 | T-UI-001 | UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | Docs/UI | Real PTCS extension path after backend E2E | E2E-002/DOC-003 | RFC accepted + UI verifier plan | Planned | E2E-002/DOC-003 | SD §16.12 |
 
