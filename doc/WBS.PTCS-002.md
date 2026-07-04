@@ -37,7 +37,7 @@ Test：`T-PTCS-002`
 ## Evidence
 
 - Implemented `src/codex.fs.ptcs/MessageFabricBinding.fs` over concrete `PulseTrade.Comm.Spa.CommSpaMessageFabric`.
-- Verified real PTCS local runtime path with `CommHub.createEmpty()` and `CommSpaMessageFabric.create`.
+- Verified real PTCS in-process runtime path with `CommHub.createEmpty()` and `CommSpaMessageFabric.create`.
 - `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings and 0 errors.
 - `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-PTCS-002 MessageFabric binding passed`.
 - Covered register session/user, direct send, poll, ack, wait, drain, group upsert and group poll.

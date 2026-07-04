@@ -275,7 +275,48 @@ assertTrue
 
 printfn "TC-HOST-001 config parse/redaction passed"
 
-let ptcsFabric = MessageFabricBinding.createLocalFabric ()
+let hostRuntimeLoad = CodexFs.HostConfig.loadFromMap (hostSettings |> Map.add "ptcs.fabricMode" "package-owned")
+
+let hostRuntime =
+    match CodexFs.Host.HostRuntime.tryCreateFromLoadResult hostRuntimeLoad with
+    | Ok runtime -> runtime
+    | Error issues -> failwith $"expected host runtime config; issues={issues}"
+
+let hostRuntimeStartedUtc = DateTimeOffset.Parse("2026-07-04T13:08:00Z")
+
+let runningHostRuntime =
+    CodexFs.Host.HostRuntime.startInProcessMessageFabric hostRuntimeStartedUtc hostRuntime
+
+let runtimeHealth = CodexFs.Host.HostRuntime.health runningHostRuntime
+
+assertEqual "host runtime running" CodexFs.Host.HostRuntime.Running runtimeHealth.Status
+assertEqual "host runtime default engine" "agy" runtimeHealth.DefaultEngine
+assertTrue "host runtime codex enabled" (runtimeHealth.EnabledEngines |> List.contains "codex")
+assertTrue "host runtime agy enabled" (runtimeHealth.EnabledEngines |> List.contains "agy")
+assertEqual "host runtime advertise" "http://192.168.10.20:8788" runtimeHealth.ControlAdvertiseUri
+assertEqual "host runtime fabric mode" "package-owned" runtimeHealth.PtcsFabricMode
+assertEqual "host runtime participant prefix" "agent.codexfs" runtimeHealth.PtcsSessionParticipantPrefix
+assertEqual "host runtime inbox limit" 25 runtimeHealth.PtcsDefaultInboxLimit
+assertEqual "host runtime has fabric" true runtimeHealth.HasMessageFabric
+assertContains "host runtime fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" (runtimeHealth.MessageFabricType |> Option.defaultValue "")
+assertEqual "host runtime override keys" [ "codex" ] runtimeHealth.EngineOverrideKeys
+assertTrue "host runtime redacted diagnostics" (runtimeHealth.RedactedDiagnostics |> List.exists _.WasRedacted)
+
+let hostRuntimeSummary = CodexFs.Host.HostRuntime.healthSummary runningHostRuntime
+
+assertContains "host runtime summary status" "status=running" hostRuntimeSummary
+assertContains "host runtime summary fabric" "ptcsFabricMode=package-owned" hostRuntimeSummary
+assertContains "host runtime summary type" "messageFabricType=PulseTrade.Comm.Spa.CommSpaMessageFabric" hostRuntimeSummary
+assertContains "host runtime summary redacted" "[REDACTED]" hostRuntimeSummary
+assertTrue "host runtime summary no raw token" (not (hostRuntimeSummary.Contains(fakeGithubToken, StringComparison.Ordinal)))
+
+let stoppedHostRuntime = CodexFs.Host.HostRuntime.stop runningHostRuntime
+assertEqual "host runtime stopped" CodexFs.Host.HostRuntime.Stopped stoppedHostRuntime.Status
+assertEqual "host runtime stopped fabric cleared" true stoppedHostRuntime.MessageFabric.IsNone
+
+printfn "TC-HOST-002 host runtime/health passed"
+
+let ptcsFabric = MessageFabricBinding.createInProcessFabric ()
 let ptcsRunSuffix = Guid.NewGuid().ToString("N")
 let ptcsAgentId = $"agent.ptcs002.{ptcsRunSuffix}"
 let ptcsUserId = $"user.ptcs002.{ptcsRunSuffix}"

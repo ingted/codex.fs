@@ -37,3 +37,10 @@
 - Behavior: config validation rejects production/cluster profile loopback bind or advertised URI when `control.allowLoopbackOnly = false`; development defaults still allow loopback.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings and 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-HOST-001 config parse/redaction passed`.
 - Traceability: WBS `HOST-001` and Test `T-HOST-001` updated to `Done` / `Pass`; `HOST-002` and `REL-002` blockers from `HOST-001` cleared.
+
+## 2026-07-04 21:14 +08:00 HOST-002 minimal host runtime
+
+- Scope: added `codex.fs.host` project and `CodexFs.Host.HostRuntime` minimal runtime state/health boundary over core `HostConfig` and PTCS `MessageFabricBinding`.
+- Behavior: `startInProcessMessageFabric` initializes a real in-process PTCS `CommSpaMessageFabric` without creating an ActorSystem; production ActorSystem/sharded cluster binding remains a routable-address PTCS ActorFabric concern.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings and 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-HOST-002 host runtime/health passed`.
+- Traceability: WBS `HOST-002` and Test `T-HOST-002` updated to `Done` / `Pass`; `HOST-003` and `OPS-001` blockers from `HOST-002` cleared.

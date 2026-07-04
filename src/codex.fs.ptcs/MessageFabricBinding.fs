@@ -71,8 +71,8 @@ module MessageFabricBinding =
     let normalizedInboxLimit limit =
         if limit <= 0 then defaultInboxLimit else min limit 1000
 
-    /// Create a local PTCS MessageFabric for tests and demos using the package default hub profile.
-    let createLocalFabric () =
+    /// Create an in-process PTCS MessageFabric for tests and demos using the package default hub profile.
+    let createInProcessFabric () =
         CommHub.createEmpty ()
         |> CommSpaMessageFabric.create
 

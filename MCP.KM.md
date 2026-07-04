@@ -24,7 +24,7 @@
 ## 2026-07-04 PTCS-002 MessageFabric Binding
 
 - `CodexFs.Ptcs.MessageFabricBinding` is a thin wrapper over `PulseTrade.Comm.Spa.CommSpaMessageFabric`; it must not create a separate message store or cursor registry.
-- The real local test profile uses `CommHub.createEmpty()` + `CommSpaMessageFabric.create`, which is PTCS package runtime, not a codex.fs fake mailbox.
+- The real in-process test profile uses `CommHub.createEmpty()` + `CommSpaMessageFabric.create`, which is PTCS package runtime, not a codex.fs fake mailbox.
 - `DrainInboxAsync` both returns the current batch and lets PTCS ack the returned cursor.
 - `MessageFabricBinding.batchToMessageRefs` maps each PTCS envelope to core `PtcsMessageRef` with `Cursor = Some message.MessageId`.
 - `tryUpsertConfiguredGroupAsync` returns `None` when a binding has no `GroupId`; do not synthesize empty PTCS group views.
@@ -35,3 +35,11 @@
 - Setting keys are case-insensitive but diagnostics store normalized lowercase keys.
 - Diagnostics are redacted with core `Redaction.redactHighRisk`; redacted diagnostics may show `[REDACTED]`, but must not echo token-like raw values.
 - `control.allowLoopbackOnly = false` rejects loopback bind/advertise config; clustered hosts must advertise a routable address rather than `localhost`.
+
+## 2026-07-04 HOST-002 Minimal Host Runtime
+
+- `codex.fs.host` now owns `CodexFs.Host.HostRuntime`; do not add host runtime startup logic to core `codex.fs`.
+- `HostRuntime.startInProcessMessageFabric` uses `MessageFabricBinding.createInProcessFabric()` and therefore initializes real PTCS package runtime, not a fake mailbox.
+- The in-process MessageFabric slice does not create an ActorSystem; production `CommSpaActorFabric` / sharded cluster binding must use LAN/routable bind/advertise addresses, never `127.0.0.1`.
+- `HostRuntime.health` omits executable override values and reports only `EngineOverrideKeys`; use `healthSummary` for redacted text output.
+- HTTP listener/control endpoint work remains `HOST-003`; Swagger/OpenAPI remains `DOC-003`.

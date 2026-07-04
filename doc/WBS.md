@@ -50,8 +50,8 @@ Status 值：
 | SESS-002 | 實作 prompt assembly | SESS-001 | 100 | Done | None | 2026-07-04 19:57 +08:00 | 2026-07-04 20:04 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 `tests/codex.fs.Tests` prompt batch assembly | inline |
 | SESS-003 | 實作 rule-based local compact | SESS-002 | 100 | Done | None | 2026-07-04 20:08 +08:00 | 2026-07-04 20:12 +08:00 | Requirement R-005, SD §11.1, §17 | T-SESS-003 | TC-SESS-003 `tests/codex.fs.Tests` compact preserves blockers | inline |
 | HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 100 | Done | None | 2026-07-04 20:55 +08:00 | 2026-07-04 21:03 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
-| HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 0 | Planned | None | 未動工 | 2026-07-04 21:03 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host boot/health | inline |
-| HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:10 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
+| HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 100 | Done | None | 2026-07-04 21:08 +08:00 | 2026-07-04 21:14 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host runtime/health | inline |
+| HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Planned | None | 未動工 | 2026-07-04 21:14 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
 | DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 0 | Planned | HOST-003 | 未動工 | 2026-07-04 18:10 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | inline |
@@ -63,7 +63,7 @@ Status 值：
 | E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 100 | Done | None | 2026-07-04 19:41 +08:00 | 2026-07-04 19:47 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 installed codex/agy probe real path | inline |
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-002 | 0 | Planned | HOST-002/CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §10, SA §6.1 | T-E2E-002 | TC-E2E-002 / planned `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-003 | 0 | Planned | PTCS-003 optional durable path | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | inline |
-| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:56 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
+| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | None | 未動工 | 2026-07-04 21:14 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
 | OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Blocked | durable profile decision | 未動工 | 2026-07-04 17:53 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
 | UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 0 | Planned | E2E-002/DOC-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | inline |
 

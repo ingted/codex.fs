@@ -479,6 +479,46 @@ Host responsibilities:
 - expose control endpoint for CLI/Web/admin callers。
 - expose Swagger UI only when the selected host control endpoint is HTTP and the active profile allows it。
 
+Implemented minimal runtime package:
+
+```fsharp
+namespace CodexFs.Host
+
+module HostRuntime
+
+type HostRuntime =
+    { Config: HostConfig
+      ConfigDiagnostics: HostConfigDiagnostic list
+      Status: HostRuntimeStatus
+      StartedUtc: DateTimeOffset option
+      MessageFabric: CommSpaMessageFabric option }
+
+type HostHealth =
+    { Status: HostRuntimeStatus
+      DefaultEngine: string
+      EnabledEngines: string list
+      ControlAdvertiseUri: string
+      PtcsFabricMode: string
+      HasMessageFabric: bool
+      MessageFabricType: string option
+      EngineOverrideKeys: string list
+      RedactedDiagnostics: HostConfigDiagnostic list }
+
+val tryCreateFromLoadResult : HostConfigLoadResult -> Result<HostRuntime, HostConfigIssue list>
+val startInProcessMessageFabric : DateTimeOffset -> HostRuntime -> HostRuntime
+val health : HostRuntime -> HostHealth
+val healthSummary : HostRuntime -> string
+val stop : HostRuntime -> HostRuntime
+```
+
+Rules:
+
+- `startInProcessMessageFabric` initializes a real PTCS `CommSpaMessageFabric` through `codex.fs.ptcs`; it is not an alternate mailbox and does not create an ActorSystem。
+- `health` and `healthSummary` expose non-secret operational metadata and redacted config diagnostics only。
+- executable override values are omitted from health; only engine override keys are shown。
+- HTTP listener, endpoint DTOs and Swagger exposure remain `HOST-003` / `DOC-003` scope。
+- PTCS ActorSystem / sharded cluster setup is outside this in-process MessageFabric slice; production `CommSpaActorFabric` must bind/advertise a LAN or otherwise routable address, not `127.0.0.1`。
+
 Host control endpoint decision:
 
 - MVP protocol is HTTP.
