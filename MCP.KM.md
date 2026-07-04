@@ -184,3 +184,11 @@
 - Production PTCS Web integration remains caller-owned PTCS MessageFabric via PTCS Host or peer cluster node; do not treat standalone package-owned `/chat` as canonical shared UI truth.
 - `CodexFs.Cli.CliHttp` catches HTTP transport failures and returns `CliHttpResult` with `StatusCode = 0` and readable guidance. CLI should not print raw `.NET HttpRequestException` stack traces for connection refused endpoints.
 - Operator guidance must distinguish process PID from HTTP port; e.g. previous PID `14724` was not the host port, while the advertised URI was `http://10.28.112.93:10481`.
+
+## 2026-07-05 HOST-007/CLI-009 PTCS Hub Chat Alignment
+
+- RFC-HOST-0002 supersedes the alpha.5 `/chat` PoC. Current standalone `GET /chat` is a guard page that points to PTCS WebSharper chat, not a prompt composer.
+- Browser chat truth belongs to PTCS Web over caller-owned `CommSpaMessageFabric` / `CommSpaActorFabric`; codex.fs workers/session-workers must appear as PTCS participants instead of using a separate package-owned UI.
+- Standalone prompt testing moved to `GET/POST /diagnostics/session-send`; blank diagnostics `sessionId` defaults to `foreman`.
+- CLI first-use send no longer requires `--session`. `SessionSendOptions.SessionId = None` posts to `/api/codexfs/foreman/messages` and targets `<ptcs.sessionParticipantPrefix>.foreman`.
+- Host health JSON exposes `diagnosticsSessionSendUri`; `chatUri` is no longer the current contract field.

@@ -32,7 +32,7 @@ module Cli =
 
     /// Arguments for `session send`.
     type SessionSendArgument =
-        /// Existing session id.
+        /// Optional existing session id; omitted sends to the default Foreman/SessionWorker.
         | Session of sessionId: string
         /// Prompt text or @file reference.
         | Prompt of textOrFile: string
@@ -44,7 +44,7 @@ module Cli =
         interface IArgParserTemplate with
             member this.Usage =
                 match this with
-                | Session _ -> "Existing session id."
+                | Session _ -> "Optional existing session id; omitted sends to the default Foreman/SessionWorker."
                 | Prompt _ -> "Prompt text or @file reference."
                 | Host _ -> "Advertised codex.fs.host control URI."
                 | Worker_Id _ -> "Optional target worker participant id; default is the session worker/foreman."
@@ -189,6 +189,7 @@ module Cli =
     let examplesFor programName =
         [ $"{programName} host status --host http://192.168.10.20:8788"
           $"{programName} session create --engine agy --host http://192.168.10.20:8788"
+          $"{programName} session send --prompt @prompt.md --host http://192.168.10.20:8788"
           $"{programName} session send --session sess-001 --prompt @prompt.md --host http://192.168.10.20:8788"
           $"{programName} session send --session sess-001 --worker-id agent.codexfs.worker-001 --prompt @prompt.md --host http://192.168.10.20:8788"
           $"{programName} session status --session sess-001 --host http://192.168.10.20:8788"
@@ -224,8 +225,8 @@ module Cli =
     type SessionSendOptions =
         { /// Advertised codex.fs.host control URI.
           Host: string
-          /// Target session id.
-          SessionId: string
+          /// Optional target session id. None means the default Foreman/SessionWorker.
+          SessionId: string option
           /// Optional target worker participant id.
           WorkerId: string option
           /// Prompt text or @file reference.
@@ -267,17 +268,19 @@ module Cli =
                 match sessionCommands.TryGetResult SessionCommand.Send with
                 | Some sendArgs ->
                     match requireArg "--host" (sendArgs.TryGetResult SessionSendArgument.Host),
-                          requireArg "--session" (sendArgs.TryGetResult SessionSendArgument.Session),
                           requireArg "--prompt" (sendArgs.TryGetResult SessionSendArgument.Prompt) with
-                    | Ok host, Ok sessionId, Ok prompt ->
+                    | Ok host, Ok prompt ->
+                        let sessionId =
+                            sendArgs.TryGetResult SessionSendArgument.Session
+                            |> Option.bind (fun value -> if String.IsNullOrWhiteSpace value then None else Some value)
+
                         let workerId =
                             sendArgs.TryGetResult SessionSendArgument.Worker_Id
                             |> Option.bind (fun value -> if String.IsNullOrWhiteSpace value then None else Some value)
 
                         Ok(Some { Host = host; SessionId = sessionId; WorkerId = workerId; Prompt = prompt })
-                    | Error message, _, _
-                    | _, Error message, _
-                    | _, _, Error message -> Error message
+                    | Error message, _
+                    | _, Error message -> Error message
                 | None -> Ok None
             | None -> Ok None
         with :? ArguParseException as ex ->

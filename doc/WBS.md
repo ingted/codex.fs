@@ -54,7 +54,8 @@ Status 值：
 | HOST-003 | 定義並實作 host control endpoint | HOST-002 | 100 | Done | None | 2026-07-04 21:21 +08:00 | 2026-07-04 21:27 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
 | HOST-004 | Host operator landing page / usability gate | HOST-003;DOC-003 | 100 | Done | None | 2026-07-05 00:41 +08:00 | 2026-07-05 01:00 +08:00 | SD §9, §10 | T-HOST-004 | TC-HOST-004 root landing browser gate | [@HOST-004](WBS.HOST-004.md) |
 | HOST-005 | Caller-owned PTCS MessageFabric host seam | HOST-002;PTCS-002 | 100 | Done | None | 2026-07-05 01:22 +08:00 | 2026-07-05 01:22 +08:00 | SD §9 | T-HOST-005 | TC-HOST-005 `startWithMessageFabric` caller-owned fabric identity | [@HOST-005](WBS.HOST-005.md) |
-| HOST-006 | Standalone host `/chat` PoC form | HOST-004;CLI-007 | 100 | Done | None | 2026-07-05 02:37 +08:00 | 2026-07-05 02:48 +08:00 | SD §9, §10 | T-HOST-006 | TC-HOST-006 `/chat` form send through MessageFabric | [@HOST-006](WBS.HOST-006.md) |
+| HOST-006 | Historical standalone host `/chat` PoC form | HOST-004;CLI-007 | 100 | Done | Superseded by HOST-007 | 2026-07-05 02:37 +08:00 | 2026-07-05 03:10 +08:00 | SD §9, §10 | T-HOST-006 | TC-HOST-006 `/chat` form send through MessageFabric | [@HOST-006](WBS.HOST-006.md) |
+| HOST-007 | PTCS hub chat alignment and diagnostics split | HOST-006;UI-002 | 100 | Done | None | 2026-07-05 03:03 +08:00 | 2026-07-05 03:10 +08:00 | SD §9, §14.1 | T-HOST-007 | TC-HOST-007 `/chat` guard + diagnostics send + OpenAPI paths | [@HOST-007](WBS.HOST-007.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
 | DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 100 | Done | None | 2026-07-04 21:36 +08:00 | 2026-07-04 21:39 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | [@DOC-003](WBS.DOC-003.md) |
@@ -67,6 +68,7 @@ Status 值：
 | CLI-006 | Explicit CLI command plus short alias | CLI-005;REL-004 | 100 | Done | None | 2026-07-05 02:02 +08:00 | 2026-07-05 02:02 +08:00 | SD §14 | T-CLI-006 | TC-CLI-006 global `codex.fs.cli` and `codex.fs` commands | [@CLI-006](WBS.CLI-006.md) |
 | CLI-007 | Session worker default target and worker override | CLI-002;CLI-006 | 100 | Done | None | 2026-07-05 02:05 +08:00 | 2026-07-05 02:05 +08:00 | Requirement §6.1, SD §14 | T-CLI-007 | TC-CLI-007 session send default foreman and `--worker-id` override | [@CLI-007](WBS.CLI-007.md) |
 | CLI-008 | CLI transport failure graceful error | CLI-004;CLI-006 | 100 | Done | None | 2026-07-05 02:37 +08:00 | 2026-07-05 02:48 +08:00 | Requirement R-002, SD §14 | T-CLI-008 | TC-CLI-008 readable connection failure without stack trace | [@CLI-008](WBS.CLI-008.md) |
+| CLI-009 | No-session Foreman send default | CLI-007;HOST-007 | 100 | Done | None | 2026-07-05 03:03 +08:00 | 2026-07-05 03:10 +08:00 | Requirement R-002, SD §14 | T-CLI-009 | TC-CLI-009 `session send` without `--session` targets foreman | [@CLI-009](WBS.CLI-009.md) |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | codex.fs.cli dotnet tool package | REL-001;HOST-001;CLI-003 | 100 | Done | None | 2026-07-04 22:35 +08:00 | 2026-07-04 22:41 +08:00 | Requirement R-001, SD §2, §14 | T-REL-002 | TC-REL-002 tool install/run help | [@REL-002](WBS.REL-002.md) |
 | REL-003 | codex.fs.host standalone tool entrypoint | REL-002;HOST-003;E2E-002 | 100 | Done | None | 2026-07-04 22:55 +08:00 | 2026-07-04 23:06 +08:00 | Requirement R-001, SD §2, §9 | T-REL-003 | TC-REL-003 host tool start/status | [@REL-003](WBS.REL-003.md) |
@@ -88,7 +90,8 @@ Status 值：
 | [@HOST-003](WBS.HOST-003.md) | Host control endpoint uses HTTP with bind/advertise config; localhost is dev-only. |
 | [@HOST-004](WBS.HOST-004.md) | Host root URL is a human-facing landing page verified by browser/Playwright, not a 404 or hidden health-only endpoint. |
 | [@HOST-005](WBS.HOST-005.md) | Existing PTCS hosts can start codex.fs runtime with caller-owned `CommSpaMessageFabric` so UI and workers share participant truth. |
-| [@HOST-006](WBS.HOST-006.md) | Standalone host `/chat` is a PoC operator form over the same MessageFabric send path as CLI; production PTCS Web remains caller-owned-fabric integration. |
+| [@HOST-006](WBS.HOST-006.md) | Historical alpha.5 standalone `/chat` PoC; superseded by HOST-007 because product browser chat belongs to PTCS WebSharper. |
+| [@HOST-007](WBS.HOST-007.md) | Standalone `/chat` is now a PTCS chat guard page; diagnostics prompt send moved to `/diagnostics/session-send` and OpenAPI includes the foreman route. |
 | [@DOC-001](WBS.DOC-001.md) | API documentation toolchain selection affects NuGet SDK docs and Swagger generation. |
 | [@DOC-003](WBS.DOC-003.md) | OpenAPI JSON and Swagger UI verification uses the real host endpoint through advertised non-loopback URI. |
 | [@DOC-004](WBS.DOC-004.md) | API/SDK docs handoff requires visible Swagger/OpenAPI plus packaged XML docs evidence. |
@@ -100,6 +103,7 @@ Status 值：
 | [@CLI-006](WBS.CLI-006.md) | `codex.fs.cli` is the canonical PoC command and `codex.fs` is a short alias package over the same command surface. |
 | [@CLI-007](WBS.CLI-007.md) | `session send` defaults to the derived SessionWorker/foreman participant and only uses a specified worker when `--worker-id` is supplied. |
 | [@CLI-008](WBS.CLI-008.md) | CLI HTTP transport failures return readable non-zero errors instead of unhandled .NET stack traces. |
+| [@CLI-009](WBS.CLI-009.md) | First-use `session send` no longer requires a user-known session id; blank session routes to default `foreman`. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
 | [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |

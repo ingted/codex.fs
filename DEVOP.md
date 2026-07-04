@@ -1,6 +1,6 @@
 # DEVOP - codex.fs Host / Tool Deployment
 
-版本：`0.1.0-alpha.5`
+版本：`0.1.0-alpha.6`
 狀態：Active
 最後更新：2026-07-05
 
@@ -11,12 +11,15 @@
 | URL | 用途 | 必須狀態 |
 | --- | --- | --- |
 | `http://<lan-ip>:<port>/` | operator landing page | HTTP 200 HTML |
-| `http://<lan-ip>:<port>/chat` | operator PoC chat form | HTTP 200 HTML |
+| `http://<lan-ip>:<port>/chat` | PTCS chat guard page | HTTP 200 HTML |
+| `http://<lan-ip>:<port>/diagnostics/session-send` | standalone diagnostics prompt form | HTTP 200 HTML |
 | `http://<lan-ip>:<port>/api/codexfs/host/health` | machine-readable health | HTTP 200 JSON |
 | `http://<lan-ip>:<port>/openapi/v1.json` | OpenAPI document | HTTP 200 JSON when docs enabled |
 | `http://<lan-ip>:<port>/docs/index.html` | Swagger UI | HTTP 200 HTML when docs enabled |
 
 Cluster/production-like profiles must use LAN/DNS-reachable bind/advertise settings. Do not hand off `localhost` / `127.0.0.1` as the peer-facing URL.
+
+Browser chat is PTCS WebSharper chat room, not standalone `codex.fs.host`. The standalone host `/chat` route is a guard page; worker/user conversations must use PTCS participants over caller-owned `CommSpaMessageFabric` / `CommSpaActorFabric`.
 
 ## 2. Build And Pack
 
@@ -24,7 +27,7 @@ Cluster/production-like profiles must use LAN/DNS-reachable bind/advertise setti
 dotnet restore .\codex.fs.slnx
 dotnet build .\codex.fs.slnx --no-restore
 
-$packOut = "G:\codex.fs\bin\cli-chat-fix-packs-20260705023728-alpha5"
+$packOut = "G:\codex.fs\bin\ptcs-hub-align-packs-20260705030317-alpha6"
 dotnet pack .\src\codex.fs\codex.fs.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.ptcs\codex.fs.ptcs.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.host\codex.fs.host.fsproj --no-restore -o $packOut
@@ -38,10 +41,10 @@ Do not keep a long-running `dotnet run` host alive while rebuilding the solution
 ## 3. Global Tool Install
 
 ```powershell
-$packOut = "G:\codex.fs\bin\cli-chat-fix-packs-20260705023728-alpha5"
-dotnet tool install --global codex.fs.cli --add-source $packOut --version 0.1.0-alpha.5
-dotnet tool install --global codex.fs.tool --add-source $packOut --version 0.1.0-alpha.5
-dotnet tool install --global codex.fs.host.tool --add-source $packOut --version 0.1.0-alpha.5
+$packOut = "G:\codex.fs\bin\ptcs-hub-align-packs-20260705030317-alpha6"
+dotnet tool install --global codex.fs.cli --add-source $packOut --version 0.1.0-alpha.6
+dotnet tool install --global codex.fs.tool --add-source $packOut --version 0.1.0-alpha.6
+dotnet tool install --global codex.fs.host.tool --add-source $packOut --version 0.1.0-alpha.6
 
 C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe --help
 C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help
@@ -85,27 +88,31 @@ Minimum command checks:
 ```powershell
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/chat" -UseBasicParsing
+Invoke-WebRequest -Uri "http://10.28.112.93:10481/diagnostics/session-send" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/api/codexfs/host/health" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/openapi/v1.json" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/docs/index.html" -UseBasicParsing
 C:\Users\Administrator\.dotnet\tools\codex.fs.exe host status --host http://10.28.112.93:10481
 C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe host status --host http://10.28.112.93:10481
+C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe session send --host http://10.28.112.93:10481 --prompt "hello foreman"
 ```
 
 Browser gate:
 
 - Open `http://10.28.112.93:10481/`.
-- Verify the page shows `codex.fs host`, `Chat PoC`, `Host health JSON`, `OpenAPI JSON`, and `Swagger UI`.
+- Verify the page shows `codex.fs host`, `PTCS WebSharper chat room`, `Diagnostics session send`, `Host health JSON`, `OpenAPI JSON`, and `Swagger UI`.
 - Open `http://10.28.112.93:10481/chat`.
-- Submit a prompt with a session id and verify the response shows `Accepted` plus the expected `targetParticipantId`.
+- Verify it says `Use PTCS chat` and does not present the product prompt composer.
+- Open `http://10.28.112.93:10481/diagnostics/session-send`.
+- Submit a diagnostics prompt with blank or `foreman` session and verify the response shows `Accepted` plus the expected `targetParticipantId`.
 - Open `http://10.28.112.93:10481/docs/index.html`.
-- Verify Swagger UI lists the host endpoints.
+- Verify Swagger UI lists root/health/session/foreman/diagnostics endpoints.
 
 Current evidence:
 
-- `G:\codex.fs\.codex.fs\host-run\20260705023728-alpha5\stdout.log`
-- `G:\codex.fs\.codex.fs\host-chat-fix-20260705023728-alpha5\summary.json`
-- Current evidence records HTTP checks for root/chat/health/docs/OpenAPI, CLI graceful connection failure, and real `/chat` form submission to the default session worker / foreman.
+- `G:\codex.fs\.codex.fs\host-run\20260705030317-alpha6\stdout.log`
+- `G:\codex.fs\.codex.fs\ptcs-hub-align-20260705030317-alpha6\summary.json`
+- Current evidence records HTTP checks for root/chat guard/diagnostics/health/docs/OpenAPI, CLI no-session foreman send, CLI graceful connection failure, and real diagnostics form submission.
 
 ## 6. Documentation Outputs
 
@@ -114,7 +121,9 @@ Current API documentation:
 - OpenAPI JSON: `/openapi/v1.json`
 - Swagger UI: `/docs/index.html`
 - SDK XML docs: generated by `GenerateDocumentationFile=true` and included in package outputs under `lib/net10.0/*.xml`.
-- `/chat` is a human operator PoC form. It is intentionally documented as a host usability route, not as the production PTCS participant-perspective Web UI.
+- `/chat` is a legacy guard page pointing to PTCS Web chat.
+- `/diagnostics/session-send` is a standalone diagnostics route only.
+- `/api/codexfs/foreman/messages` documents the CLI first-use path where the caller does not know a session id.
 
 Planned improvement:
 

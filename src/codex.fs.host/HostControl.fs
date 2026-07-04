@@ -25,9 +25,13 @@ module HostControl =
         [<Literal>]
         let Root = "/"
 
-        /// Human-facing PoC chat page for sending prompts into a session worker inbox.
+        /// Legacy guard page that points operators to the canonical PTCS Web chat.
         [<Literal>]
-        let Chat = "/chat"
+        let LegacyChat = "/chat"
+
+        /// Diagnostic form for sending prompts into the standalone host MessageFabric.
+        [<Literal>]
+        let DiagnosticsSessionSend = "/diagnostics/session-send"
 
         /// Health endpoint used by CLI/Web/admin callers to inspect non-secret host status.
         [<Literal>]
@@ -36,6 +40,10 @@ module HostControl =
         /// Session message send route used by the `codex.fs` terminal command.
         [<Literal>]
         let SessionMessages = "/api/codexfs/session/{sessionId}/messages"
+
+        /// Default Foreman/SessionWorker message send route used when the caller does not know a session id.
+        [<Literal>]
+        let ForemanMessages = "/api/codexfs/foreman/messages"
 
         /// Session status route used by the `codex.fs` terminal command.
         [<Literal>]
@@ -66,7 +74,11 @@ module HostControl =
 
         /// Endpoint name for `GET /chat`.
         [<Literal>]
-        let Chat = "CodexFsHostChat"
+        let LegacyChat = "CodexFsHostLegacyChat"
+
+        /// Endpoint name for `GET /diagnostics/session-send`.
+        [<Literal>]
+        let DiagnosticsSessionSend = "CodexFsHostDiagnosticsSessionSend"
 
         /// Endpoint name for `GET /api/codexfs/host/health`.
         [<Literal>]
@@ -75,6 +87,10 @@ module HostControl =
         /// Endpoint name for `POST /api/codexfs/session/{sessionId}/messages`.
         [<Literal>]
         let SessionMessages = "CodexFsSessionMessages"
+
+        /// Endpoint name for `POST /api/codexfs/foreman/messages`.
+        [<Literal>]
+        let ForemanMessages = "CodexFsForemanMessages"
 
         /// Endpoint name for `GET /api/codexfs/session/{sessionId}/status`.
         [<Literal>]
@@ -124,8 +140,8 @@ module HostControl =
           BindUri: string
           /// URI published to CLI clients and other nodes.
           AdvertiseUri: string
-          /// Human-facing PoC chat page URI.
-          ChatUri: string
+          /// Diagnostic standalone session-send form URI.
+          DiagnosticsSessionSendUri: string
           /// Full advertised health URI.
           HealthUri: string
           /// True only for explicit single-node development loopback profiles.
@@ -170,8 +186,8 @@ module HostControl =
           Port: int
           /// Advertised base URI used by CLI clients and other nodes.
           AdvertiseUri: string
-          /// Human-facing PoC chat page URI.
-          ChatUri: string
+          /// Diagnostic standalone session-send form URI.
+          DiagnosticsSessionSendUri: string
           /// Advertised health endpoint URI.
           HealthUri: string
           /// True when loopback-only control addresses are explicitly allowed.
@@ -330,10 +346,15 @@ module HostControl =
           Description = "A human-facing landing page with links to health, OpenAPI JSON, and Swagger UI when available."
           Body = """<html><body><h1>codex.fs host</h1></body></html>""" }
 
-    let chatSuccessExample =
-        { Name = "operator-chat"
-          Description = "A human-facing form that sends one prompt to the default session worker / foreman, with optional worker override."
-          Body = """<html><body><form method="post" action="/chat"><textarea name="prompt"></textarea></form></body></html>""" }
+    let legacyChatSuccessExample =
+        { Name = "ptcs-chat-pointer"
+          Description = "A guard page that states browser chat belongs to the PTCS WebSharper chat room."
+          Body = """<html><body><h1>Use PTCS chat</h1></body></html>""" }
+
+    let diagnosticsSessionSendSuccessExample =
+        { Name = "diagnostic-session-send"
+          Description = "A diagnostic form that sends one prompt to the default Foreman/SessionWorker, with optional worker override."
+          Body = """<html><body><form method="post" action="/diagnostics/session-send"><textarea name="prompt"></textarea></form></body></html>""" }
 
     /// Endpoint definitions that act as the canonical code-side docs metadata for the HTTP control plane.
     let endpointDefinitions =
@@ -344,10 +365,16 @@ module HostControl =
             SuccessExample = rootSuccessExample
             FailureExample = healthFailureExample }
           { Method = "GET"
-            Route = Routes.Chat
-            Name = EndpointNames.Chat
-            Summary = "Return a human-facing PoC chat page for sending prompts to a session worker."
-            SuccessExample = chatSuccessExample
+            Route = Routes.LegacyChat
+            Name = EndpointNames.LegacyChat
+            Summary = "Return a guard page that points browser chat users to PTCS Web."
+            SuccessExample = legacyChatSuccessExample
+            FailureExample = healthFailureExample }
+          { Method = "GET"
+            Route = Routes.DiagnosticsSessionSend
+            Name = EndpointNames.DiagnosticsSessionSend
+            Summary = "Return a diagnostic form for sending prompts through standalone host MessageFabric."
+            SuccessExample = diagnosticsSessionSendSuccessExample
             FailureExample = sessionSendFailureExample }
           { Method = "GET"
             Route = Routes.Health
@@ -359,6 +386,12 @@ module HostControl =
             Route = Routes.SessionMessages
             Name = EndpointNames.SessionMessages
             Summary = "Accept one CLI session message into PTCS MessageFabric through the host."
+            SuccessExample = sessionSendSuccessExample
+            FailureExample = sessionSendFailureExample }
+          { Method = "POST"
+            Route = Routes.ForemanMessages
+            Name = EndpointNames.ForemanMessages
+            Summary = "Accept one CLI message for the default Foreman/SessionWorker when the caller does not know a session id."
             SuccessExample = sessionSendSuccessExample
             FailureExample = sessionSendFailureExample }
           { Method = "GET"
@@ -431,7 +464,7 @@ module HostControl =
           Port = port
           BindUri = bindUri
           AdvertiseUri = advertiseUri
-          ChatUri = combineAdvertisedRoute advertiseUri Routes.Chat
+          DiagnosticsSessionSendUri = combineAdvertisedRoute advertiseUri Routes.DiagnosticsSessionSend
           HealthUri = combineAdvertisedRoute advertiseUri Routes.Health
           AllowLoopbackOnly = control.AllowLoopbackOnly
           Endpoints = endpointDefinitions
@@ -453,7 +486,7 @@ module HostControl =
           BindAddress = contract.BindAddress
           Port = contract.Port
           AdvertiseUri = contract.AdvertiseUri
-          ChatUri = contract.ChatUri
+          DiagnosticsSessionSendUri = contract.DiagnosticsSessionSendUri
           HealthUri = contract.HealthUri
           AllowLoopbackOnly = health.ControlAllowLoopbackOnly
           PtcsFabricMode = health.PtcsFabricMode
@@ -476,14 +509,24 @@ module HostControl =
           ExposeSwaggerUi = contract.ExposeSwaggerUi
           SwaggerUiUri = contract.SwaggerUiUri }
 
+    let defaultForemanSessionId = "foreman"
+
     /// Build the PTCS participant id owned by a session.
     let sessionParticipantId (config: HostConfig.HostConfig) sessionId =
         config.Ptcs.SessionParticipantPrefix.TrimEnd('.') + "." + sessionId
+
+    /// Build the PTCS participant id owned by the default Foreman/SessionWorker.
+    let foremanParticipantId (config: HostConfig.HostConfig) =
+        sessionParticipantId config defaultForemanSessionId
 
     /// Build the advertised URI for a session message send request.
     let sessionMessagesUri (contract: HostControlContract) (sessionId: string) =
         let escapedSessionId = Uri.EscapeDataString sessionId
         combineAdvertisedRoute contract.AdvertiseUri ($"/api/codexfs/session/{escapedSessionId}/messages")
+
+    /// Build the advertised URI for a default Foreman/SessionWorker message send request.
+    let foremanMessagesUri (contract: HostControlContract) =
+        combineAdvertisedRoute contract.AdvertiseUri Routes.ForemanMessages
 
     /// Build the advertised URI for a session status request.
     let sessionStatusUri (contract: HostControlContract) (sessionId: string) =
@@ -518,7 +561,7 @@ module HostControl =
 
     let rootPageHtml (contract: HostControlContract) =
         let docsItems =
-            [ yield $"<li><a href=\"{htmlEncode contract.ChatUri}\">Chat PoC</a></li>"
+            [ yield $"<li><a href=\"{htmlEncode contract.DiagnosticsSessionSendUri}\">Diagnostics session send</a></li>"
               yield $"<li><a href=\"{htmlEncode contract.HealthUri}\">Host health JSON</a></li>"
               if contract.GenerateOpenApi then
                   yield $"<li><a href=\"{htmlEncode contract.OpenApiJsonUri}\">OpenAPI JSON</a></li>"
@@ -542,6 +585,7 @@ module HostControl =
   <h1>codex.fs host</h1>
   <p class="status">running</p>
   <p>Advertised URI: <code>{htmlEncode contract.AdvertiseUri}</code></p>
+  <p>Browser chat is provided by PTCS WebSharper chat room. This standalone host only exposes diagnostics and HTTP control endpoints.</p>
   <h2>Available endpoints</h2>
   <ul>
     {docsItems}
@@ -569,7 +613,7 @@ module HostControl =
           "<head>"
           "  <meta charset=\"utf-8\">"
           "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-          "  <title>codex.fs chat</title>"
+          "  <title>codex.fs diagnostics session send</title>"
           "  <style>"
           "    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 24px; line-height: 1.5; }"
           "    label { display: block; font-weight: 600; margin: 16px 0 6px; }"
@@ -585,14 +629,15 @@ module HostControl =
           "  </style>"
           "</head>"
           "<body>"
-          "  <h1>codex.fs chat</h1>"
+          "  <h1>codex.fs diagnostics session send</h1>"
           $"  <p>Host: <code>{htmlEncode contract.AdvertiseUri}</code></p>"
+          "  <p>Product browser chat belongs to the PTCS WebSharper chat room. This page is only a standalone host diagnostic tool.</p>"
           resultSection
-          $"  <form method=\"post\" action=\"{htmlEncode Routes.Chat}\">"
+          $"  <form method=\"post\" action=\"{htmlEncode Routes.DiagnosticsSessionSend}\">"
           "    <div class=\"grid\">"
           "      <div>"
-          "        <label for=\"sessionId\">Session</label>"
-          $"        <input id=\"sessionId\" name=\"sessionId\" value=\"{htmlEncode sessionId}\" autocomplete=\"off\" required>"
+          "        <label for=\"sessionId\">Optional session</label>"
+          $"        <input id=\"sessionId\" name=\"sessionId\" value=\"{htmlEncode sessionId}\" autocomplete=\"off\" placeholder=\"blank = foreman\">"
           "      </div>"
           "      <div>"
           "        <label for=\"workerId\">Worker override</label>"
@@ -603,6 +648,24 @@ module HostControl =
           $"    <textarea id=\"prompt\" name=\"prompt\" required>{htmlEncode prompt}</textarea>"
           "    <button type=\"submit\">Send</button>"
           "  </form>"
+          "</body>"
+          "</html>" ]
+        |> String.concat Environment.NewLine
+
+    let legacyChatPageHtml (contract: HostControlContract) =
+        [ "<!doctype html>"
+          "<html lang=\"en\">"
+          "<head>"
+          "  <meta charset=\"utf-8\">"
+          "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+          "  <title>PTCS chat required</title>"
+          "  <style>body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; max-width: 860px; margin: 48px auto; padding: 0 24px; line-height: 1.5; } code { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; }</style>"
+          "</head>"
+          "<body>"
+          "  <h1>Use PTCS chat</h1>"
+          "  <p>codex.fs does not own the product browser chat. Workers must appear as PTCS participants through MessageFabric/ActorFabric and the PTCS WebSharper chat room.</p>"
+          "  <p>This standalone host provides HTTP control and diagnostics only.</p>"
+          $"  <p>Diagnostic send form: <a href=\"{htmlEncode contract.DiagnosticsSessionSendUri}\">{htmlEncode contract.DiagnosticsSessionSendUri}</a></p>"
           "</body>"
           "</html>" ]
         |> String.concat Environment.NewLine
@@ -752,7 +815,9 @@ module HostControl =
     let chatPostAsync (runtime: HostRuntime.HostRuntime) (contract: HostControlContract) (request: HttpRequest) =
         task {
             let! form = request.ReadFormAsync()
-            let sessionId = formValue form "sessionId"
+            let rawSessionId = formValue form "sessionId"
+            let sessionId =
+                if String.IsNullOrWhiteSpace rawSessionId then defaultForemanSessionId else rawSessionId
             let workerId = formValue form "workerId"
             let prompt = formValue form "prompt"
 
@@ -842,20 +907,27 @@ module HostControl =
             .Produces(StatusCodes.Status200OK, contentType = "text/html")
         |> ignore
 
-        let chatGetHandler =
-            Func<IResult>(fun () -> Results.Content(chatPageHtml contract String.Empty String.Empty String.Empty None, "text/html; charset=utf-8"))
+        let legacyChatHandler =
+            Func<IResult>(fun () -> Results.Content(legacyChatPageHtml contract, "text/html; charset=utf-8"))
 
-        (application.MapGet(Routes.Chat, chatGetHandler) |> withEndpointDoc EndpointNames.Chat)
+        (application.MapGet(Routes.LegacyChat, legacyChatHandler) |> withEndpointDoc EndpointNames.LegacyChat)
             .Produces(StatusCodes.Status200OK, contentType = "text/html")
         |> ignore
 
-        let chatPostHandler =
+        let diagnosticsGetHandler =
+            Func<IResult>(fun () -> Results.Content(chatPageHtml contract defaultForemanSessionId String.Empty String.Empty None, "text/html; charset=utf-8"))
+
+        (application.MapGet(Routes.DiagnosticsSessionSend, diagnosticsGetHandler) |> withEndpointDoc EndpointNames.DiagnosticsSessionSend)
+            .Produces(StatusCodes.Status200OK, contentType = "text/html")
+        |> ignore
+
+        let diagnosticsPostHandler =
             Func<HttpRequest, Task<IResult>>(fun request -> chatPostAsync runtime contract request)
 
-        application.MapPost(Routes.Chat, chatPostHandler)
-            .WithName(EndpointNames.Chat + "Post")
+        application.MapPost(Routes.DiagnosticsSessionSend, diagnosticsPostHandler)
+            .WithName(EndpointNames.DiagnosticsSessionSend + "Post")
             .WithTags("Host Control")
-            .WithSummary("Send one prompt from the PoC chat page to a session worker.")
+            .WithSummary("Send one prompt from the diagnostics form to a session worker.")
             .WithDescription("Accepts application/x-www-form-urlencoded fields sessionId, workerId, and prompt, then renders an HTML result.")
             .Produces(StatusCodes.Status200OK, contentType = "text/html")
         |> ignore
@@ -871,6 +943,16 @@ module HostControl =
             Func<string, SessionSendRequest, Task<IResult>>(fun sessionId request -> sendSessionMessageAsync runtime sessionId request)
 
         (application.MapPost(Routes.SessionMessages, sessionSendHandler) |> withEndpointDoc EndpointNames.SessionMessages)
+            .Accepts<SessionSendRequest>("application/json")
+            .Produces<SessionSendResponse>(StatusCodes.Status202Accepted)
+            .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<HostControlErrorResponse>(StatusCodes.Status503ServiceUnavailable)
+        |> ignore
+
+        let foremanSendHandler =
+            Func<SessionSendRequest, Task<IResult>>(fun request -> sendSessionMessageAsync runtime defaultForemanSessionId request)
+
+        (application.MapPost(Routes.ForemanMessages, foremanSendHandler) |> withEndpointDoc EndpointNames.ForemanMessages)
             .Accepts<SessionSendRequest>("application/json")
             .Produces<SessionSendResponse>(StatusCodes.Status202Accepted)
             .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)

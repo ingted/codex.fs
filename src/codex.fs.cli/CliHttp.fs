@@ -36,6 +36,11 @@ module CliHttp =
         let escapedSessionId = Uri.EscapeDataString sessionId
         $"{baseUri}/api/codexfs/session/{escapedSessionId}/messages"
 
+    /// Build the host endpoint URI for default Foreman/SessionWorker `session send`.
+    let foremanSendUri (hostUri: string) =
+        let baseUri = hostUri.TrimEnd('/')
+        $"{baseUri}/api/codexfs/foreman/messages"
+
     /// Build the host endpoint URI for `host status`.
     let hostStatusUri (hostUri: string) =
         let baseUri = hostUri.TrimEnd('/')
@@ -113,7 +118,12 @@ module CliHttp =
                   Tags = [ "codex.fs"; "cli"; "session-send" ]
                   CorrelationId = String.Empty }
 
-            return! postJsonAsync client cancellationToken (sessionSendUri options.Host options.SessionId) request
+            let uri =
+                match options.SessionId with
+                | Some sessionId -> sessionSendUri options.Host sessionId
+                | None -> foremanSendUri options.Host
+
+            return! postJsonAsync client cancellationToken uri request
         }
 
     /// Get current session inbox status through the host control endpoint.

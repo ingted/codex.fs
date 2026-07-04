@@ -1,7 +1,7 @@
 # WBS Detail: HOST-006 Standalone Host `/chat` PoC Form
 
 WBS ID：`HOST-006`
-狀態：Done
+狀態：Done; superseded by `HOST-007`
 Progress：100
 Previous：`HOST-004`, `CLI-007`
 Test：`T-HOST-006`
@@ -33,4 +33,4 @@ RFC：`RFC-HOST-0001`
 
 ## Blocker
 
-None.
+Superseded by `HOST-007`: current standalone `/chat` is a PTCS chat guard page, not a prompt form.

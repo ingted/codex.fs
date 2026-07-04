@@ -636,8 +636,11 @@ module HostControl
 
 module Routes =
     val Root : string // "/"
-    val Chat : string // "/chat"
+    val LegacyChat : string // "/chat"
+    val DiagnosticsSessionSend : string // "/diagnostics/session-send"
     val Health : string // "/api/codexfs/host/health"
+    val SessionMessages : string // "/api/codexfs/session/{sessionId}/messages"
+    val ForemanMessages : string // "/api/codexfs/foreman/messages"
 
 type HostControlContract =
     { Protocol: string
@@ -645,7 +648,7 @@ type HostControlContract =
       Port: int
       BindUri: string
       AdvertiseUri: string
-      ChatUri: string
+      DiagnosticsSessionSendUri: string
       HealthUri: string
       OpenApiJsonUri: string
       SwaggerUiUri: string
@@ -663,7 +666,7 @@ type HostControlHealthResponse =
       BindAddress: string
       Port: int
       AdvertiseUri: string
-      ChatUri: string
+      DiagnosticsSessionSendUri: string
       HealthUri: string
       AllowLoopbackOnly: bool
       PtcsFabricMode: string
@@ -679,18 +682,21 @@ type HostControlHealthResponse =
 
 val buildContract : HostConfig -> HostControlContract
 val healthResponse : HostControlContract -> HostRuntime -> HostControlHealthResponse
-val chatPostAsync : HostRuntime -> HostControlContract -> HttpRequest -> Task<IResult>
+val chatPostAsync : HostRuntime -> HostControlContract -> HttpRequest -> Task<IResult> // diagnostics form handler
 val tryStartAsync : DateTimeOffset -> CancellationToken -> HostRuntime -> Task<Result<HostControlServer, HostConfigIssue list>>
 val stopAsync : CancellationToken -> HostControlServer -> Task<HostRuntime>
 ```
 
 Rules:
 
-- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /`, `GET/POST /chat`, plus `GET /api/codexfs/host/health`.
-- `GET /` is the operator landing page. It must return HTTP 200 HTML and link to chat, health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled.
-- `GET /chat` is the standalone host operator PoC form. `POST /chat` accepts `application/x-www-form-urlencoded` fields `sessionId`, `workerId`, and `prompt`, then sends through the same `acceptSessionMessageAsync` path used by `POST /api/codexfs/session/{sessionId}/messages`.
-- `/chat` defaults to the derived SessionWorker / 包工頭 target and treats nonblank `workerId` as an explicit worker participant override.
-- `/chat` is not the production PTCS participant-perspective Web UI and must not create a separate durable chat store; production PTCS Web still uses caller-owned PTCS MessageFabric from the PTCS Host process.
+- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /`, `GET /chat`, `GET/POST /diagnostics/session-send`, CLI send/read endpoints, plus `GET /api/codexfs/host/health`.
+- `GET /` is the operator landing page. It must return HTTP 200 HTML and link to diagnostics, health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled; it must state browser chat belongs to PTCS WebSharper chat room.
+- `GET /chat` is a legacy guard page only. It must not present a prompt composer. It points operators to the canonical PTCS Web chat and may link to diagnostics.
+- `GET /diagnostics/session-send` is the standalone diagnostics form. `POST /diagnostics/session-send` accepts `application/x-www-form-urlencoded` fields `sessionId`, `workerId`, and `prompt`, then sends through `acceptSessionMessageAsync`.
+- Diagnostics `sessionId` is optional; blank defaults to `foreman`. This keeps first-use diagnostics and CLI aligned with the default package foreman.
+- `POST /api/codexfs/foreman/messages` is the CLI default route when the caller does not know a session id. It sends to session id `foreman`, deriving target participant `<ptcs.sessionParticipantPrefix>.foreman` unless `workerId` overrides it.
+- `POST /api/codexfs/session/{sessionId}/messages` remains the explicit existing-session route.
+- Standalone diagnostics and CLI endpoints must not create a parallel durable chat store; production browser chat still uses caller-owned PTCS MessageFabric / ActorFabric from the PTCS Host process or a peer PTCS cluster node.
 - `HostControlContract.HealthUri` is built from `control.advertiseUri`; CLI/Web/admin callers must use the advertised URI, not the bind URI when these differ.
 - Non-loopback clustered profiles are validated by `HostConfig`; `control.allowLoopbackOnly = false` rejects loopback bind/advertise config before HTTP start.
 - The health endpoint returns non-secret operational metadata only. It reports executable override keys but never executable override values.
@@ -1040,14 +1046,18 @@ type CliHttpResult =
 
 val transportFailure : string -> exn -> CliHttpResult
 val sessionSendUri : string -> string -> string
+val foremanSendUri : string -> string
 val sendSessionMessageAsync : HttpClient -> CancellationToken -> Cli.SessionSendOptions -> Task<CliHttpResult>
 ```
 
 Rules:
 
-- Route: `POST /api/codexfs/session/{sessionId}/messages`.
+- Route without `--session`: `POST /api/codexfs/foreman/messages`.
+- Route with `--session`: `POST /api/codexfs/session/{sessionId}/messages`.
+- `Cli.SessionSendOptions.SessionId` is `string option`; `None` means the default Foreman/SessionWorker and must be the first-use UX.
 - Host derives session participant id as `<ptcs.sessionParticipantPrefix>.<sessionId>`.
-- Default target is the derived session worker / 包工頭 participant. `WorkerId` blank/null means the host sends a direct MessageFabric message to `SessionParticipantId`.
+- Default foreman target is `<ptcs.sessionParticipantPrefix>.foreman`; explicit session target is `<ptcs.sessionParticipantPrefix>.<sessionId>`.
+- `WorkerId` blank/null means the host sends a direct MessageFabric message to `SessionParticipantId`.
 - When `WorkerId` is supplied, host treats it as the exact target worker participant id and sends the direct MessageFabric message there instead; `SessionParticipantId` remains the foreman identity for the session.
 - Host registers sender/session participants in PTCS and registers the override worker participant when one is supplied.
 - CLI sends to the host advertised URI; CLI does not write MessageFabric or artifacts directly.
@@ -1146,7 +1156,7 @@ Rules:
 
 Existing PTCS Web chat is implemented by `G:\PulseTrade.fs\Libs\PulseTrade.Comm\src\PulseTrade.Comm.Spa.Host` over the PTCS package in `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`.
 
-Standalone `codex.fs.host` may expose `/chat` as an operator PoC form per `RFC-HOST-0001`. That route sends through the host's current PTCS MessageFabric and is useful for early CLI/Web usability checks, but it does not replace the production PTCS participant-perspective Web UI and must not become a parallel durable chat store.
+Standalone `codex.fs.host` exposes `/chat` only as a legacy guard page. It must not become a product chat room or prompt composer. Browser chat UX is PTCS WebSharper chat room; codex.fs workers become visible there by registering/communicating as PTCS participants through the same `CommSpaMessageFabric` / `CommSpaActorFabric`.
 
 Current deployment profile rules:
 
@@ -1160,6 +1170,7 @@ codex.fs integration rule:
 
 - A standalone `codex.fs.host` tool uses a package-owned in-process PTCS MessageFabric and therefore does not make participants visible in an already running PTCS Web process.
 - Production PTCS Web integration must reference `codex.fs.host` package from the PTCS Host process or a peer cluster node and start runtime with caller-owned PTCS fabric, e.g. `HostRuntime.startWithMessageFabric`.
+- CLI/diagnostics are control surfaces for testing and operations. They must not define the human chat IA. The default terminal send path goes to `foreman` so the user does not need to invent or know a session id.
 - The full worker actor loop must register session/worker participants as `Kind = Some "agent"` in the same PTCS hub/fabric and consume direct/public/group scopes according to its session policy.
 - Browser acceptance must use real PTCS Host and real MessageFabric evidence; fake/mock UI smoke is not an acceptance path.
 

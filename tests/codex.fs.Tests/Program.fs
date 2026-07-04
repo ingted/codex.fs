@@ -401,7 +401,7 @@ let hostControlServer =
 assertEqual "host control bind address" (hostControlAddress.ToString()) hostControlServer.Contract.BindAddress
 assertEqual "host control advertise uri" hostControlAdvertiseUri hostControlServer.Contract.AdvertiseUri
 assertContains "host control health route" CodexFs.Host.HostControl.Routes.Health hostControlServer.Contract.HealthUri
-assertEqual "host control chat uri" $"{hostControlAdvertiseUri}/chat" hostControlServer.Contract.ChatUri
+assertEqual "host control diagnostics send uri" $"{hostControlAdvertiseUri}/diagnostics/session-send" hostControlServer.Contract.DiagnosticsSessionSendUri
 assertEqual "host control openapi uri" $"{hostControlAdvertiseUri}/openapi/v1.json" hostControlServer.Contract.OpenApiJsonUri
 assertEqual "host control swagger ui uri" $"{hostControlAdvertiseUri}/docs/index.html" hostControlServer.Contract.SwaggerUiUri
 assertEqual "host control generate openapi" true hostControlServer.Contract.GenerateOpenApi
@@ -418,7 +418,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliWorkerSendResponseText, cliWorkerInboxBody, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText, chatStatusText =
+let hostControlRootPageText, hostControlLegacyChatPageText, hostControlDiagnosticsPageText, hostControlDiagnosticsPostText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliForemanSendResponseText, cliSendResponseText, cliWorkerSendResponseText, cliWorkerInboxBody, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText, diagnosticsStatusText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -426,8 +426,10 @@ let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, h
 
         let rootResponse = runTask (client.GetAsync(hostControlServer.Contract.AdvertiseUri + "/"))
         let rootBody = runTask (rootResponse.Content.ReadAsStringAsync())
-        let chatResponse = runTask (client.GetAsync(hostControlServer.Contract.ChatUri))
-        let chatBody = runTask (chatResponse.Content.ReadAsStringAsync())
+        let legacyChatResponse = runTask (client.GetAsync(hostControlServer.Contract.AdvertiseUri + CodexFs.Host.HostControl.Routes.LegacyChat))
+        let legacyChatBody = runTask (legacyChatResponse.Content.ReadAsStringAsync())
+        let diagnosticsResponse = runTask (client.GetAsync(hostControlServer.Contract.DiagnosticsSessionSendUri))
+        let diagnosticsBody = runTask (diagnosticsResponse.Content.ReadAsStringAsync())
         let response = runTask (client.GetAsync(hostControlServer.Contract.HealthUri))
         let body = runTask (response.Content.ReadAsStringAsync())
         let openApiResponse = runTask (client.GetAsync(hostControlServer.Contract.OpenApiJsonUri))
@@ -446,17 +448,29 @@ let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, h
         let cli002Prompt = "CLI-002 prompt through host and PTCS MessageFabric"
         let cli002WorkerId = $"agent.codexfs.worker.{cli002RunSuffix}"
         let cli002WorkerPrompt = "CLI-002 prompt through explicit worker override"
-        let chatSessionId = $"chat.{cli002RunSuffix}"
-        let chatPrompt = "CHAT-001 prompt through web chat"
+        let diagnosticsSessionId = $"diagnostics.{cli002RunSuffix}"
+        let diagnosticsPrompt = "DIAG-001 prompt through standalone diagnostics send"
 
         use chatForm =
             new FormUrlEncodedContent(
-                [| KeyValuePair<string, string>("sessionId", chatSessionId)
+                [| KeyValuePair<string, string>("sessionId", diagnosticsSessionId)
                    KeyValuePair<string, string>("workerId", "")
-                   KeyValuePair<string, string>("prompt", chatPrompt) |])
+                   KeyValuePair<string, string>("prompt", diagnosticsPrompt) |])
 
-        let chatPostResponse = runTask (client.PostAsync(hostControlServer.Contract.ChatUri, chatForm))
-        let chatPostBody = runTask (chatPostResponse.Content.ReadAsStringAsync())
+        let diagnosticsPostResponse = runTask (client.PostAsync(hostControlServer.Contract.DiagnosticsSessionSendUri, chatForm))
+        let diagnosticsPostBody = runTask (diagnosticsPostResponse.Content.ReadAsStringAsync())
+
+        let cliForemanPrompt = "CLI-008 prompt without user-known session id"
+
+        let cliForemanSendResult =
+            runTask
+                (CodexFs.Cli.CliHttp.sendSessionMessageAsync
+                    client
+                    CancellationToken.None
+                    { Host = hostControlServer.Contract.AdvertiseUri
+                      SessionId = None
+                      WorkerId = None
+                      Prompt = cliForemanPrompt })
 
         let cliSendResult =
             runTask
@@ -464,7 +478,7 @@ let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, h
                     client
                     CancellationToken.None
                     { Host = hostControlServer.Contract.AdvertiseUri
-                      SessionId = cli002SessionId
+                      SessionId = Some cli002SessionId
                       WorkerId = None
                       Prompt = cli002Prompt })
 
@@ -474,7 +488,7 @@ let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, h
                     client
                     CancellationToken.None
                     { Host = hostControlServer.Contract.AdvertiseUri
-                      SessionId = cli002SessionId
+                      SessionId = Some cli002SessionId
                       WorkerId = Some cli002WorkerId
                       Prompt = cli002WorkerPrompt })
 
@@ -495,20 +509,23 @@ let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, h
         let cliAttachResult = runTask (CodexFs.Cli.CliHttp.attachSessionAsync client CancellationToken.None cli002Target)
         let cliDrainResult = runTask (CodexFs.Cli.CliHttp.drainSessionAsync client CancellationToken.None cli002Target)
         let cliAfterDrainStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None cli002Target)
-        let chatTarget: CodexFs.Cli.Cli.SessionTargetOptions =
+        let diagnosticsTarget: CodexFs.Cli.Cli.SessionTargetOptions =
             { Host = hostControlServer.Contract.AdvertiseUri
-              SessionId = chatSessionId }
+              SessionId = diagnosticsSessionId }
 
-        let chatStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None chatTarget)
+        let diagnosticsStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None diagnosticsTarget)
 
         assertEqual "host root http status" HttpStatusCode.OK rootResponse.StatusCode
-        assertEqual "host chat http status" HttpStatusCode.OK chatResponse.StatusCode
-        assertEqual "host chat post http status" HttpStatusCode.OK chatPostResponse.StatusCode
+        assertEqual "host legacy chat http status" HttpStatusCode.OK legacyChatResponse.StatusCode
+        assertEqual "host diagnostics http status" HttpStatusCode.OK diagnosticsResponse.StatusCode
+        assertEqual "host diagnostics post http status" HttpStatusCode.OK diagnosticsPostResponse.StatusCode
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
         assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
         assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
         assertEqual "cli host status status" 200 cliHostStatusResult.StatusCode
         assertTrue "cli host status success" cliHostStatusResult.IsSuccess
+        assertEqual "cli foreman send status" 202 cliForemanSendResult.StatusCode
+        assertTrue "cli foreman send success" cliForemanSendResult.IsSuccess
         assertEqual "cli send status" 202 cliSendResult.StatusCode
         assertTrue "cli send success" cliSendResult.IsSuccess
         assertEqual "cli worker send status" 202 cliWorkerSendResult.StatusCode
@@ -521,10 +538,10 @@ let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, h
         assertTrue "cli drain success" cliDrainResult.IsSuccess
         assertEqual "cli after drain status" 200 cliAfterDrainStatusResult.StatusCode
         assertTrue "cli after drain success" cliAfterDrainStatusResult.IsSuccess
-        assertEqual "chat status status" 200 chatStatusResult.StatusCode
-        assertTrue "chat status success" chatStatusResult.IsSuccess
+        assertEqual "diagnostics status status" 200 diagnosticsStatusResult.StatusCode
+        assertTrue "diagnostics status success" diagnosticsStatusResult.IsSuccess
 
-        rootBody, chatBody, chatPostBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliWorkerSendResult.Body, cliWorkerInboxBody, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body, chatStatusResult.Body
+        rootBody, legacyChatBody, diagnosticsBody, diagnosticsPostBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliForemanSendResult.Body, cliSendResult.Body, cliWorkerSendResult.Body, cliWorkerInboxBody, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body, diagnosticsStatusResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -536,7 +553,7 @@ let hostControlRoot = hostControlJson.RootElement
 
 assertEqual "host control response status" "running" (hostControlRoot.GetProperty("status").GetString())
 assertEqual "host control response advertise uri" hostControlAdvertiseUri (hostControlRoot.GetProperty("advertiseUri").GetString())
-assertEqual "host control response chat uri" hostControlServer.Contract.ChatUri (hostControlRoot.GetProperty("chatUri").GetString())
+assertEqual "host control response diagnostics uri" hostControlServer.Contract.DiagnosticsSessionSendUri (hostControlRoot.GetProperty("diagnosticsSessionSendUri").GetString())
 assertEqual "host control response health uri" hostControlServer.Contract.HealthUri (hostControlRoot.GetProperty("healthUri").GetString())
 assertEqual "host control response bind address" (hostControlAddress.ToString()) (hostControlRoot.GetProperty("bindAddress").GetString())
 assertEqual "host control response port" hostControlPort (hostControlRoot.GetProperty("port").GetInt32())
@@ -548,26 +565,33 @@ hostControlJson.Dispose()
 printfn "TC-HOST-003 endpoint contract passed"
 
 assertContains "host root title" "codex.fs host" hostControlRootPageText
-assertContains "host root chat link" hostControlServer.Contract.ChatUri hostControlRootPageText
+assertContains "host root ptcs chat note" "PTCS WebSharper chat room" hostControlRootPageText
+assertContains "host root diagnostics link" hostControlServer.Contract.DiagnosticsSessionSendUri hostControlRootPageText
 assertContains "host root health link" hostControlServer.Contract.HealthUri hostControlRootPageText
 assertContains "host root openapi link" hostControlServer.Contract.OpenApiJsonUri hostControlRootPageText
 assertContains "host root swagger link" hostControlServer.Contract.SwaggerUiUri hostControlRootPageText
 assertTrue "host root no raw token" (not (hostControlRootPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 
-assertContains "host chat title" "codex.fs chat" hostControlChatPageText
-assertContains "host chat form action" "action=\"/chat\"" hostControlChatPageText
-assertContains "host chat prompt field" "name=\"prompt\"" hostControlChatPageText
-assertTrue "host chat no raw token" (not (hostControlChatPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
-assertContains "host chat accepted" "Accepted" hostControlChatPostText
-assertContains "host chat default target" "agent.codexfs.chat." hostControlChatPostText
-assertTrue "host chat post no raw token" (not (hostControlChatPostText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+assertContains "host legacy chat title" "Use PTCS chat" hostControlLegacyChatPageText
+assertContains "host legacy chat fabric note" "MessageFabric/ActorFabric" hostControlLegacyChatPageText
+assertContains "host legacy chat diagnostics link" hostControlServer.Contract.DiagnosticsSessionSendUri hostControlLegacyChatPageText
+assertTrue "host legacy chat no raw token" (not (hostControlLegacyChatPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+
+assertContains "host diagnostics title" "codex.fs diagnostics session send" hostControlDiagnosticsPageText
+assertContains "host diagnostics form action" "action=\"/diagnostics/session-send\"" hostControlDiagnosticsPageText
+assertContains "host diagnostics prompt field" "name=\"prompt\"" hostControlDiagnosticsPageText
+assertContains "host diagnostics foreman default" "value=\"foreman\"" hostControlDiagnosticsPageText
+assertTrue "host diagnostics no raw token" (not (hostControlDiagnosticsPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+assertContains "host diagnostics accepted" "Accepted" hostControlDiagnosticsPostText
+assertContains "host diagnostics default target" "agent.codexfs.diagnostics." hostControlDiagnosticsPostText
+assertTrue "host diagnostics post no raw token" (not (hostControlDiagnosticsPostText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 
 let cliHostStatusJson = JsonDocument.Parse(cliHostStatusText)
 let cliHostStatusRoot = cliHostStatusJson.RootElement
 
 assertEqual "cli host status response status" "running" (cliHostStatusRoot.GetProperty("status").GetString())
 assertEqual "cli host status response advertise" hostControlAdvertiseUri (cliHostStatusRoot.GetProperty("advertiseUri").GetString())
-assertEqual "cli host status response chat" hostControlServer.Contract.ChatUri (cliHostStatusRoot.GetProperty("chatUri").GetString())
+assertEqual "cli host status response diagnostics" hostControlServer.Contract.DiagnosticsSessionSendUri (cliHostStatusRoot.GetProperty("diagnosticsSessionSendUri").GetString())
 assertEqual "cli host status response health" hostControlServer.Contract.HealthUri (cliHostStatusRoot.GetProperty("healthUri").GetString())
 assertTrue "cli host status response fabric" (cliHostStatusRoot.GetProperty("hasMessageFabric").GetBoolean())
 assertTrue "cli host status no raw token" (not (cliHostStatusText.Contains(fakeGithubToken, StringComparison.Ordinal)))
@@ -576,11 +600,15 @@ cliHostStatusJson.Dispose()
 let hostOpenApiJson = JsonDocument.Parse(hostControlOpenApiText)
 let hostOpenApiRoot = hostOpenApiJson.RootElement
 let mutable hostHealthPath = Unchecked.defaultof<JsonElement>
-let mutable hostChatPath = Unchecked.defaultof<JsonElement>
+let mutable hostLegacyChatPath = Unchecked.defaultof<JsonElement>
+let mutable hostDiagnosticsPath = Unchecked.defaultof<JsonElement>
+let mutable hostForemanPath = Unchecked.defaultof<JsonElement>
 
 assertTrue "host openapi version" (hostOpenApiRoot.GetProperty("openapi").GetString().StartsWith("3.", StringComparison.Ordinal))
 assertTrue "host openapi has health path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.Health, &hostHealthPath))
-assertTrue "host openapi has chat path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.Chat, &hostChatPath))
+assertTrue "host openapi has legacy chat path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.LegacyChat, &hostLegacyChatPath))
+assertTrue "host openapi has diagnostics path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.DiagnosticsSessionSend, &hostDiagnosticsPath))
+assertTrue "host openapi has foreman path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.ForemanMessages, &hostForemanPath))
 assertTrue "host swagger ui html" (hostControlSwaggerText.Contains("SwaggerUIBundle", StringComparison.Ordinal) || hostControlSwaggerText.Contains("swagger-ui", StringComparison.OrdinalIgnoreCase))
 assertTrue "host swagger ui no raw token" (not (hostControlSwaggerText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 hostOpenApiJson.Dispose()
@@ -593,6 +621,16 @@ let assertInboxJson (name: string) (expectedStatus: string) (minCount: int) (bod
     assertEqual $"{name} status" expectedStatus (root.GetProperty("status").GetString())
     assertTrue $"{name} pending count" (root.GetProperty("pendingCount").GetInt32() >= minCount)
     assertContains $"{name} transcript" "CLI-002 prompt through host and PTCS MessageFabric" (root.GetProperty("transcript").GetString())
+
+let cliForemanSendJson = JsonDocument.Parse(cliForemanSendResponseText)
+let cliForemanSendRoot = cliForemanSendJson.RootElement
+
+assertEqual "cli foreman send response status" "accepted" (cliForemanSendRoot.GetProperty("status").GetString())
+assertEqual "cli foreman send response session" "foreman" (cliForemanSendRoot.GetProperty("sessionId").GetString())
+assertEqual "cli foreman send response target" "agent.codexfs.foreman" (cliForemanSendRoot.GetProperty("targetParticipantId").GetString())
+assertEqual "cli foreman send response sender" "user.codexfs.cli" (cliForemanSendRoot.GetProperty("fromParticipantId").GetString())
+assertTrue "cli foreman send response message id" (not (String.IsNullOrWhiteSpace(cliForemanSendRoot.GetProperty("messageId").GetString())))
+cliForemanSendJson.Dispose()
 
 let cliSendJson = JsonDocument.Parse(cliSendResponseText)
 let cliSendRoot = cliSendJson.RootElement
@@ -612,7 +650,7 @@ assertContains "cli worker inbox body" "CLI-002 prompt through explicit worker o
 cliWorkerSendJson.Dispose()
 
 assertInboxJson "cli status" "ok" 1 cliStatusText
-assertContains "chat status transcript" "CHAT-001 prompt through web chat" chatStatusText
+assertContains "diagnostics status transcript" "DIAG-001 prompt through standalone diagnostics send" diagnosticsStatusText
 
 printfn "TC-CLI-002 CLI send through MessageFabric passed"
 
@@ -643,13 +681,15 @@ assertContains "cli help engine" "engine <options>" cliHelp
 assertContains "cli examples header" "Examples:" cliHelp
 assertContains "cli program name" "USAGE: codex.fs.cli" cliHelp
 assertContains "cli host example" "codex.fs.cli host status --host http://192.168.10.20:8788" cliHelp
-assertContains "cli send example" "codex.fs.cli session send --session sess-001 --prompt @prompt.md" cliHelp
+assertContains "cli send default foreman example" "codex.fs.cli session send --prompt @prompt.md" cliHelp
+assertContains "cli send explicit session example" "codex.fs.cli session send --session sess-001 --prompt @prompt.md" cliHelp
 assertContains "cli worker option" "--worker-id" cliHelp
 assertContains "cli short program name" "USAGE: codex.fs" cliShortHelp
 assertContains "cli short host example" "codex.fs host status --host http://192.168.10.20:8788" cliShortHelp
 
 assertParseOk "cli host status" [| "host"; "status"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session create" [| "session"; "create"; "--engine"; "agy"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli session send default foreman" [| "session"; "send"; "--prompt"; "@prompt.md"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session send" [| "session"; "send"; "--session"; "sess-001"; "--prompt"; "@prompt.md"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session send worker override" [| "session"; "send"; "--session"; "sess-001"; "--worker-id"; "agent.codexfs.worker.1"; "--prompt"; "@prompt.md"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session attach" [| "session"; "attach"; "--session"; "sess-001"; "--host"; "http://192.168.10.20:8788" |]

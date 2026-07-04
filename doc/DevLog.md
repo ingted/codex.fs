@@ -197,3 +197,20 @@
 - Packaging: package family bumped to `0.1.0-alpha.5`.
 - Tests: `dotnet build .\codex.fs.slnx` passed with 0 warnings/errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and covered `/chat`, OpenAPI `/chat`, health `chatUri`, default chat target, and readable refused-host CLI error.
 - Traceability: added `RFC-HOST-0001`, WBS `HOST-006` / `CLI-008`, Test `T-HOST-006` / `T-CLI-008`, and updated Requirement/SD/README/DEVOP/KM.
+
+## 2026-07-05 03:10 +08:00 HOST-007/CLI-009 PTCS hub chat alignment
+
+- Scope: corrected alpha.5 `/chat` PoC direction after user clarified that product chat must use the existing PTCS WebSharper chat room/hub.
+- Behavior: standalone `GET /chat` is now a guard page pointing to PTCS chat; standalone prompt testing moved to `GET/POST /diagnostics/session-send`; health JSON exposes `diagnosticsSessionSendUri`; OpenAPI includes the guard, diagnostics, and default foreman send route.
+- CLI UX: `session send` no longer requires a user-known session id. No-session send posts to `/api/codexfs/foreman/messages` and targets `agent.codexfs.foreman` by default.
+- Packaging: package family bumped to `0.1.0-alpha.6`.
+- Tests so far: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings/errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and covered PTCS chat guard, diagnostics send, OpenAPI paths, and no-session foreman send.
+- Traceability: added `RFC-HOST-0002`, WBS `HOST-007` / `CLI-009`, Test `T-HOST-007` / `T-CLI-009`, and updated Requirement/SD/README/DEVOP/KM.
+
+## 2026-07-05 03:18 +08:00 HOST-007/CLI-009 installed alpha.6 verification
+
+- Packaging/install: packed six alpha.6 packages under `G:\codex.fs\bin\ptcs-hub-align-packs-20260705030317-alpha6` and installed global `codex.fs.cli`, `codex.fs.tool`, and `codex.fs.host.tool` version `0.1.0-alpha.6` under `C:\Users\Administrator\.dotnet\tools`.
+- Host: stopped old alpha.5 PID `21516`; started alpha.6 host PID `22548` at `http://10.28.112.93:10481`; host stdout is `G:\codex.fs\.codex.fs\host-run\20260705030317-alpha6\stdout.log`.
+- Availability: root, `/chat`, `/diagnostics/session-send`, health, OpenAPI, and Swagger returned HTTP 200; health reports `diagnosticsSessionSendUri` and no `chatUri`; OpenAPI includes `/chat`, `/diagnostics/session-send`, and `/api/codexfs/foreman/messages`.
+- CLI installed-tool evidence: `codex.fs.cli session send --host http://10.28.112.93:10481 --prompt ...` and `codex.fs session send --host http://10.28.112.93:10481 --prompt ...` both returned `sessionId = foreman` and `targetParticipantId = agent.codexfs.foreman`; `session status --session foreman` showed both prompts in the real MessageFabric inbox.
+- Browser evidence: Playwright summary `G:\codex.fs\.codex.fs\ptcs-hub-align-20260705030317-alpha6\summary.json` passed root PTCS note, `/chat` guard without prompt composer, diagnostics foreman default, mobile diagnostics geometry, and Swagger UI checks.

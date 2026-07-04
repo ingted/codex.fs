@@ -1,6 +1,6 @@
 # RFC-HOST-0001 Standalone Chat PoC And CLI Transport Errors
 
-狀態：Accepted
+狀態：Accepted; superseded in part by `RFC-HOST-0002`
 日期：2026-07-05
 關聯：`Requirement.md`, `SD.md`, `WBS.HOST-006.md`, `WBS.CLI-008.md`, `Test.md`, `DEVOP.md`
 
@@ -52,3 +52,7 @@ User also opened `http://10.28.112.93:10481/chat` and found no chat page. Earlie
 - `POST /chat` returns HTTP 200 HTML containing `Accepted`.
 - Session status for the posted session contains the chat prompt.
 - `dotnet build .\codex.fs.slnx` and `tests/codex.fs.Tests` pass.
+
+## 2026-07-05 Correction
+
+`RFC-HOST-0002` supersedes the `/chat` PoC decision. Current contract keeps the CLI transport-error hardening from this RFC, but standalone `GET /chat` is now only a guard page pointing to PTCS Web chat. Standalone prompt testing moved to `/diagnostics/session-send`, and CLI no-session send uses `/api/codexfs/foreman/messages`.

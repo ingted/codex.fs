@@ -138,11 +138,13 @@ host 必須能接入 PTCS：
 standalone host tool 必須提供基本 operator usability route：
 
 - `/` landing page；
-- `/chat` PoC form，能送 prompt 到 default SessionWorker / 包工頭，並可選填 worker override；
+- `/chat` legacy guard page，明確告知 browser chat 應使用 PTCS WebSharper chat room；
+- `/diagnostics/session-send` diagnostics form，能送 prompt 到 default Foreman/SessionWorker，並可選填 worker override；
+- `POST /api/codexfs/foreman/messages`，供 CLI 在使用者不知道 session id 時送到包工頭；
 - `/api/codexfs/host/health`；
 - `/openapi/v1.json` 與 `/docs/index.html` when API docs enabled。
 
-`/chat` 是 package-owned standalone host 的操作 PoC，不是 production PTCS participant-perspective Web UI。production PTCS Web 仍應使用既有 PTCS Host chat 與 caller-owned PTCS MessageFabric。
+`/chat` 不是 package-owned standalone host 的操作 PoC，也不是 production PTCS participant-perspective Web UI。production browser chat 必須使用既有 PTCS Host WebSharper chat room 與 caller-owned PTCS MessageFabric / ActorFabric，讓 worker/session participants 以相同 hub/fabric 出現。
 
 ### R-002 CLI client
 
@@ -150,7 +152,8 @@ standalone host tool 必須提供基本 operator usability route：
 
 - 建立/attach session。
 - 送出 prompt。
-- 預設把 prompt 送給該 session 的 SessionWorker / 包工頭；只有指定 worker id 時改送指定 worker。
+- 未指定 session 時預設把 prompt 送給 default Foreman/SessionWorker / 包工頭，不要求使用者先知道 session id。
+- 指定 session 時把 prompt 送給該 session 的 SessionWorker；只有指定 worker id 時改送指定 worker。
 - wait/poll session reply。
 - 查詢 run artifacts。
 - drain pending inbox。
