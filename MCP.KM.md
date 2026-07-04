@@ -207,3 +207,10 @@
 - Preferred runtime shape is deterministic `decideCycle` plus side-effect `interpretCycleAsync` over explicit ports/effects.
 - Required ordering: persist consumed cursor/message ids, persist prompt/request, invoke engine, persist artifacts/result/manifest, write note, emit reply, persist ready-to-ack boundary, then ack.
 - `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` is bounded real E2E evidence and a migration candidate, not the final durable sharded runtime loop.
+
+## 2026-07-05 ACTOR-001 Session / Worker Actor Model
+
+- `WorkerActor` is the common capability; `SessionActor` is a specialized WorkerActor / Foreman participant and may call runtime itself or spawn workers.
+- Default Foreman participant is `<ptcs.sessionParticipantPrefix>.foreman`, e.g. `agent.codexfs.foreman`; child workers must register as PTCS `agent` participants.
+- Actor shell uses PTCS ActorFabric and calls runtime; MessageFabric remains participant/direct/public/group chat truth.
+- Delivery confirm and MessageFabric ack occur after runtime ready-to-ack evidence and reply/result reference. Volatile provider proof must not be treated as production sharded durability.

@@ -880,7 +880,7 @@ Retention rules:
 
 ### 11.2 Worker actor model target
 
-Planned `ACTOR-001` must define this model before actor code expands:
+`RFC-ACTOR-0001` defines this model for future actor implementation:
 
 ```text
 WorkerActor
@@ -898,7 +898,35 @@ SessionActor : WorkerActor
   - spawns/registers worker participants
 ```
 
-Stateful external request chains must use `Akka.Delivery` or `Akka.Cluster.Sharding.Delivery` for the selected profile. Cluster bind/canonical advertise addresses must be LAN/DNS-routable outside explicit single-node dev.
+Default identity mapping:
+
+| Concept | Default |
+| --- | --- |
+| Foreman entity id | `foreman` |
+| Foreman participant id | `<ptcs.sessionParticipantPrefix>.foreman`, e.g. `agent.codexfs.foreman` |
+| Session entity id | stable sanitized session id |
+| Session participant id | `<ptcs.sessionParticipantPrefix>.<sessionEntityId>` |
+| Child worker participant id | configurable prefix, default `<ptcs.sessionParticipantPrefix>.worker.<sessionEntityId>.<workerId>` |
+
+MessageFabric scope policy:
+
+| Actor | Direct | Public | Group |
+| --- | --- | --- | --- |
+| Foreman SessionActor | yes | yes, policy-controlled | yes, session/control groups |
+| SessionActor | yes | optional by policy | yes, session group |
+| Child worker | yes | optional by policy | yes, assigned task/session groups |
+
+Rules:
+
+- `SessionActor` is a specialized `WorkerActor`; it may call runtime itself or spawn child workers.
+- Actors register/refresh PTCS participants with `Kind = Some "agent"` where supported.
+- First-use CLI/Web prompt without session id targets Foreman; explicit worker id targets the exact worker participant id.
+- Actor shells call `CodexFs.Runtime` and do not duplicate prompt assembly, compaction or artifact/note persistence logic.
+- Stateful external request chains must use `Akka.Delivery` or `Akka.Cluster.Sharding.Delivery` for the selected profile.
+- Delivery confirm and MessageFabric ack happen only after runtime has persisted ready-to-ack evidence and reply/result reference.
+- Task/result identity follows PTCS `RFC-SPA-UPSTREAM-0004` result-vault boundary: operation id, task id, idempotency key, run id and artifact manifest reference must demultiplex retries/out-of-order results without re-running completed backend work.
+- Cluster bind/canonical advertise addresses must be LAN/DNS-routable outside explicit single-node dev.
+- ActorSystem ownership follows PTCS external attachment: merge `CommSpaActorFabric.requiredConfig` before `ActorSystem.Create`, validate/ensure before attach, then use `attachRegionToSystem` or `attachProxyToSystem`.
 
 ### 11.3 Runtime package boundary
 
@@ -1312,4 +1340,4 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
 | SD-TBD-006 | Resolved for MVP: OpenAPI JSON uses `Microsoft.AspNetCore.OpenApi`; Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUi` only as optional UI assets; XML docs are canonical for SDK docs; FSharp.Formatting/fsdocs is preferred for F# reference-site generation. |
 | SD-TBD-007 | Planned by `RUNTIME-001`: exact migration from bounded host helper to reusable `codex.fs.runtime` modules. |
-| SD-TBD-008 | Planned by `ACTOR-001`: `WorkerActor` / `SessionActor` protocol, sharding entity ids, delivery semantics and participant registration lifecycle. |
+| SD-TBD-008 | Resolved for RFC slice by `ACTOR-001`: `WorkerActor` / `SessionActor` protocol, sharding entity ids, delivery semantics and participant registration lifecycle. Implementation/verifier remains future work. |

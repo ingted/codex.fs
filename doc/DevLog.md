@@ -231,3 +231,11 @@
 - Contract: SD §11.3 now defines `RuntimeCycleInput`, `RuntimeEffect`, `decideCycle`, `interpretCycleAsync`, and ports/effects direction.
 - Migration: `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` remains real bounded E2E evidence but is marked as a migration candidate for runtime extraction.
 - Traceability: updated WBS `RUNTIME-001`, detail `doc/WBS.RUNTIME-001.md`, Test `T-RUNTIME-001`, SD §11.3, and KM.
+
+## 2026-07-05 04:34 +08:00 ACTOR-001 session/worker actor model
+
+- Scope: accepted `RFC-ACTOR-0001` as a contract/RFC slice; no actor code was claimed.
+- Boundary: future `codex.fs.actor` is a PTCS ActorFabric adapter over runtime and MessageFabric, not a parallel actor/message fabric.
+- Model: `WorkerActor` is the common capability; `SessionActor` is a specialized WorkerActor / Foreman participant and may call runtime or spawn workers.
+- Delivery: actor delivery confirm and MessageFabric ack happen only after runtime ready-to-ack evidence and reply/result reference exist; production sharded durability still requires selected provider proof.
+- Traceability: updated WBS `ACTOR-001`, detail `doc/WBS.ACTOR-001.md`, Test `T-ACTOR-001`, SA actor path, SD §11.2, and KM.

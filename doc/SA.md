@@ -25,7 +25,8 @@ Actor/sharding path：
 ```text
 PTCS caller-owned or package-owned ActorSystem
   -> CommSpaActorFabric requiredConfig + region/proxy
-  -> codex.fs.host worker actors / route workers
+  -> codex.fs.actor WorkerActor / specialized SessionActor
+  -> codex.fs.runtime prompt-loop
   -> MessageFabric / DurableIngress for communication and task identity
 ```
 
@@ -116,6 +117,8 @@ Integration layer 負責：
 | codex.fs Web | PTCS WebSharper extension/bundle such as `useAIChat(...)`, participant perspective and AI controls. | Standalone `/chat` replacement for PTCS chat. |
 
 Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.host` can invoke that behavior and expose diagnostics, but it is not the owner of the stitched conversation contract.
+
+`ACTOR-001` resolves the first actor RFC slice: Foreman is the default SessionActor participant, workers register as PTCS `agent` participants, and actor shells call runtime while MessageFabric remains the human/agent chat truth.
 
 ## 4. Runtime components
 
