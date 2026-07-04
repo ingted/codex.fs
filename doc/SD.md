@@ -166,6 +166,38 @@ type EngineAdapter =
 - adapter 不應讀取 secret value 來產生 display string。
 - `RenderedCommand.RedactedDisplay` 用於 log，不能包含敏感值。
 
+Implemented process orphan recovery primitive:
+
+```fsharp
+module CodexFs.ProcessRunner
+
+type ProcessLease =
+    { ProcessId: int
+      ProcessName: string
+      StartedUtc: DateTimeOffset
+      Marker: string }
+
+type OrphanRecoveryOptions =
+    { StartTimeTolerance: TimeSpan
+      KillGracePeriod: TimeSpan }
+
+type OrphanRecoveryOutcome =
+    | NotRunning
+    | LeaseMismatch
+    | Terminated
+    | TerminationFailed
+    | RecoveryFailed of string
+
+val recoverLeasedProcessAsync : OrphanRecoveryOptions -> ProcessLease -> Task<OrphanRecoveryResult>
+```
+
+Rules:
+
+- Recovery must operate from a codex.fs-owned lease; it must not scan and kill arbitrary process names.
+- A process is killable only when pid, process name and observed start time match the saved lease within tolerance.
+- `Marker` is non-secret provenance stored with the lease/artifact; it is not a credential and must not contain user prompt text.
+- `OPS-001` proves controlled orphan cleanup only; durable recovery ordering remains `OPS-002`.
+
 ## 5. Codex CLI adapter design
 
 Codex CLI `0.142.x` surface module：

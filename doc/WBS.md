@@ -64,7 +64,7 @@ Status 值：
 | E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 100 | Done | None | 2026-07-04 19:41 +08:00 | 2026-07-04 19:47 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 installed codex/agy probe real path | inline |
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-003 | 100 | Done | None | 2026-07-04 22:13 +08:00 | 2026-07-04 22:27 +08:00 | Requirement §10, SA §6.1, SD §14 | T-E2E-002 | TC-E2E-002 `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-003 | 0 | Planned | PTCS-003 optional durable path | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | inline |
-| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | None | 未動工 | 2026-07-04 21:14 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
+| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 100 | Done | None | 2026-07-04 22:46 +08:00 | 2026-07-04 22:49 +08:00 | SA §9, SD §4 | T-OPS-001 | TC-OPS-001 orphan process recovery | [@OPS-001](WBS.OPS-001.md) |
 | OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Blocked | durable profile decision | 未動工 | 2026-07-04 17:53 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
 | UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 0 | Planned | None | 未動工 | 2026-07-04 22:27 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | inline |
 
@@ -81,6 +81,7 @@ Status 值：
 | [@CLI-003](WBS.CLI-003.md) | CLI status/attach/drain read the real session inbox through host control endpoints and drain acknowledges the cursor. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
+| [@OPS-001](WBS.OPS-001.md) | Process orphan recovery kills only a pid/name/start-time matched codex.fs-owned lease. |
 
 ## 4. Update Rule
 

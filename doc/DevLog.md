@@ -96,3 +96,10 @@
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed after the fix.
 - Packaging: packed `codex.fs`, `codex.fs.ptcs`, `codex.fs.host`, and `codex.fs.cli` to `G:\codex.fs\bin\rel002-packs-202607042243`; installed `codex.fs.cli` to `G:\codex.fs\bin\rel002-tool-202607042243`; `codex.fs.cli.exe --help` returned exit code 0.
 - Traceability: WBS `REL-002`, detail `doc/WBS.REL-002.md`, and Test `T-REL-002` updated to `Done` / `Pass`; standalone `codex.fs.host` dotnet tool remains `REL-003`.
+
+## 2026-07-04 22:49 +08:00 OPS-001 process orphan recovery
+
+- Scope: added codex.fs-owned process lease and orphan recovery helper in `ProcessRunner`.
+- Behavior: recovery only terminates a process when pid, process name and start time match the saved lease; it does not kill by process name scan.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; output included `TC-OPS-001 orphan process recovery passed`.
+- Traceability: WBS `OPS-001`, detail `doc/WBS.OPS-001.md`, and Test `T-OPS-001` updated to `Done` / `Pass`; durable recovery/ack ordering remains `OPS-002`.

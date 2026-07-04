@@ -1,6 +1,7 @@
 module CodexFs.Tests.Program
 
 open System
+open System.Diagnostics
 open System.Net
 open System.Net.Http
 open System.Net.NetworkInformation
@@ -10,6 +11,7 @@ open System.Threading
 open System.Threading.Tasks
 open CodexFs.Compaction
 open CodexFs.Domain
+open CodexFs.ProcessRunner
 open CodexFs.PromptAssembly
 open CodexFs.Ptcs
 
@@ -650,3 +652,54 @@ let groupBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric groupBi
 assertTrue "group poll contains message" (groupBatch.Messages |> List.exists (fun message -> message.MessageId = groupEnvelope.MessageId))
 
 printfn "TC-PTCS-002 MessageFabric binding passed"
+
+let startControlledSleepProcess () =
+    let psi = ProcessStartInfo()
+    psi.FileName <- "powershell.exe"
+    psi.UseShellExecute <- false
+    psi.CreateNoWindow <- true
+    psi.ArgumentList.Add "-NoProfile"
+    psi.ArgumentList.Add "-Command"
+    psi.ArgumentList.Add "Start-Sleep -Seconds 60"
+
+    let proc = Process.Start psi
+
+    if isNull proc then
+        failwith "Expected controlled sleep process to start."
+
+    proc
+
+let mutable controlledProcess: Process option = None
+
+try
+    let proc = startControlledSleepProcess ()
+    controlledProcess <- Some proc
+    Thread.Sleep 250
+    proc.Refresh()
+
+    let lease =
+        { ProcessId = proc.Id
+          ProcessName = proc.ProcessName
+          StartedUtc = DateTimeOffset(proc.StartTime.ToUniversalTime(), TimeSpan.Zero)
+          Marker = "ops001-controlled-fixture" }
+
+    let recovery = runTask (recoverLeasedProcessAsync defaultOrphanRecoveryOptions lease)
+    assertEqual "orphan recovery outcome" Terminated recovery.Outcome
+    assertTrue "orphan recovery running" recovery.WasRunning
+    assertTrue "orphan recovery matched" recovery.WasMatched
+    assertTrue "orphan recovery terminated" recovery.WasTerminated
+    proc.Refresh()
+    assertTrue "controlled process exited" proc.HasExited
+finally
+    match controlledProcess with
+    | Some proc ->
+        try
+            if not proc.HasExited then
+                proc.Kill(entireProcessTree = true)
+        with
+        | _ -> ()
+
+        proc.Dispose()
+    | None -> ()
+
+printfn "TC-OPS-001 orphan process recovery passed"

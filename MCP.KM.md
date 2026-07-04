@@ -94,3 +94,10 @@
 - The tool command is `codex.fs.cli`.
 - Root `--help`, `-h`, `help`, `/?`, and empty argv are handled by `CodexFs.Cli.Program.isRootHelp` before Argu command dispatch.
 - `codex.fs.host` remains a referenceable library package; standalone host tool entrypoint is tracked separately as `REL-003`.
+
+## 2026-07-04 OPS-001 Process Orphan Recovery
+
+- `ProcessRunner.ProcessLease` records pid, process name, observed start time and non-secret marker for codex.fs-owned processes.
+- `recoverLeasedProcessAsync` kills only when pid/name/start time match the lease; it does not scan by process name.
+- The test fixture uses a real `powershell.exe Start-Sleep` process and verifies recovery terminates it.
+- Persisted lease storage and startup recovery sweep remain future host/session integration work.
