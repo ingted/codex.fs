@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/codex.fs/codex.fs.fsproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/codex.fs.Tests/codex.fs.Tests.fsproj" />
+  </Folder>
 </Solution>
