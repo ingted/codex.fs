@@ -5,6 +5,7 @@ open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 open Argu
+open CodexFs.Artifacts
 open CodexFs.Domain
 
 /// Engine adapter contracts for CLI surface probing, argv rendering and artifact mapping.
@@ -352,3 +353,91 @@ module Engine =
                       WorkingDirectory = workingDirectory
                       Environment = Map.empty
                       RedactedDisplay = renderRedactedDisplay executablePath args }
+
+                /// Raw Agy stdout/stderr captured from one print-mode run.
+                type OutputCapture =
+                    { /// Captured stdout text.
+                      Stdout: string
+                      /// Captured stderr text.
+                      Stderr: string
+                      /// UTC process start time.
+                      StartedUtc: DateTimeOffset
+                      /// UTC process completion time.
+                      CompletedUtc: DateTimeOffset option
+                      /// Normalized run outcome.
+                      Outcome: RunOutcome }
+
+                /// Stored artifact mapping for one Agy print-mode run.
+                type OutputArtifactMapping =
+                    { /// Stored stdout log artifact.
+                      Stdout: FileArtifactStore.StoredArtifact
+                      /// Stored stderr log artifact.
+                      Stderr: FileArtifactStore.StoredArtifact
+                      /// Stored final markdown artifact, when stdout is not blank.
+                      FinalMessage: FileArtifactStore.StoredArtifact option
+                      /// In-memory manifest containing the stored artifact refs.
+                      Manifest: ArtifactManifest }
+
+                /// Map captured Agy print-mode output into file artifacts and an artifact manifest.
+                let mapOutputArtifacts
+                    (storeConfig: FileArtifactStore.FileArtifactStoreConfig)
+                    (request: RunRequest)
+                    (capture: OutputCapture)
+                    =
+                    let createdUtc = capture.CompletedUtc |> Option.defaultValue DateTimeOffset.UtcNow
+
+                    let stdout =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            request.SessionId
+                            request.RunId
+                            StdoutLog
+                            "stdout.log"
+                            capture.Stdout
+                            createdUtc
+
+                    let stderr =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            request.SessionId
+                            request.RunId
+                            StderrLog
+                            "stderr.log"
+                            capture.Stderr
+                            createdUtc
+
+                    let finalMessage =
+                        if String.IsNullOrWhiteSpace capture.Stdout then
+                            None
+                        else
+                            FileArtifactStore.writeText
+                                storeConfig
+                                request.SessionId
+                                request.RunId
+                                FinalMarkdown
+                                "final.md"
+                                capture.Stdout
+                                createdUtc
+                            |> Some
+
+                    let artifactRefs =
+                        [ stdout.Reference
+                          stderr.Reference
+                          match finalMessage with
+                          | Some artifact -> artifact.Reference
+                          | None -> () ]
+
+                    { Stdout = stdout
+                      Stderr = stderr
+                      FinalMessage = finalMessage
+                      Manifest =
+                        { RunId = request.RunId
+                          SessionId = request.SessionId
+                          Engine = Agy
+                          SurfaceId = SurfaceId
+                          PtcsMessages = request.PtcsMessages
+                          PtcsTask = request.PtcsTask
+                          StartedUtc = capture.StartedUtc
+                          CompletedUtc = capture.CompletedUtc
+                          Outcome = capture.Outcome
+                          Artifacts = artifactRefs } }
