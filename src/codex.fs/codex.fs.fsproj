@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FAkka.Argu" Version="10.1.201" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="Domain.fs" />
     <Compile Include="Artifacts.fs" />
     <Compile Include="FileArtifactStore.fs" />

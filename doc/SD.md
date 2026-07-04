@@ -208,14 +208,14 @@ Agy CLI `1.0.x` surface module：
 module CodexFs.Engine.Agy.V1_0.Print
 
 type Args =
-    { Prompt: string option
-      Print: bool
+    { Print: bool
+      PromptAlias: bool
       PrintTimeout: TimeSpan option
-      AddDir: string list
+      AddDirs: string list
       Project: string option
       NewProject: bool
       Conversation: string option
-      ContinueLatest: bool
+      Continue: bool
       Model: string option
       LogFile: string option
       Sandbox: bool
@@ -225,6 +225,7 @@ type Args =
 Agy render policy:
 
 - Use `agy --print` or `agy --prompt` for single-turn headless execution.
+- In Agy `1.0.16`, `--prompt` is a boolean alias for `--print`; prompt body delivery is handled by the run prompt artifact/stdin boundary, not by a `--prompt <text>` argv pair.
 - Capture stdout/stderr as primary artifacts.
 - Do not assume JSONL event stream unless future probe confirms support.
 - If `--log-file` is used, set it under run artifact directory.
