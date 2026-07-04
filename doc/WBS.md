@@ -1,0 +1,88 @@
+# Work Breakdown Structure
+
+版本：`0.1.0-draft`  
+狀態：Draft  
+對應文件：`doc/Requirement.md`, `doc/SA.md`, `doc/SD.md`, `doc/Test.md`
+
+## 1. 使用規則
+
+本 WBS 是 `codex.fs` 後續標準開發流程的 current-state 工項表。主表只放可掃描的 leaf item；狀態欄只放短摘要，不放長段 evidence、決策或 debug 內容。
+
+若某工項需要長期補充 evidence、blocker、替代方案或進度細節，`Detail` 欄必須連到 side-by-side 文件：`WBS.<ID>.md`。主表以 `@<ID>` 表示 detail 文件，例如 `@PTCS-002`。
+
+Status 值：
+
+| Status | 意義 |
+| --- | --- |
+| Planned | 已排入，但尚未動工。 |
+| InProgress | 已動工，尚未達到對應 Test DoD。 |
+| Blocked | 有明確 blocker，暫時不能完成。 |
+| Done | 對應 Test item 已通過，且必要文件/API docs 已同步。 |
+| Deferred | 已決定延後，不在目前 delivery slice。 |
+
+完成條件：
+
+- `Progress=100` 前，對應 Test item 必須是 `Pass` 或有明確 approved waiver。
+- API-facing 工項完成時，必須同步 SD §10 規定的 API comments、examples、parameter/output 說明、OpenAPI/SDK docs。
+- 涉及 PTCS MessageFabric/ActorFabric 的工項不得新增平行 fabric。
+- verifier 腳本尚未存在時，`Test case/verifier` 欄可列 planned script name，但 status 不得標 Done。
+
+## 2. WBS Table
+
+| ID | Work item | Previous | Progress | Status | Blocker | StartTime | UpdatedAt | SD item | Test item | Test case/verifier | Detail |
+| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- |
+| PLAN-001 | 建立 WBS/Test baseline | START | 100 | Done | None | 2026-07-04 17:53 +08:00 | 2026-07-04 17:53 +08:00 | SD §15-§16 | T-PLAN-001 | TC-PLAN-001 doc traceability | inline |
+| CF-001 | 建立 solution/project scaffold | PLAN-001 | 0 | Planned | None | 未動工 | 2026-07-04 17:53 +08:00 | SD §2, §16.1 | T-CF-001 | TC-CF-001 / planned `misc/verifySolutionBuild.fsx` | inline |
+| CF-002 | 實作 core domain model | CF-001 | 0 | Planned | CF-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §3, §16.1 | T-CF-002 | TC-CF-002 domain compile/serialization | inline |
+| CF-003 | 實作 artifact manifest model | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §12, §16.1 | T-CF-003 | TC-CF-003 manifest roundtrip | inline |
+| CF-004 | 實作 file artifact store | CF-003 | 0 | Planned | CF-003 | 未動工 | 2026-07-04 17:53 +08:00 | SD §12, §16.5 | T-CF-004 | TC-CF-004 / planned `misc/verifyArtifactStore.fsx` | inline |
+| CF-005 | 實作 redaction model | CF-004 | 0 | Planned | CF-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §13 | T-CF-005 | TC-CF-005 redaction cases | inline |
+| EN-001 | 實作 engine adapter contract | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §4, §16.2 | T-EN-001 | TC-EN-001 adapter contract compile | inline |
+| EN-002 | 實作 process runner/guard contract | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §4, SA §9 | T-EN-002 | TC-EN-002 process timeout/kill fixture | inline |
+| CDX-001 | Codex CLI probe fixtures | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex help/version fixture | inline |
+| CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 0 | Planned | CDX-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex argv render | inline |
+| CDX-003 | Codex artifact mapping | CDX-002 | 0 | Planned | CDX-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex output map | inline |
+| AGY-001 | Agy CLI probe fixtures | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy help/version fixture | inline |
+| AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 0 | Planned | AGY-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy argv render | inline |
+| AGY-003 | Agy artifact mapping | AGY-002 | 0 | Planned | AGY-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy output map | inline |
+| PTCS-001 | 定義 PTCS package/reference range | CF-001 | 0 | Planned | SD-TBD-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 PTCS restore/reference | inline |
+| PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | [@PTCS-002](WBS.PTCS-002.md) |
+| PTCS-003 | 實作 durable task handoff | PTCS-002 | 0 | Blocked | SA-TBD-004 durable profile | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | inline |
+| SESS-001 | 實作 session state/effect model | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
+| SESS-002 | 實作 prompt assembly | SESS-001 | 0 | Planned | SESS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 prompt batch assembly | inline |
+| SESS-003 | 實作 rule-based local compact | SESS-002 | 0 | Planned | SD-TBD-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement R-005, SD §17 | T-SESS-003 | TC-SESS-003 compact preserves blockers | inline |
+| HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
+| HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 0 | Planned | HOST-001/PTCS-002/SESS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host boot/health | inline |
+| HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Blocked | SD-TBD-001 protocol decision | 未動工 | 2026-07-04 17:53 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
+| DOC-001 | API docs toolchain spike | CF-001 | 0 | Planned | SD-TBD-006 | 未動工 | 2026-07-04 17:53 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs generator spike | [@DOC-001](WBS.DOC-001.md) |
+| DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 0 | Planned | DOC-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
+| DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 0 | Blocked | HOST-003 + SD-TBD-006 | 未動工 | 2026-07-04 17:53 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | inline |
+| CLI-001 | 實作 CLI command DU/help | HOST-003 | 0 | Planned | HOST-003 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | inline |
+| CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 0 | Planned | CLI-001/PTCS-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | inline |
+| CLI-003 | CLI attach/drain/status | CLI-002 | 0 | Planned | CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | inline |
+| REL-001 | NuGet package metadata | DOC-002;CF-001 | 0 | Planned | DOC-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
+| REL-002 | dotnet tool package | REL-001;HOST-001 | 0 | Planned | REL-001/HOST-001 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement R-001, SD §2 | T-REL-002 | TC-REL-002 tool install/run help | inline |
+| E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 0 | Planned | local engine availability | 未動工 | 2026-07-04 17:53 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 / planned `misc/verifyInstalledEngines.fsx` | inline |
+| E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-002 | 0 | Planned | HOST-002/CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §10, SA §6.1 | T-E2E-002 | TC-E2E-002 / planned `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
+| E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-003 | 0 | Planned | PTCS-003 optional durable path | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | inline |
+| OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | EN-002/HOST-002 | 未動工 | 2026-07-04 17:53 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
+| OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Blocked | durable profile decision | 未動工 | 2026-07-04 17:53 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
+| UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 0 | Planned | E2E-002/DOC-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | inline |
+
+## 3. Roll-up / Detail Files
+
+| Detail | Purpose |
+| --- | --- |
+| [@PTCS-002](WBS.PTCS-002.md) | MessageFabric session binding is a high-risk integration slice; detail file tracks exact PTCS operations and acceptance gates. |
+| [@HOST-003](WBS.HOST-003.md) | Host control endpoint depends on SD-TBD-001 and affects CLI/OpenAPI surface. |
+| [@DOC-001](WBS.DOC-001.md) | API documentation toolchain selection affects NuGet SDK docs and Swagger generation. |
+| [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
+
+## 4. Update Rule
+
+When any row changes:
+
+1. Update `Progress`, `Status`, `Blocker`, `StartTime`, `UpdatedAt`.
+2. Update linked `doc/Test.md` row status and evidence.
+3. If the change is API-facing, update comments/examples/parameter/output docs per SD §10.
+4. Keep long evidence in `WBS.<ID>.md` or operation logs, not in the WBS table.
