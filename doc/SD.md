@@ -1,17 +1,17 @@
 # Software Design
 
-版本：`0.1.0-draft`  
+版本：`0.2.0-draft`  
 狀態：Draft  
 對應文件：`doc/Requirement.md`, `doc/SA.md`
 
 ## 1. 設計目標
 
-本設計將 `codex.fs` 拆成可逐步交付的 contracts、host runtime、CLI client、engine adapters 與 actor integration。初版實作應先完成 terminal-to-host-to-engine 的 real path，再擴充 PTCS/Web UI。
+本設計將 `codex.fs` 拆成可逐步交付的 core contracts、host runtime、CLI client、engine adapters 與 PTCS fabric integration。初版實作應先完成 terminal-to-host-to-PTCS-MessageFabric-to-engine 的 real path，再擴充 PTCS Web UI。
 
 設計取向：
 
 - domain logic 使用 F# records、DU、functions。
-- Akka actor boundary 可使用 class/abstract class，但內部行為委派給 functional runtime。
+- actor/message communication 使用 PTCS `CommSpaActorFabric` / `CommSpaMessageFabric`，不自行建立平行 fabric。
 - argument parsing 使用 `FAkka.Argu`。
 - CLI version differences 使用 module + adapter registry，不使用 runtime generic parser。
 - host `--version` 保留為印出自身版本，不作 engine parser selection。
@@ -32,10 +32,8 @@ src/
     codex.fs.engine.codex.fsproj
   codex.fs.engine.agy/
     codex.fs.engine.agy.fsproj
-  codex.fs.akka/
-    codex.fs.akka.fsproj
-  codex.fs.ptc/
-    codex.fs.ptc.fsproj
+  codex.fs.ptcs/
+    codex.fs.ptcs.fsproj
 tests/
   codex.fs.tests/
 doc/
@@ -46,15 +44,16 @@ doc/
 
 Package IDs:
 
-| Package | Assembly namespace |
-| --- | --- |
-| `codex.fs` | `CodexFs` |
-| `codex.fs.host` | `CodexFs.Host` |
-| `codex.fs.cli` | `CodexFs.Cli` |
-| `codex.fs.engine.codex` | `CodexFs.Engine.Codex` |
-| `codex.fs.engine.agy` | `CodexFs.Engine.Agy` |
-| `codex.fs.akka` | `CodexFs.Akka` |
-| `codex.fs.ptc` | `CodexFs.Ptc` |
+| Package | Assembly namespace | Purpose |
+| --- | --- | --- |
+| `codex.fs` | `CodexFs` | Core engine/artifact/compaction contracts。 |
+| `codex.fs.host` | `CodexFs.Host` | Host runtime package and dotnet tool。 |
+| `codex.fs.cli` | `CodexFs.Cli` | Terminal client。 |
+| `codex.fs.engine.codex` | `CodexFs.Engine.Codex` | Codex CLI adapter。 |
+| `codex.fs.engine.agy` | `CodexFs.Engine.Agy` | Agy CLI adapter。 |
+| `codex.fs.ptcs` | `CodexFs.Ptcs` | Thin integration over PTCS ActorFabric/MessageFabric。 |
+
+There is no standalone `codex.fs.akka` fabric package in the initial design. PTCS owns the fabric.
 
 ## 3. Core domain model
 
@@ -63,20 +62,21 @@ module CodexFs.Domain
 
 type SessionId = SessionId of string
 type RunId = RunId of string
-type MessageId = MessageId of string
 
-type Participant =
-    | Human of string
-    | Agent of string
-    | System of string
+type PtcsMessageRef =
+    { MessageId: string
+      Cursor: string option
+      FromParticipantId: string
+      ToParticipantId: string option
+      GroupId: string option
+      CorrelationId: string option }
 
-type Message =
-    { Id: MessageId
-      SessionId: SessionId
-      Sender: Participant
-      CreatedUtc: DateTimeOffset
-      Body: string
-      Metadata: Map<string, string> }
+type PtcsTaskRef =
+    { TaskId: string option
+      TicketId: string option
+      OperationId: string option
+      TaskRealityId: string option
+      ResultQueryHandle: string option }
 
 type EngineKind =
     | Codex
@@ -110,6 +110,8 @@ type RunRequest =
       ArtifactDirectory: string
       Timeout: TimeSpan
       AdditionalDirectories: string list
+      PtcsMessages: PtcsMessageRef list
+      PtcsTask: PtcsTaskRef option
       Metadata: Map<string, string> }
 
 type RunOutcome =
@@ -127,6 +129,8 @@ type RunResult =
       ArtifactManifestPath: string
       FinalMessagePath: string option }
 ```
+
+Core types reference PTCS identities as data, but do not depend on live PTCS runtime.
 
 ## 4. Engine adapter contract
 
@@ -185,24 +189,6 @@ type Args =
       Profile: string option
       SkipGitRepoCheck: bool
       ColorNever: bool }
-
-let surface =
-    { Kind = EngineKind.Codex
-      VersionText = "0.142.x"
-      SurfaceId = "codex-exec-0.142"
-      Capabilities =
-        set
-          [ SingleTurnHeadless
-            Continuation
-            StructuredEventStream
-            FinalMessageFile
-            WorkspaceDirectories
-            SandboxMode
-            ModelSelection ] }
-
-let render (request: RunRequest) : RenderedCommand =
-    // Build argv from Args, not by string concatenation.
-    failwith "design placeholder"
 ```
 
 Codex render policy:
@@ -233,23 +219,6 @@ type Args =
       LogFile: string option
       Sandbox: bool
       DangerouslySkipPermissions: bool }
-
-let surface =
-    { Kind = EngineKind.Agy
-      VersionText = "1.0.x"
-      SurfaceId = "agy-print-1.0"
-      Capabilities =
-        set
-          [ SingleTurnHeadless
-            Continuation
-            WorkspaceDirectories
-            ModelSelection
-            Timeout
-            LogFile ] }
-
-let render (request: RunRequest) : RenderedCommand =
-    // Map normalized prompt to agy --print/--prompt.
-    failwith "design placeholder"
 ```
 
 Agy render policy:
@@ -297,7 +266,65 @@ codex.fs.cli run --engine agy --engine-surface agy-print-1.0
 
 `--engine-surface` optional；未指定時由 host probe 與 default policy 決定。
 
-## 8. Host service design
+## 8. PTCS fabric integration design
+
+`codex.fs.ptcs` should be a thin adapter over PTCS runtime types.
+
+Expected PTCS contracts:
+
+```fsharp
+// From PulseTrade.Comm.Spa
+type CommSpaMessageFabric
+type CommSpaDurableMessageFabric
+type CommSpaActorFabric
+type DurableIngress
+```
+
+Integration records:
+
+```fsharp
+module CodexFs.Ptcs
+
+type PtcsFabricRuntime =
+    { Hub: obj
+      MessageFabric: obj
+      DurableMessageFabric: obj option
+      ActorFabric: obj option
+      DurableIngress: obj option }
+
+type PtcsSessionBinding =
+    { SessionId: SessionId
+      ParticipantId: string
+      ReplyParticipantId: string option
+      GroupId: string option
+      InboxLimit: int
+      IncludePublic: bool
+      IncludeGroups: bool }
+```
+
+Implementation should use concrete PTCS types in the PTCS package, while core stays independent.
+
+Message operations map to PTCS:
+
+| codex.fs operation | PTCS API |
+| --- | --- |
+| register session participant | `CommSpaMessageFabric.RegisterParticipantAsync` |
+| send prompt/reply | `SendAsync` |
+| poll/wait pending inbox | `PollInboxAsync` / `WaitInboxAsync` |
+| ack processed batch | `AckAsync` |
+| drain for terminal attach | `DrainInboxAsync` |
+| durable agent task | `CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync` |
+
+Actor operations map to PTCS:
+
+| codex.fs operation | PTCS API |
+| --- | --- |
+| package-owned local fabric | `CommSpaActorFabric.startWithOptions` |
+| caller-owned region attachment | `CommSpaActorFabric.requiredConfig` + `attachRegionToSystem` |
+| caller-owned proxy attachment | `CommSpaActorFabric.requiredConfig` + `attachProxyToSystem` |
+| fabric health | `CommSpaActorFabric.HealthAsync` and non-secret health properties |
+
+## 9. Host service design
 
 ```fsharp
 module CodexFs.Host
@@ -310,7 +337,15 @@ type HostConfig =
       DefaultTimeout: TimeSpan
       MaxPendingMessagesPerTurn: int
       Compaction: CompactionPolicy
-      Redaction: RedactionPolicy }
+      Redaction: RedactionPolicy
+      Ptcs: PtcsHostConfig }
+
+type PtcsHostConfig =
+    { FabricMode: string
+      SessionParticipantPrefix: string
+      ReplyParticipantId: string option
+      DurableAgentTasks: bool
+      DefaultInboxLimit: int }
 
 type HostCommand =
     | CreateSession of CreateSessionRequest
@@ -321,7 +356,7 @@ type HostCommand =
 
 type HostReply =
     | SessionCreated of SessionId
-    | MessageAccepted of MessageId
+    | MessageAccepted of string
     | RunAccepted of RunId
     | SessionStatus of SessionStatus
     | RunManifest of ArtifactManifest
@@ -331,58 +366,54 @@ type HostReply =
 Host responsibilities:
 
 - load config。
+- initialize PTCS fabric runtime。
 - initialize engine registry。
 - initialize artifact store。
-- start actor system or in-process runtime。
-- expose control endpoint for CLI/Web/transport adapters。
+- start session workers。
+- expose control endpoint for CLI/Web/admin callers。
 
-## 9. Session behavior design
+## 10. Session behavior design
 
-Domain behavior should be testable without Akka:
+Domain behavior should be testable without Akka and without live PTCS process.
 
 ```fsharp
 module CodexFs.SessionBehavior
 
 type SessionState =
     { SessionId: SessionId
+      ParticipantId: string
       Status: SessionStatus
       HistoryPath: string
-      Pending: Message list
+      LastCursor: string option
       ActiveRun: RunId option
       CurrentSummaryPath: string option }
 
 type SessionCommand =
-    | ReceiveMessage of Message
+    | InboxBatchReceived of PtcsMessageRef list
     | EngineRunCompleted of RunResult
     | EngineRunFailed of RunResult
     | Tick
 
 type SessionEffect =
-    | PersistMessage of Message
+    | PersistMessageBatch of PtcsMessageRef list
     | StartRun of RunRequest
     | PersistRunResult of RunResult
-    | SendReply of Message
+    | SendMessageFabricReply of body: string * tags: string list
+    | AckMessageFabricCursor of cursor: string option
     | CompactHistory
 
 let decide (state: SessionState) (command: SessionCommand) : SessionState * SessionEffect list =
     failwith "design placeholder"
 ```
 
-Akka actor shell:
+Akka shell, if needed, is an adapter around this behavior and PTCS ActorFabric. It must not introduce a second persistent truth for messages.
 
-```fsharp
-type SessionActor(deps: SessionActorDeps) =
-    inherit ReceiveActor()
-    // Translate Akka messages to SessionCommand.
-    // Apply SessionBehavior.decide.
-    // Execute effects via injected services.
-```
-
-## 10. Artifact manifest design
+## 11. Artifact manifest design
 
 ```fsharp
 type ArtifactKind =
     | RequestJson
+    | PtcsMessageBatchJsonl
     | PromptMarkdown
     | RenderedArgvJson
     | StdoutLog
@@ -404,15 +435,17 @@ type ArtifactManifest =
       SessionId: SessionId
       Engine: EngineKind
       SurfaceId: string
+      PtcsMessages: PtcsMessageRef list
+      PtcsTask: PtcsTaskRef option
       StartedUtc: DateTimeOffset
       CompletedUtc: DateTimeOffset option
       Outcome: RunOutcome
       Artifacts: ArtifactRef list }
 ```
 
-## 11. Redaction design
+## 12. Redaction design
 
-Redaction applies before writing display logs and before sending chat replies.
+Redaction applies before writing display logs and before sending MessageFabric replies.
 
 ```fsharp
 type RedactionRule =
@@ -431,8 +464,9 @@ Raw CLI stdout/stderr policy is configurable:
 - default: write raw private artifact plus redacted display summary。
 - public export: redacted only。
 - never log environment variable values。
+- MessageFabric body should use redacted summary and artifact references, not full raw transcript by default。
 
-## 12. CLI client design
+## 13. CLI client design
 
 `codex.fs.cli` commands:
 
@@ -440,6 +474,7 @@ Raw CLI stdout/stderr policy is configurable:
 codex.fs.cli session create [--engine codex|agy]
 codex.fs.cli session send --session <id> --prompt <text-or-file>
 codex.fs.cli session attach --session <id>
+codex.fs.cli session drain --session <id>
 codex.fs.cli run status --run <id>
 codex.fs.cli run artifacts --run <id>
 codex.fs.cli host status
@@ -452,7 +487,9 @@ Argument parsing:
 - Use `defaultArgumentsText` pattern for `.fsx` demos only; compiled tools use argv through Argu。
 - Do not parse user prompts as shell commands。
 
-## 13. Testing design preview
+`codex.fs.cli` should submit through host APIs that ultimately use PTCS MessageFabric; it should not write artifacts or MessageFabric streams directly.
+
+## 14. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
 
@@ -461,28 +498,31 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 - session behavior pure tests。
 - artifact manifest tests。
 - CLI parser tests with `FAkka.Argu`。
+- PTCS MessageFabric integration tests with real `CommSpaMessageFabric`。
+- durable agent task handoff tests with `CommSpaDurableMessageFabric` when durable profile is enabled。
 - process runner tests using controlled command fixtures, not as production validation。
 - real path verification for installed Codex/Agy where available。
 
-## 14. Implementation sequence preview
+## 15. Implementation sequence preview
 
 1. Core domain + artifact manifest。
 2. Engine adapter contract。
 3. Codex `0.142.x` adapter。
 4. Agy `1.0.x` adapter。
 5. File artifact store。
-6. Minimal host in-process runtime。
-7. `codex.fs.cli` terminal client。
-8. Akka.NET `SessionActor` integration。
-9. Compaction。
-10. PTC/PTCS RFC and adapter。
+6. PTCS MessageFabric session binding。
+7. Minimal `codex.fs.host` with PTCS local fabric。
+8. `codex.fs.cli` terminal client。
+9. Durable agent task handoff via `CommSpaDurableMessageFabric`。
+10. Compaction。
+11. PTCS Web UI extension/RFC。
 
-## 15. Open design items
+## 16. Open design items
 
 | ID | Item |
 | --- | --- |
-| SD-TBD-001 | Host endpoint protocol for CLI client. |
+| SD-TBD-001 | Host endpoint protocol for CLI client while MessageFabric remains communication fact source. |
 | SD-TBD-002 | Exact artifact root layout for multi-workspace use. |
 | SD-TBD-003 | Whether compaction uses selected engine or dedicated adapter. |
-| SD-TBD-004 | Akka persistence provider package choice. |
-| SD-TBD-005 | Public API naming convention before first NuGet release. |
+| SD-TBD-004 | First supported PTCS package version and exact NuGet reference range. |
+| SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |

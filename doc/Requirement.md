@@ -1,122 +1,166 @@
 # Requirement
 
-版本：`0.1.0-draft`  
+版本：`0.2.0-draft`  
 狀態：Draft  
 語言：繁體中文為 canonical；專有名詞保留英文。  
 
-## 1. 背景
+## 1. 參考基準
 
-`codex.fs` 是一個 F#/.NET 輕量 agent control-plane wrapper，用於把人與 agents 的長生命週期協作，收斂成可追溯、可重啟、可替換 CLI engine 的 production workflow。
+本文件依據 PTCS current-state 文件修正，不重新發明 actor/message fabric。
 
-本專案不重寫 Codex、Agy 或其他 coding agent 的模型能力。它提供 typed API、host runtime、CLI client、adapter contract 與 artifact/audit boundary，讓 actor/session runtime 不需要直接散落呼叫外部 CLI。
+PTCS 來源基準：
+
+- local worktree：`G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`
+- 文件：`doc/Requirement.md`、`doc/SA.md`、`doc/SD.md`
+- 關鍵 RFC：`RFC-SPA-UPSTREAM-0001` shared MessageFabric、`RFC-SPA-UPSTREAM-0002` external ActorSystem attachment、`RFC-SPA-UPSTREAM-0003` shared durable ingress、`RFC-SPA-UPSTREAM-0005` task/result vault integration、`RFC-PTC-SPA-0005` ACP / MessageFabric / static hosting boundary。
+
+PTCS 已定義：
+
+- `CommSpaActorFabric`：package-provided ActorFabric，支援 package-owned 與 caller-owned ActorSystem、Cluster Sharding region/proxy、required HOCON config、health/reality metadata。
+- `CommSpaMessageFabric`：framework-neutral communication facade，支援 participant register、direct/public/group send、poll、ack、wait、drain、group、correlation idempotency。
+- `CommSpaDurableMessageFabric` 與 `DurableIngress`：mutation/task admission、task ticket、result vault/reality boundary 的 first-slice contract。
+
+`codex.fs` 必須消費這些 fabric，而不是新增平行的 actor/message/transport framework。
+
+## 2. 背景
+
+`codex.fs` 是一個 F#/.NET 輕量 agent execution wrapper，用於把 PTCS ActorFabric/MessageFabric 中的人與 agents 協作，接到可替換的 headless CLI engine，例如 Codex CLI 與 Agy CLI。
+
+本專案不重寫 Codex、Agy 或其他 coding agent 的模型能力，也不重寫 PTCS 的 fabric。它提供：
+
+- typed engine request/result model；
+- CLI adapter/version surface；
+- process runner；
+- artifact capture；
+- compaction policy；
+- PTCS MessageFabric/ActorFabric integration；
+- `codex.fs.host` production boundary；
+- `codex.fs.cli` terminal client。
 
 核心原則：
 
 - `codex.fs` 是 library/contract/policy vocabulary。
-- `codex.fs.host` 是 production runtime boundary，可作 NuGet package，也可作 dotnet tool。
-- `codex.fs.cli` 是 terminal-facing client，用於 Web UI 完成前操作 `codex.fs.host` 與 `SessionActor`。
+- `codex.fs.host` 是 PTCS fabric consumer，可作 NuGet package，也可作 dotnet tool。
+- `codex.fs.cli` 是 terminal-facing client，在 PTCS Web UI 完善前與 `codex.fs.host` / PTCS MessageFabric 互動。
 - CLI engine 可替換，初期支援 Codex CLI 與 Agy CLI。
-- Production workflow 可使用 actor system 管理 session/mailbox/history/compaction/run artifacts。
+- Production workflow 必須透過 PTCS `MessageFabric`、`ActorFabric`、必要時 `DurableIngress` / task result vault，不直接建立另一套 message bus 或 cluster fabric。
 
-## 2. 目標
+## 3. 目標
 
-1. 提供一個可嵌入、可獨立執行的 agent host runtime。
-2. 支援 `SessionActor` 以 session 為單位處理 chat/message/history/run loop。
-3. 支援 headless CLI engine：
+1. 提供可嵌入、可獨立執行的 agent execution host。
+2. 以 PTCS `CommSpaMessageFabric` 作為人與 agents、agents 之間的 canonical chat/mailbox fabric。
+3. 以 PTCS `CommSpaActorFabric` / caller-owned ActorSystem attachment 作為 actor/sharding integration boundary。
+4. 對需要 durable task admission 的工作使用 PTCS `DurableIngress`、`CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync` 與 result vault 語意。
+5. 支援 headless CLI engine：
    - Codex CLI：以 `codex exec` 為主要 single-turn headless surface。
    - Agy CLI：以 `agy --print` / `agy --prompt` 為 single-turn headless surface。
-4. 將每次 CLI run 的 prompt、stdout、stderr、JSONL/event、final message、exit code、artifact metadata 自動保存。
-5. 支援 mailbox 增量收集：CLI run 期間到達的 user/agent messages 不丟失，進入下一輪 prompt。
-6. 支援 local compaction，避免長 session history 直接 append 到 context window 爆量。
-7. 支援 terminal client 先行驗證 multi-agent workflow，未來再接 PTCS/Web UI。
-8. 支援不同 CLI 版本與不同 capability surface 的 argv render/parse/validate。
-9. 避免 application code 直接手刻 `Process.Start("codex", ...)` 或 `Process.Start("agy", ...)`。
+6. 將每次 CLI run 的 prompt、stdout、stderr、JSONL/event、final message、exit code、artifact metadata 自動保存。
+7. 支援 mailbox 增量收集：CLI run 期間到達的 user/agent messages 由 MessageFabric inbox 保留，進入下一輪 prompt。
+8. 支援 local compaction，避免長 session history 直接 append 到 context window 爆量。
+9. 支援 terminal client 先行驗證 multi-agent workflow，後續 PTCS Web UI 只需接同一套 fabric。
+10. 支援不同 CLI 版本與不同 capability surface 的 argv render/parse/validate。
+11. 避免 application code 直接手刻 `Process.Start("codex", ...)` 或 `Process.Start("agy", ...)`。
 
-## 3. 非目標
+## 4. 非目標
 
 1. 不提供模型 API provider 的通用 LLM SDK。
 2. 不假設使用 OpenAI API key；Codex CLI 可使用既有 CLI auth。
 3. 不把 CLI access token、refresh token、API key、shell secret 寫入 log 或 artifact。
 4. 不把所有 CLI 都硬套成相同 `exec` 命令；抽象以 capability/run surface 為準。
-5. 不在初版交付完整 PTCS Web UI；Web UI 需另以 RFC 定義。
-6. 不在初版承諾跨機密資料邊界的自動同步。
+5. 不實作另一套 MessageFabric、ActorFabric、transport inbox、ack cursor 或 durable ingress。
+6. 不在初版交付完整 PTCS Web UI；Web UI 應使用 PTCS extension/fabric，而不是另做 UI fabric。
+7. 不把 HTTP request、WebSocket frame、MCP call 或 terminal command 當成 logical work identity；task identity 需沿用 PTCS result-vault/reality boundary。
 
-## 4. 使用者與角色
+## 5. 使用者與角色
 
 | 角色 | 說明 |
 | --- | --- |
-| Human Operator | 透過 terminal 或 Web UI 發送任務、查看回覆與 artifacts。 |
-| SessionActor | 管理單一 session 的 mailbox、history、run loop、compaction 與回訊。 |
-| WorkerActor | 可被 session 派工的工作 actor，例如 repo worker、review worker、test worker。 |
-| Host Operator | 部署與維護 `codex.fs.host`，設定 workspace、engine、storage、policy。 |
+| Human Operator | 透過 `codex.fs.cli` 或 PTCS UI 發送任務、查看回覆與 artifacts。 |
+| PTCS MessageFabric Participant | user/agent identity，透過 MessageFabric direct/public/group inbox 溝通。 |
+| CodexFs Session Worker | 以 MessageFabric inbox 為 mailbox，負責 run loop、compaction、artifact capture、reply。 |
+| PTCS ActorFabric Host | 擁有或 attach Akka ActorSystem / sharding region / proxy 的 runtime。 |
+| Host Operator | 部署與維護 `codex.fs.host`，設定 PTCS fabric、workspace、engine、storage、policy。 |
 | Engine Adapter | 將 normalized run request 轉成特定 CLI 版本的 argv 與 artifact mapping。 |
 
-## 5. 核心情境
+## 6. 核心情境
 
-### 5.1 Terminal-driven session
+### 6.1 Terminal-driven session
 
-1. 使用者透過 `codex.fs.cli` 建立或連線到 session。
-2. CLI client 將 prompt 傳給 `codex.fs.host`。
-3. `SessionActor` 將 prompt append 到 durable history。
-4. `SessionActor` 選擇 engine adapter，建立 run request。
-5. `codex.fs.host` 執行 headless CLI。
-6. run artifacts 保存後，host 回傳摘要與 artifact references。
-7. 若 run 期間 mailbox 有新訊息，`SessionActor` 進入下一輪。
+1. 使用者透過 `codex.fs.cli` 建立或 attach session。
+2. CLI client 將 prompt 送入 `codex.fs.host`。
+3. host 透過 `CommSpaMessageFabric.SendAsync` 或 durable agent-task handoff 將 prompt 送到 session participant。
+4. session worker poll/wait inbox，組合 history 與 pending messages。
+5. session worker 選擇 engine adapter，建立 run request。
+6. `codex.fs.host` 執行 headless CLI。
+7. run artifacts 保存後，host 透過 MessageFabric 回傳摘要與 artifact references。
+8. 若 run 期間 MessageFabric inbox 有新訊息，session worker 進入下一輪。
 
-### 5.2 Actor-to-agent production workflow
+### 6.2 Production actor workflow
 
-1. 外部 actor 或 application 送出 typed task request。
-2. `codex.fs.host` 負責 lease/workdir/policy/timeout。
-3. `SessionActor` 執行 run loop。
-4. 完成後將 structured result 發回 requester。
+1. 上游 actor/application 以 PTCS MessageFabric agent task envelope 或 ActorFabric route 送出 typed task。
+2. `codex.fs.host` 在 PTCS fabric 內接受 task，取得 operation/task identity。
+3. session worker 執行 CLI run loop。
+4. 完成後保存 artifacts，並透過 MessageFabric/result vault 回覆 status/result reference。
 
-### 5.3 Multi-agent collaboration
+### 6.3 Multi-agent collaboration
 
-1. 多個 session/worker 針對不同 project/worktree/task 平行工作。
-2. actor 間透過 message protocol 交換 task/result/reference。
-3. 每個 session 的 CLI run 只取得該 session 需要的 compacted history。
-4. host 保存完整 artifact，chat 只傳摘要與 reference。
+1. 多個 session/worker 以 MessageFabric participant 或 group 互相溝通。
+2. host 不建立私有 message bus；跨 agent message 走 PTCS MessageFabric。
+3. 對需要 durable admission 的 agent task，使用 `CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync`。
+4. 每個 session 的 CLI run 只取得該 session 需要的 compacted history。
+5. host 保存完整 artifact，MessageFabric 只傳摘要與 reference。
 
-### 5.4 CLI engine replacement
+### 6.4 CLI engine replacement
 
 1. 使用者設定 session 使用 `codex` 或 `agy` engine。
 2. host probe installed CLI version 與 capability。
 3. adapter registry 選擇對應 surface module。
 4. normalized request 轉成 CLI-specific argv。
 
-## 6. 功能需求
+## 7. 功能需求
 
 ### R-001 Host runtime
 
 `codex.fs.host` 必須可作為：
 
-- NuGet package：可由既有 .NET host app reference。
+- NuGet package：可由既有 .NET/PTCS host app reference。
 - dotnet tool：可直接安裝、啟動、操作。
+
+host 必須能接入 PTCS：
+
+- package-owned PTCS fabric；
+- caller-owned ActorSystem + `CommSpaActorFabric.attachRegionToSystem` / `attachProxyToSystem`；
+- `CommHub` + `CommSpaMessageFabric`；
+- optional `DurableIngress` / durable MessageFabric。
 
 ### R-002 CLI client
 
 `codex.fs.cli` 必須能在 terminal 中：
 
-- 建立 session。
+- 建立/attach session。
 - 送出 prompt。
-- attach / tail session status。
+- wait/poll session reply。
 - 查詢 run artifacts。
-- drain pending mailbox。
-- 執行 minimal admin operation，例如 list sessions、cancel run。
+- drain pending inbox。
+- 執行 minimal admin operation，例如 list sessions、cancel run、engine probe。
 
-### R-003 Session run loop
+CLI client 不得繞過 PTCS MessageFabric 建立平行 chat store。
 
-`SessionActor` 必須支援：
+### R-003 Session worker run loop
 
-- Idle / Running / Persisting / Replying / Compacting 狀態。
-- run 期間收集 pending messages。
-- run 完成後將 pending messages append 到下一輪 prompt。
-- run artifacts 與 chat history 分離保存。
+Session worker 必須支援：
+
+- Idle / PreparingPrompt / RunningEngine / PersistingArtifacts / Replying / Compacting 狀態。
+- run 期間以 MessageFabric inbox/cursor 收集 pending messages。
+- run 完成後將 pending batch append 到下一輪 prompt。
+- run artifacts 與 MessageFabric chat history 分離保存。
+- reply 以 MessageFabric envelope 或 result-vault reference 傳回。
 
 ### R-004 Artifact capture
 
 每次 run 至少保存：
 
+- PTCS task/message identity。
 - normalized request。
 - rendered CLI argv metadata。
 - prompt input。
@@ -136,7 +180,7 @@ host 必須支援 local compaction policy：
 
 - 根據 byte/token estimate 或 message count 觸發。
 - summary 不覆蓋原始 artifacts。
-- compacted history 必須保留未完成事項、決策、open blockers、artifact references。
+- compacted history 必須保留未完成事項、決策、open blockers、PTCS message ids、run ids、artifact references。
 
 ### R-006 Version-aware CLI surface
 
@@ -157,58 +201,61 @@ host 必須支援 local compaction policy：
 
 - 將 API key、OAuth secret、PAT、SSH private key、access token、refresh token 寫入 artifact/log。
 - 將 shell environment 全量 dump 到 artifact。
-- 在 public output 中顯示 secret value。
+- 在 MessageFabric body、public output 或 diagnostics 中顯示 secret value。
 
-### R-009 Transport abstraction
+### R-009 PTCS fabric integration
 
-chat/message transport 必須透過 abstraction：
+`codex.fs` 必須使用 PTCS fabric：
 
-- terminal client 為初版必備 transport。
-- PTC/PTCS integration 為 optional package 或後續 RFC 擴充。
-- transport message body 必須視為資料，不得當 shell command 執行。
+- chat/mailbox：`CommSpaMessageFabric`。
+- durable task admission：`CommSpaDurableMessageFabric` / `DurableIngress`。
+- actor/sharding runtime：`CommSpaActorFabric`。
+- actor system attachment：`CommSpaActorFabric.requiredConfig` + caller-owned attach API。
 
-## 7. 非功能需求
+不得新增與 PTCS fabric 平行的 send/poll/ack/wait/drain API 作為 production path。
+
+## 8. 非功能需求
 
 | 類別 | 需求 |
 | --- | --- |
-| Reliability | session state 與 artifact manifest 可重啟恢復。 |
-| Traceability | 每次 run 可由 run id 找到 prompt、output、result 與 reply。 |
-| Replaceability | CLI engine 可新增/替換，不改 SessionActor 核心流程。 |
+| Reliability | session state、PTCS task identity 與 artifact manifest 可重啟恢復。 |
+| Traceability | 每次 run 可由 PTCS message/task id 與 run id 找到 prompt、output、result 與 reply。 |
+| Replaceability | CLI engine 可新增/替換，不改 PTCS fabric integration。 |
 | Security | secret redaction 與最小必要 artifact capture 是預設行為。 |
 | Portability | 初期支援 Windows；設計不阻礙 Linux/macOS。 |
-| Observability | host 提供 structured status/event，CLI 可查詢。 |
-| Lightweight | core package 不依賴 Web UI、不強制特定 transport、不強制特定 engine。 |
+| Observability | host 提供 structured status/event，CLI 可查詢，PTCS reality metadata 不外洩 secret。 |
+| Lightweight | core package 不依賴 Web UI、不重寫 PTCS fabric、不強制特定 engine。 |
 
-## 8. Package 初始邊界
+## 9. Package 初始邊界
 
 | Package / Tool | 用途 |
 | --- | --- |
-| `codex.fs` | Core contracts、domain models、policy vocabulary。 |
-| `codex.fs.host` | Host runtime package 與 dotnet tool。 |
+| `codex.fs` | Core engine contracts、domain models、policy vocabulary。 |
+| `codex.fs.host` | PTCS fabric consumer host package 與 dotnet tool。 |
 | `codex.fs.cli` | Terminal client dotnet tool。 |
 | `codex.fs.engine.codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | Agy CLI adapter。 |
-| `codex.fs.akka` | Akka.NET actor integration。 |
-| `codex.fs.ptc` | Optional PTC transport integration。 |
 
-## 9. 驗收標準
+不新增 `codex.fs.akka` 作為獨立 ActorFabric；actor runtime 走 PTCS `CommSpaActorFabric`。若未來需要 extension package，命名應明確為 PTCS integration，而不是替代 fabric。
+
+## 10. 驗收標準
 
 初版文件與後續實作需能回答：
 
-1. 如何建立 session 並送出一次 prompt。
+1. 如何建立 MessageFabric participant/session 並送出一次 prompt。
 2. 如何選擇 Codex/Agy engine。
 3. 如何保存 CLI output，不再靠人工複製 terminal history。
-4. 如何在 run 期間收集 pending messages。
+4. 如何在 run 期間透過 MessageFabric inbox 收集 pending messages。
 5. 如何查詢 artifacts 與 final reply。
 6. 如何新增一個 CLI surface version。
-7. 如何避免 secret 被寫入 public artifact。
+7. 如何避免 secret 被寫入 public artifact 或 MessageFabric body。
+8. 如何接入 existing PTCS ActorFabric/MessageFabric，而不是另起 fabric。
 
-## 10. 後續文件
+## 11. 後續文件
 
 本文件之後應補：
 
 - `doc/WBS.md`
 - `doc/Test.md`
-- PTCS/Web UI RFC
-- PTC transport RFC
+- PTCS fabric integration RFC 或 design note
 - Host deployment/runbook

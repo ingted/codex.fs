@@ -1,104 +1,133 @@
 # System Architecture
 
-版本：`0.1.0-draft`  
+版本：`0.2.0-draft`  
 狀態：Draft  
 對應需求：`doc/Requirement.md`
 
 ## 1. 架構摘要
 
-`codex.fs` 採 lightweight wrapper + durable host 架構。系統不把 Codex CLI、Agy CLI 或其他 coding agent CLI 內嵌到 application code 中，而是以 normalized command model 與 engine adapter 隔離 CLI 差異。
+`codex.fs` 採 lightweight CLI execution wrapper + PTCS fabric consumer 架構。系統不把 Codex CLI、Agy CLI 或其他 coding agent CLI 內嵌到 application code 中，而是以 normalized command model 與 engine adapter 隔離 CLI 差異；同時不自行發明 actor/message fabric，而是使用 PTCS `CommSpaActorFabric`、`CommSpaMessageFabric` 與 durable ingress/task result boundary。
 
 Production path：
 
 ```text
-Human / Actor / CLI Client
-  -> codex.fs.host
-  -> SessionActor / WorkerActor runtime
+Human / PTCS UI / codex.fs.cli / upstream actor
+  -> PTCS CommSpaMessageFabric / durable agent task
+  -> codex.fs.host session worker
   -> Engine Adapter
   -> External CLI process
   -> Artifact Store
-  -> Reply / Status / Next turn
+  -> PTCS MessageFabric reply / result-vault reference
 ```
 
-此設計讓 application actor 只面對 typed contract，不直接知道 `codex exec`、`agy --print`、stdout/stderr layout 或版本差異。
+Actor/sharding path：
 
-## 2. 系統邊界
+```text
+PTCS caller-owned or package-owned ActorSystem
+  -> CommSpaActorFabric requiredConfig + region/proxy
+  -> codex.fs.host worker actors / route workers
+  -> MessageFabric / DurableIngress for communication and task identity
+```
 
-### 2.1 Core library
+此設計讓 application actor 只面對 PTCS fabric + `codex.fs` typed contract，不直接知道 `codex exec`、`agy --print`、stdout/stderr layout 或版本差異。
+
+## 2. PTCS alignment
+
+本架構沿用 PTCS current-state docs：
+
+- `CommSpaActorFabric` owns/attaches Akka Cluster Sharding fabric。
+- `CommSpaMessageFabric` owns communication send/poll/ack/wait/drain semantics。
+- `DurableIngress` owns durable command admission/task ticket first-slice semantics。
+- `CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync` is the preferred durable agent task handoff.
+- Task/result vault and reality boundary prevent transport retry from becoming duplicated logical work。
+
+`codex.fs` 不提供：
+
+- independent ActorFabric。
+- independent MessageFabric。
+- independent inbox cursor/ack registry。
+- independent durable ingress protocol。
+
+## 3. 系統邊界
+
+### 3.1 Core library
 
 `codex.fs` 定義：
 
-- session id、run id、message id。
-- normalized run request/result。
+- run id / engine id / artifact id。
+- normalized CLI run request/result。
 - engine kind、engine version、capability surface。
 - artifact manifest。
+- compaction request/result。
 - policy vocabulary。
 - error model。
 
-Core library 不啟動 process、不持有 actor system、不依賴 Web UI。
+Core library 不啟動 process、不持有 actor system、不依賴 Web UI、不依賴 PTCS runtime instance。
 
-### 2.2 Host runtime
+### 3.2 Host runtime
 
 `codex.fs.host` 定義 production boundary：
 
-- 作為 NuGet package 時：提供 host builder extensions 與 services。
+- 作為 NuGet package時：提供 host builder extensions 與 services。
 - 作為 dotnet tool 時：啟動 standalone host。
-- 管理 actor runtime、engine registry、artifact store、lease、timeout、redaction。
+- 接入 PTCS `CommHub` / `CommSpaMessageFabric` / `CommSpaActorFabric` / `DurableIngress`。
+- 管理 engine registry、artifact store、lease、timeout、redaction、compaction。
 
-### 2.3 CLI client
+### 3.3 CLI client
 
 `codex.fs.cli` 是 terminal-facing client：
 
 - 連到 host。
-- 建立/attach session。
-- 發送 prompt。
+- 建立/attach session participant。
+- 透過 PTCS MessageFabric 發送 prompt。
+- wait/poll reply。
 - 查詢 run status/artifacts。
 - 在 PTCS Web UI 完善前提供主要互動介面。
 
-### 2.4 Engine adapters
+### 3.4 Engine adapters
 
 Engine adapter 只負責將 normalized request 映射到特定 CLI surface：
 
 - `codex.fs.engine.codex`
 - `codex.fs.engine.agy`
 
-adapter 不應包含 session orchestration 邏輯。
+adapter 不應包含 session orchestration 或 MessageFabric 邏輯。
 
-### 2.5 Actor integration
+### 3.5 PTCS fabric integration
 
-`codex.fs.akka` 提供 Akka.NET integration：
+Integration layer 負責：
 
-- `SessionActor`
-- `WorkerActor`
-- sharding helpers。
-- reliable delivery hooks。
-- persistence event schema。
+- 建立或接受 `CommHub`。
+- 建立 `CommSpaMessageFabric` 或 `CommSpaMessageFabric.createDurable`。
+- attach `CommSpaActorFabric` 到 caller-owned ActorSystem，或使用 package-owned PTCS fabric。
+- 把 MessageFabric envelope / durable task envelope 轉成 `codex.fs` session/run request。
 
-actor shell 可使用 Akka class/abstract base，但 domain logic 應保持 F# record/function composition。
-
-## 3. Runtime components
+## 4. Runtime components
 
 | Component | Responsibility |
 | --- | --- |
-| Host Service | 啟動 runtime、載入 config、暴露 API/transport endpoint。 |
-| Session Directory | 管理 session metadata 與 actor entity id。 |
-| SessionActor | 管理單一 session 的 mailbox/history/run loop。 |
-| WorkerActor | 執行專門任務或代表子 session。 |
+| Host Service | 啟動 runtime、載入 config、接入 PTCS fabric、暴露 CLI/control endpoint。 |
+| PTCS MessageFabric | canonical chat/mailbox fabric，負責 send/poll/ack/wait/drain。 |
+| PTCS ActorFabric | actor/sharding runtime，負責 region/proxy/health/reality metadata。 |
+| DurableIngress | durable task admission、task ticket、deadline/reality checks。 |
+| Session Worker | 從 MessageFabric inbox 取訊息，管理 run loop、compaction、reply。 |
 | Engine Registry | 根據 engine kind/version/capability 選 adapter。 |
 | Process Runner | 啟動外部 CLI、capture stdout/stderr、處理 timeout/cancel。 |
 | Artifact Store | 保存 prompt/output/event/final/result/manifest。 |
 | Compactor | 在 history 過大時產生 compacted context。 |
-| Transport Adapter | 將 terminal/PTC/Web message 轉成 normalized message。 |
+| CLI Client | terminal interface，透過 host 與 PTCS MessageFabric 互動。 |
 
-## 4. Session state machine
+## 5. Session state machine
 
 ```text
 Idle
+  -> PollingInbox
   -> PreparingPrompt
   -> RunningEngine
   -> PersistingArtifacts
-  -> Replying
-  -> Compacting? 
+  -> ReplyingViaMessageFabric
+  -> Compacting?
+  -> AckingInbox
   -> Idle | PreparingPrompt
 ```
 
@@ -106,39 +135,56 @@ Idle
 
 | State | 說明 |
 | --- | --- |
-| Idle | session 沒有 active run，可接受新 prompt。 |
-| PreparingPrompt | 將 history、pending messages、policy 組成 run prompt。 |
-| RunningEngine | host 執行外部 CLI；新 message 進 pending mailbox。 |
+| Idle | session 沒有 active run，可 wait/poll MessageFabric inbox。 |
+| PollingInbox | 透過 `PollInboxAsync` / `WaitInboxAsync` 收集 message batch。 |
+| PreparingPrompt | 將 compacted history、message batch、policy 組成 run prompt。 |
+| RunningEngine | host 執行外部 CLI；新 message 留在 MessageFabric inbox。 |
 | PersistingArtifacts | 保存 stdout/stderr/event/final/result manifest。 |
-| Replying | 透過 transport 發送摘要、run id、artifact references。 |
+| ReplyingViaMessageFabric | 透過 `SendAsync` 或 durable result reference 回覆。 |
 | Compacting | 根據 policy 產生 compacted history。 |
+| AckingInbox | 確認已納入 prompt 的 inbox cursor。 |
 
-## 5. Message flow
+## 6. Message flow
 
-### 5.1 Normal prompt
-
-```text
-Client -> Host: SubmitMessage(sessionId, message)
-Host -> SessionActor: AppendAndRun
-SessionActor -> ArtifactStore: create run directory
-SessionActor -> EngineRegistry: select adapter
-EngineAdapter -> ProcessRunner: command file + argv + env
-ProcessRunner -> ArtifactStore: stdout/stderr/event/final
-SessionActor -> Client: reply summary + run reference
-```
-
-### 5.2 Message during active run
+### 6.1 Normal prompt
 
 ```text
-Transport -> SessionActor: IncomingMessage
-SessionActor(RunningEngine): append to pending mailbox
-Engine run completes
-SessionActor: persist result
-SessionActor: append pending batch to history
-SessionActor: start next run if policy allows
+Client/PTCS UI
+  -> CommSpaMessageFabric.SendAsync(to=session participant)
+  -> Session Worker WaitInboxAsync/PollInboxAsync
+  -> ArtifactStore create run directory
+  -> EngineRegistry select adapter
+  -> ProcessRunner execute CLI
+  -> ArtifactStore persist outputs
+  -> CommSpaMessageFabric.SendAsync(reply summary + run reference)
+  -> AckAsync(processed cursor)
 ```
 
-## 6. Engine capability model
+### 6.2 Durable agent task
+
+```text
+Upstream caller
+  -> CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync
+  -> DurableIngress task ticket
+  -> MessageFabric direct message to session participant
+  -> Session Worker executes run
+  -> ArtifactStore persists output
+  -> MessageFabric reply or result-vault reference
+  -> task status/result query by caller
+```
+
+### 6.3 Message during active run
+
+```text
+MessageFabric receives more messages
+  -> session worker does not lose them
+  -> current CLI run completes
+  -> session worker persists result and replies
+  -> next PollInboxAsync uses cursor to collect pending batch
+  -> next prompt includes pending messages and compacted history
+```
+
+## 7. Engine capability model
 
 CLI tools differ by command shape. The architecture uses capability surfaces instead of assuming a universal `exec` command.
 
@@ -159,7 +205,7 @@ Capability dimensions:
 - `Timeout`
 - `LogFile`
 
-## 7. Storage architecture
+## 8. Storage architecture
 
 Artifact store should be append-only per run.
 
@@ -169,9 +215,11 @@ artifacts/
     <session-id>/
       history.jsonl
       compacted.md
+      messagefabric-cursors.json
       runs/
         <run-id>/
           request.json
+          ptcs-message-batch.jsonl
           prompt.md
           argv.json
           stdout.log
@@ -184,21 +232,24 @@ artifacts/
 
 `events.jsonl` is optional and only present when the engine supports structured events.
 
-## 8. Reliability architecture
+MessageFabric remains the communication fact source. Artifact store is the execution evidence store.
+
+## 9. Reliability architecture
 
 Required recovery points:
 
-- message accepted by transport。
-- message appended to session history。
+- MessageFabric message accepted。
+- MessageFabric cursor selected for prompt。
 - run request created。
 - process started。
 - process completed/failed/timed out。
 - artifacts persisted。
-- reply sent。
+- reply sent through MessageFabric。
+- cursor acked only after prompt/artifact persistence boundary is satisfied。
 
-Akka integration should use persistence and reliable delivery for stateful or external-request message chains. The core design must not rely on in-memory mailbox only.
+Durable path should use PTCS durable ingress/task ticket semantics. `codex.fs` must not claim crash-durable delivery beyond the selected PTCS profile capability.
 
-## 9. Security architecture
+## 10. Security architecture
 
 Security defaults:
 
@@ -206,40 +257,42 @@ Security defaults:
 - redact known secret patterns before writing human-readable output。
 - separate private host artifacts from public package repository。
 - record CLI path/version/capability, not auth token values。
-- message body is data, never shell command。
+- MessageFabric body is data, never shell command。
+- PTCS non-secret reality metadata may be logged; PCSL root path, connection string, OAuth secret, PAT, bearer token must not be logged.
 
-## 10. Configuration architecture
+## 11. Configuration architecture
 
 Host config should include:
 
 - artifact root。
+- PTCS CommHub / fabric mode。
+- PTCS ActorFabric options or caller-owned ActorSystem attachment settings。
+- MessageFabric durable mode。
 - enabled engines。
 - engine executable paths。
 - default engine。
 - per-engine default args。
 - timeout policy。
 - compaction policy。
-- transport endpoints。
-- actor/sharding settings。
 - redaction policy。
 
 Config should be expressed as typed records and load from explicit file/env/provider layers without leaking secrets into logs.
 
-## 11. Deployment modes
+## 12. Deployment modes
 
 | Mode | 說明 |
 | --- | --- |
-| Library-embedded | A .NET app references `codex.fs.host` and starts services in-process. |
-| Dotnet tool host | `codex.fs.host` runs standalone and exposes local control endpoint. |
-| Terminal client | `codex.fs.cli` connects to a running host. |
-| Actor cluster | Akka.NET cluster sharding manages many SessionActor entities. |
+| PTCS-embedded | A PTCS host references `codex.fs.host` and starts services in-process. |
+| Dotnet tool host | `codex.fs.host` runs standalone with package-owned or attached PTCS fabric. |
+| Terminal client | `codex.fs.cli` connects to a running host and uses MessageFabric-backed session interaction. |
+| Caller-owned ActorSystem | Host merges PTCS required config before ActorSystem creation and attaches `CommSpaActorFabric`. |
 
-## 12. Open architecture decisions
+## 13. Open architecture decisions
 
 | ID | Decision needed |
 | --- | --- |
-| SA-TBD-001 | Host control endpoint protocol: HTTP, named pipe, stdin/stdout, or all via plugins. |
+| SA-TBD-001 | Host control endpoint protocol for `codex.fs.cli`; MessageFabric stays communication fact source. |
 | SA-TBD-002 | Artifact storage provider: file-only first or pluggable store first. |
 | SA-TBD-003 | Compactor engine: same selected CLI, separate cheap adapter, or pluggable function. |
-| SA-TBD-004 | PTCS integration boundary and RFC scope. |
-| SA-TBD-005 | Akka persistence provider for first implementation. |
+| SA-TBD-004 | Exact PTCS durable profile for first production demo. |
+| SA-TBD-005 | Whether first host starts package-owned PTCS fabric or requires caller-owned attachment. |
