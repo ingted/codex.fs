@@ -45,6 +45,10 @@ Test：`T-REL-004`
   - `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\root.png`
   - `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\docs.png`
 
+## Superseded Command Note
+
+`CLI-005` supersedes the alpha.2 CLI command name. Package id remains `codex.fs.cli`, but alpha.3 installs command `codex.fs`; use `doc/WBS.CLI-005.md` for current tool command evidence.
+
 ## Blockers
 
 - None.

@@ -351,6 +351,16 @@ assertContains "host runtime summary type" "messageFabricType=PulseTrade.Comm.Sp
 assertContains "host runtime summary redacted" "[REDACTED]" hostRuntimeSummary
 assertTrue "host runtime summary no raw token" (not (hostRuntimeSummary.Contains(fakeGithubToken, StringComparison.Ordinal)))
 
+let callerOwnedFabric = MessageFabricBinding.createInProcessFabric ()
+let callerOwnedRuntime =
+    CodexFs.Host.HostRuntime.startWithMessageFabric
+        (DateTimeOffset.Parse("2026-07-04T13:09:00Z"))
+        callerOwnedFabric
+        hostRuntime
+
+assertEqual "host runtime caller-owned running" CodexFs.Host.HostRuntime.Running callerOwnedRuntime.Status
+assertTrue "host runtime caller-owned fabric identity" (Object.ReferenceEquals(callerOwnedFabric, callerOwnedRuntime.MessageFabric.Value))
+
 let stoppedHostRuntime = CodexFs.Host.HostRuntime.stop runningHostRuntime
 assertEqual "host runtime stopped" CodexFs.Host.HostRuntime.Stopped stoppedHostRuntime.Status
 assertEqual "host runtime stopped fabric cleared" true stoppedHostRuntime.MessageFabric.IsNone
@@ -559,8 +569,9 @@ assertContains "cli help run" "run <options>" cliHelp
 assertContains "cli help host" "host <options>" cliHelp
 assertContains "cli help engine" "engine <options>" cliHelp
 assertContains "cli examples header" "Examples:" cliHelp
-assertContains "cli host example" "codex.fs.cli host status --host http://192.168.10.20:8788" cliHelp
-assertContains "cli send example" "codex.fs.cli session send --session sess-001 --prompt @prompt.md" cliHelp
+assertContains "cli program name" "USAGE: codex.fs" cliHelp
+assertContains "cli host example" "codex.fs host status --host http://192.168.10.20:8788" cliHelp
+assertContains "cli send example" "codex.fs session send --session sess-001 --prompt @prompt.md" cliHelp
 
 assertParseOk "cli host status" [| "host"; "status"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session create" [| "session"; "create"; "--engine"; "agy"; "--host"; "http://192.168.10.20:8788" |]

@@ -35,13 +35,13 @@ PTCS 已定義：
 - compaction policy；
 - PTCS MessageFabric/ActorFabric integration；
 - `codex.fs.host` production boundary；
-- `codex.fs.cli` terminal client。
+- `codex.fs.cli` terminal client package；installed command is `codex.fs`。
 
 核心原則：
 
 - `codex.fs` 是 library/contract/policy vocabulary。
 - `codex.fs.host` 是 PTCS fabric consumer，可作 NuGet package，也可作 dotnet tool。
-- `codex.fs.cli` 是 terminal-facing client，在 PTCS Web UI 完善前與 `codex.fs.host` / PTCS MessageFabric 互動。
+- `codex.fs.cli` 是 terminal-facing client package；安裝後命令為 `codex.fs`，在 PTCS Web UI 完善前與 `codex.fs.host` / PTCS MessageFabric 互動。
 - CLI engine 可替換，初期支援 Codex CLI 與 Agy CLI。
 - Production workflow 必須透過 PTCS `MessageFabric`、`ActorFabric`、必要時 `DurableIngress` / task result vault，不直接建立另一套 message bus 或 cluster fabric。
 
@@ -75,7 +75,7 @@ PTCS 已定義：
 
 | 角色 | 說明 |
 | --- | --- |
-| Human Operator | 透過 `codex.fs.cli` 或 PTCS UI 發送任務、查看回覆與 artifacts。 |
+| Human Operator | 透過 `codex.fs` terminal command 或 PTCS UI 發送任務、查看回覆與 artifacts。 |
 | PTCS MessageFabric Participant | user/agent identity，透過 MessageFabric direct/public/group inbox 溝通。 |
 | CodexFs Session Worker | 以 MessageFabric inbox 為 mailbox，負責 run loop、compaction、artifact capture、reply。 |
 | PTCS ActorFabric Host | 擁有或 attach Akka ActorSystem / sharding region / proxy 的 runtime。 |
@@ -86,7 +86,7 @@ PTCS 已定義：
 
 ### 6.1 Terminal-driven session
 
-1. 使用者透過 `codex.fs.cli` 建立或 attach session。
+1. 使用者透過 `codex.fs` 建立或 attach session。
 2. CLI client 將 prompt 送入 `codex.fs.host`。
 3. host 透過 `CommSpaMessageFabric.SendAsync` 或 durable agent-task handoff 將 prompt 送到 session participant。
 4. session worker poll/wait inbox，組合 history 與 pending messages。
@@ -135,7 +135,7 @@ host 必須能接入 PTCS：
 
 ### R-002 CLI client
 
-`codex.fs.cli` 必須能在 terminal 中：
+`codex.fs.cli` package 安裝後提供 `codex.fs` command，必須能在 terminal 中：
 
 - 建立/attach session。
 - 送出 prompt。
@@ -232,7 +232,7 @@ host 必須支援 local compaction policy：
 | --- | --- |
 | `codex.fs` | Core engine contracts、domain models、policy vocabulary。 |
 | `codex.fs.host` | PTCS fabric consumer host package 與 dotnet tool。 |
-| `codex.fs.cli` | Terminal client dotnet tool。 |
+| `codex.fs.cli` | Terminal client dotnet tool package；installed command `codex.fs`。 |
 | `codex.fs.engine.codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | Agy CLI adapter。 |
 

@@ -90,11 +90,15 @@ module HostRuntime =
         | None -> Error loadResult.Issues
 
     /// Initialize a real in-process PTCS MessageFabric runtime boundary without creating an ActorSystem.
-    let startInProcessMessageFabric startedUtc runtime =
+    let startWithMessageFabric startedUtc (fabric: CommSpaMessageFabric) runtime =
         { runtime with
             Status = Running
             StartedUtc = Some startedUtc
-            MessageFabric = Some(MessageFabricBinding.createInProcessFabric ()) }
+            MessageFabric = Some fabric }
+
+    /// Initialize a real in-process PTCS MessageFabric runtime boundary without creating an ActorSystem.
+    let startInProcessMessageFabric startedUtc runtime =
+        startWithMessageFabric startedUtc (MessageFabricBinding.createInProcessFabric ()) runtime
 
     /// Mark the runtime stopped without disposing caller-owned resources.
     let stop runtime =

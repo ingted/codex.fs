@@ -3,7 +3,7 @@ namespace CodexFs.Cli
 open System
 open Argu
 
-/// Compiled FAkka.Argu command surface for codex.fs.cli.
+/// Compiled FAkka.Argu command surface for the `codex.fs` terminal command.
 module Cli =
 
     /// Common host endpoint option shared by control commands.
@@ -148,7 +148,7 @@ module Cli =
                 match this with
                 | Probe _ -> "Probe an installed engine executable."
 
-    /// Top-level codex.fs.cli command groups.
+    /// Top-level `codex.fs` command groups.
     [<CliPrefix(CliPrefix.None)>]
     type CliArgument =
         /// Session commands.
@@ -170,16 +170,16 @@ module Cli =
 
     /// Create the compiled CLI parser.
     let argumentParser () =
-        ArgumentParser.Create<CliArgument>(programName = "codex.fs.cli")
+        ArgumentParser.Create<CliArgument>(programName = "codex.fs")
 
     /// Usage examples shown after the generated Argu help text.
     let examples =
-        [ "codex.fs.cli host status --host http://192.168.10.20:8788"
-          "codex.fs.cli session create --engine agy --host http://192.168.10.20:8788"
-          "codex.fs.cli session send --session sess-001 --prompt @prompt.md --host http://192.168.10.20:8788"
-          "codex.fs.cli session status --session sess-001 --host http://192.168.10.20:8788"
-          "codex.fs.cli run status --run run-001 --host http://192.168.10.20:8788"
-          "codex.fs.cli engine probe --engine agy --executable agy" ]
+        [ "codex.fs host status --host http://192.168.10.20:8788"
+          "codex.fs session create --engine agy --host http://192.168.10.20:8788"
+          "codex.fs session send --session sess-001 --prompt @prompt.md --host http://192.168.10.20:8788"
+          "codex.fs session status --session sess-001 --host http://192.168.10.20:8788"
+          "codex.fs run status --run run-001 --host http://192.168.10.20:8788"
+          "codex.fs engine probe --engine agy --executable agy" ]
 
     /// Render generated help plus stable examples.
     let helpText () =

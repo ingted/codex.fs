@@ -1,7 +1,7 @@
 # DEVOP - codex.fs Host / Tool Deployment
 
-版本：`0.1.0-alpha.2`  
-狀態：Active  
+版本：`0.1.0-alpha.3`
+狀態：Active
 最後更新：2026-07-05
 
 ## 1. Operator Contract
@@ -23,7 +23,7 @@ Cluster/production-like profiles must use LAN/DNS-reachable bind/advertise setti
 dotnet restore .\codex.fs.slnx
 dotnet build .\codex.fs.slnx --no-restore
 
-$packOut = "G:\codex.fs\bin\host-usability-packs-20260705004149-alpha2"
+$packOut = "G:\codex.fs\bin\cli-command-packs-20260705012257-alpha3"
 dotnet pack .\src\codex.fs\codex.fs.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.ptcs\codex.fs.ptcs.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.host\codex.fs.host.fsproj --no-restore -o $packOut
@@ -36,17 +36,17 @@ Do not keep a long-running `dotnet run` host alive while rebuilding the solution
 ## 3. Global Tool Install
 
 ```powershell
-$packOut = "G:\codex.fs\bin\host-usability-packs-20260705004149-alpha2"
-dotnet tool install --global codex.fs.cli --add-source $packOut --version 0.1.0-alpha.2
-dotnet tool install --global codex.fs.host.tool --add-source $packOut --version 0.1.0-alpha.2
+$packOut = "G:\codex.fs\bin\cli-command-packs-20260705012257-alpha3"
+dotnet tool install --global codex.fs.cli --add-source $packOut --version 0.1.0-alpha.3
+dotnet tool install --global codex.fs.host.tool --add-source $packOut --version 0.1.0-alpha.3
 
-C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe --help
+C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help
 C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help
 ```
 
 Expected files:
 
-- `C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe`
+- `C:\Users\Administrator\.dotnet\tools\codex.fs.exe`
 - `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe`
 
 If a previous version is installed, uninstall only these package IDs before reinstalling:
@@ -81,7 +81,7 @@ Invoke-WebRequest -Uri "http://10.28.112.93:10481/" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/api/codexfs/host/health" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/openapi/v1.json" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/docs/index.html" -UseBasicParsing
-C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe host status --host http://10.28.112.93:10481
+C:\Users\Administrator\.dotnet\tools\codex.fs.exe host status --host http://10.28.112.93:10481
 ```
 
 Browser gate:
@@ -93,10 +93,10 @@ Browser gate:
 
 Current evidence:
 
-- `G:\codex.fs\.codex.fs\host-run\20260705004149-alpha2\summary.json`
-- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\summary.json`
-- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\root.png`
-- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\docs.png`
+- `G:\codex.fs\.codex.fs\host-run\20260705012257-alpha3\stdout.log`
+- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\summary.json`
+- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\root.png`
+- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\docs.png`
 
 ## 6. Documentation Outputs
 
@@ -109,3 +109,24 @@ Current API documentation:
 Planned improvement:
 
 - Add a generated F# reference site using FSharp.Formatting/fsdocs once public API shape stabilizes beyond the alpha host/tool usability phase.
+
+## 7. Existing PTCS Web Verification
+
+When validating PTCS chat behavior, first identify the deployment profile from the PTCS Host repo and docs:
+
+- implementation repo: `G:\PulseTrade.fs\Libs\PulseTrade.Comm\src\PulseTrade.Comm.Spa.Host`
+- PTCS package repo: `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`
+- local-login chat URL for the current profile: `http://127.0.0.1:82/chat`
+- public GitHub OAuth chat URL for the current profile: `https://my-ai.co.in:81/chat`
+
+Do not treat the 81 GitHub OAuth redirect as evidence that the chat UI is missing. For local functional checks, use the documented local PTCS.Login credential for that environment without writing the credential value into logs/docs.
+
+Current real-browser evidence from 2026-07-05:
+
+- `G:\codex.fs\.codex.fs\ptcs-web-inspect-20260705012257-local82\summary.json`
+- `G:\codex.fs\.codex.fs\ptcs-web-inspect-20260705012257-local82-send\summary.json`
+- `G:\codex.fs\.codex.fs\ptcs-web-inspect-20260705012257-local82-send\02-after-send.png`
+
+Observed behavior: local 82 login reaches `/chat`, the public channel is selectable, and a public prompt is rendered in the thread. No codex.fs worker/session participants were visible in that PTCS host because the current standalone codex.fs host uses a separate package-owned in-process MessageFabric.
+
+Production integration rule: for PTCS Web to show and talk to codex.fs workers, the PTCS Host or peer cluster node must reference `codex.fs.host` and start the runtime with caller-owned PTCS `CommSpaMessageFabric` / ActorFabric. A standalone tool host is acceptable for CLI/API/docs verification but does not make participants appear in an already running PTCS Web process.

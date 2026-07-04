@@ -168,3 +168,13 @@
 ## 2026-07-05 01:02 +08:00 Correction: RFC ID traceability
 
 - Correction for the previous `HOST-004/DOC-004/REL-004 host usability handoff` entry: the RFC traceability target is `RFC-OPS-0001` at `doc/RFC/RFC-OPS-0001.host-tool-usability.md`.
+
+## 2026-07-05 01:22 +08:00 CLI-005/HOST-005/UI-002 usability correction
+
+- Scope: corrected the installed terminal command from `codex.fs.cli` to `codex.fs` while keeping package id `codex.fs.cli`; bumped package family version to `0.1.0-alpha.3`.
+- Host seam: added `HostRuntime.startWithMessageFabric` so a PTCS Host or peer cluster node can run codex.fs host runtime over caller-owned `CommSpaMessageFabric` instead of an isolated package-owned fabric.
+- PTCS Web profile: verified the correct local browser path is `http://127.0.0.1:82/chat`; `https://my-ai.co.in:81/chat` GitHub OAuth redirect is expected for the public profile. Real local82 browser/send evidence is under `G:\codex.fs\.codex.fs\ptcs-web-inspect-20260705012257-local82-send`.
+- Packaging/tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; packed alpha.3 to `G:\codex.fs\bin\cli-command-packs-20260705012257-alpha3`; installed global tools show `codex.fs.cli 0.1.0-alpha.3` command `codex.fs` and `codex.fs.host.tool 0.1.0-alpha.3` command `codex.fs.host`.
+- Handoff evidence: `codex.fs --help`, `codex.fs host status --host http://10.28.112.93:10481`, HTTP checks for `/`, health, OpenAPI and docs returned 200; Playwright evidence is `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\summary.json`.
+- Boundary: standalone `codex.fs.host` remains valid for CLI/API/docs verification but does not make codex.fs workers visible in an already running PTCS Web host. Production PTCS Web integration must share PTCS fabric via caller-owned MessageFabric/ActorFabric.
+- Traceability: added `RFC-UI-0002`, WBS `HOST-005`, `CLI-005`, `UI-002`, Test `T-HOST-005`, `T-CLI-005`, `T-UI-002`, and updated SD/Requirement/README/DEVOP/KM.

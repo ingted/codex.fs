@@ -13,7 +13,7 @@ module Program =
         || (argv.Length = 1
             && (argv[0] = "help" || argv[0] = "--help" || argv[0] = "-h" || argv[0] = "/?"))
 
-    /// Entry point for the compiled codex.fs.cli terminal client.
+    /// Entry point for the compiled `codex.fs` terminal client.
     [<EntryPoint>]
     let main (argv: string array) =
         if isRootHelp argv then

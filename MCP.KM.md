@@ -91,7 +91,7 @@
 ## 2026-07-04 REL-002 CLI Dotnet Tool
 
 - `codex.fs.cli` installs as a local dotnet tool from `codex.fs.cli.0.1.0-alpha.1.nupkg` when local source also contains `codex.fs`, `codex.fs.ptcs`, and `codex.fs.host` packages.
-- The tool command is `codex.fs.cli`.
+- Superseded by CLI-005: the package id is `codex.fs.cli`, but the installed command is `codex.fs`.
 - Root `--help`, `-h`, `help`, `/?`, and empty argv are handled by `CodexFs.Cli.Program.isRootHelp` before Argu command dispatch.
 - `codex.fs.host` remains a referenceable library package; standalone host tool entrypoint is tracked separately as `REL-003`.
 
@@ -142,7 +142,7 @@
 
 ## 2026-07-05 CLI-004 Terminal Self-Use
 
-- `codex.fs.cli host status --host <advertiseUri>` is now an executed command and calls host `GET /api/codexfs/host/health`.
+- `codex.fs host status --host <advertiseUri>` is now an executed command and calls host `GET /api/codexfs/host/health`.
 - `--prompt @file` is resolved in the CLI process before HTTP submission; the host receives prompt text and never reads caller filesystem paths.
 - Manual self-use evidence used LAN URI `http://10.28.112.93:10481` and real PTCS MessageFabric: host status running, session send accepted, pendingCount 1 before drain, drained, and pendingCount 0 after drain.
 - Evidence summary path: `G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\summary.json`.
@@ -157,3 +157,12 @@
   - host run summary: `G:\codex.fs\.codex.fs\host-run\20260705004149-alpha2\summary.json`
   - browser summary/screenshots: `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\summary.json`, `root.png`, `docs.png`
   - packages: `G:\codex.fs\bin\host-usability-packs-20260705004149-alpha2`
+
+## 2026-07-05 CLI-005 / HOST-005 / UI-002 Usability Correction
+
+- `codex.fs.cli` remains the dotnet tool package id, but the installed command is `codex.fs`. Handoff must verify `C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help`, `codex.fs --help`, and `codex.fs host status --host <advertiseUri>`.
+- Package family version `0.1.0-alpha.3` carries the command-name correction.
+- `HostRuntime.startWithMessageFabric` lets a PTCS Host or peer cluster node pass caller-owned `CommSpaMessageFabric`; this is the seam required for PTCS Web and worker participants to share the same chat/participant truth.
+- Standalone `codex.fs.host` uses package-owned in-process MessageFabric. It is valid for CLI/API/docs verification but does not make workers appear in an already running PTCS Web process.
+- Current PTCS Host profile facts: `http://127.0.0.1:82/chat` is the local PTCS.Login chat path; `https://my-ai.co.in:81/chat` is the public GitHub OAuth path and may redirect to GitHub by design.
+- Browser evidence for local82 login/send is under `G:\codex.fs\.codex.fs\ptcs-web-inspect-20260705012257-local82-send`.

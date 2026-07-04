@@ -29,19 +29,19 @@ module HostControl =
         [<Literal>]
         let Health = "/api/codexfs/host/health"
 
-        /// Session message send route used by codex.fs.cli.
+        /// Session message send route used by the `codex.fs` terminal command.
         [<Literal>]
         let SessionMessages = "/api/codexfs/session/{sessionId}/messages"
 
-        /// Session status route used by codex.fs.cli.
+        /// Session status route used by the `codex.fs` terminal command.
         [<Literal>]
         let SessionStatus = "/api/codexfs/session/{sessionId}/status"
 
-        /// Session bounded attach route used by codex.fs.cli.
+        /// Session bounded attach route used by the `codex.fs` terminal command.
         [<Literal>]
         let SessionAttach = "/api/codexfs/session/{sessionId}/attach"
 
-        /// Session drain route used by codex.fs.cli.
+        /// Session drain route used by the `codex.fs` terminal command.
         [<Literal>]
         let SessionDrain = "/api/codexfs/session/{sessionId}/drain"
 
@@ -517,7 +517,7 @@ module HostControl =
     {docsItems}
   </ul>
   <h2>CLI</h2>
-  <p><code>codex.fs.cli host status --host {htmlEncode contract.AdvertiseUri}</code></p>
+  <p><code>codex.fs host status --host {htmlEncode contract.AdvertiseUri}</code></p>
 </body>
 </html>"""
 

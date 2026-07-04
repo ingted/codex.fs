@@ -52,7 +52,7 @@ Package IDs:
 | `codex.fs` | `CodexFs` | Core engine/artifact/compaction contracts。 |
 | `codex.fs.host` | `CodexFs.Host` | Referenceable host runtime/control library package。 |
 | `codex.fs.host.tool` | `CodexFs.HostTool` | Thin dotnet tool wrapper; command name `codex.fs.host`。 |
-| `codex.fs.cli` | `CodexFs.Cli` | Terminal client and dotnet tool。 |
+| `codex.fs.cli` | `CodexFs.Cli` | Terminal client dotnet tool package；installed command name is `codex.fs`。 |
 | `codex.fs.engine.codex` | `CodexFs.Engine.Codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | `CodexFs.Engine.Agy` | Agy CLI adapter。 |
 | `codex.fs.ptcs` | `CodexFs.Ptcs` | Thin integration over PTCS ActorFabric/MessageFabric。 |
@@ -297,8 +297,8 @@ CodexFs.Engine.Agy.V1_0.Print
 建議 CLI option：
 
 ```text
-codex.fs.cli run --engine codex --engine-surface codex-exec-0.142
-codex.fs.cli run --engine agy --engine-surface agy-print-1.0
+codex.fs run --engine codex --engine-surface codex-exec-0.142
+codex.fs run --engine agy --engine-surface agy-print-1.0
 ```
 
 `--engine-surface` optional；未指定時由 host probe 與 default policy 決定。
@@ -597,6 +597,7 @@ type HostHealth =
       RedactedDiagnostics: HostConfigDiagnostic list }
 
 val tryCreateFromLoadResult : HostConfigLoadResult -> Result<HostRuntime, HostConfigIssue list>
+val startWithMessageFabric : DateTimeOffset -> CommSpaMessageFabric -> HostRuntime -> HostRuntime
 val startInProcessMessageFabric : DateTimeOffset -> HostRuntime -> HostRuntime
 val health : HostRuntime -> HostHealth
 val healthSummary : HostRuntime -> string
@@ -605,6 +606,7 @@ val stop : HostRuntime -> HostRuntime
 
 Rules:
 
+- `startWithMessageFabric` starts the runtime with a caller-owned PTCS `CommSpaMessageFabric`. PTCS Host integration should use this seam so browser-visible participants and worker/session participants share the same hub/fabric。
 - `startInProcessMessageFabric` initializes a real PTCS `CommSpaMessageFabric` through `codex.fs.ptcs`; it is not an alternate mailbox and the current minimal slice does not create an ActorSystem。
 - `health` and `healthSummary` expose non-secret operational metadata and redacted config diagnostics only。
 - executable override values are omitted from health; only engine override keys are shown。
@@ -697,7 +699,7 @@ Host standalone tool contract:
 - `--run-seconds` is for bounded automation and verification; omitting it runs until Ctrl+C.
 - Clustered/non-dev usage must set `control.bindAddress`, `control.port`, `control.advertiseUri`, and `control.allowLoopbackOnly=false` with a LAN/DNS-reachable advertised URI. Loopback remains dev-only.
 - Handoff to a user must run from an installed global tool or an isolated tool path. Do not leave a long-running `dotnet run` process over `bin/Debug` as the handed-off host because it can lock build outputs.
-- Global tool handoff must verify `C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe --help` and `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help` before claiming CLI/tool availability.
+- Global tool handoff must verify `C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help`, `codex.fs --help`, and `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help` before claiming CLI/tool availability.
 - The tool does not wire durable task handoff into the host worker loop, does not implement process lease persistence, and does not initialize an ActorSystem; those remain `OPS-002` / future host-worker slices.
 
 ## 10. API documentation / SDK docs design
@@ -908,18 +910,18 @@ Raw CLI stdout/stderr policy is configurable:
 
 ## 14. CLI client design
 
-`codex.fs.cli` commands:
+`codex.fs.cli` is the package id; the installed terminal command is `codex.fs`.
 
 ```text
-codex.fs.cli session create --engine codex|agy --host <advertiseUri>
-codex.fs.cli session send --session <id> --prompt <text-or-file> --host <advertiseUri>
-codex.fs.cli session send --session <id> --prompt @prompt.md --host <advertiseUri>
-codex.fs.cli session attach --session <id> --host <advertiseUri>
-codex.fs.cli session drain --session <id> --host <advertiseUri>
-codex.fs.cli run status --run <id> --host <advertiseUri>
-codex.fs.cli run artifacts --run <id> --host <advertiseUri>
-codex.fs.cli host status --host <advertiseUri>
-codex.fs.cli engine probe
+codex.fs session create --engine codex|agy --host <advertiseUri>
+codex.fs session send --session <id> --prompt <text-or-file> --host <advertiseUri>
+codex.fs session send --session <id> --prompt @prompt.md --host <advertiseUri>
+codex.fs session attach --session <id> --host <advertiseUri>
+codex.fs session drain --session <id> --host <advertiseUri>
+codex.fs run status --run <id> --host <advertiseUri>
+codex.fs run artifacts --run <id> --host <advertiseUri>
+codex.fs host status --host <advertiseUri>
+codex.fs engine probe
 ```
 
 Argument parsing:
@@ -929,7 +931,7 @@ Argument parsing:
 - Do not parse user prompts as shell commands。
 - Root `--help`, `-h`, `help`, `/?`, and empty argv must print command help and return exit code 0 for dotnet tool ergonomics.
 
-`codex.fs.cli` should submit through host APIs that ultimately use PTCS MessageFabric; it should not write artifacts or MessageFabric streams directly.
+`codex.fs` should submit through host APIs that ultimately use PTCS MessageFabric; it should not write artifacts or MessageFabric streams directly.
 
 Implemented compiled CLI parser package:
 
@@ -1115,6 +1117,25 @@ Rules:
 - Reply body contains a redacted/truncated summary plus artifact references; it must not contain the raw prompt transcript.
 - `OPS-002` proves bounded single-cycle ack-after-artifact-and-reply-boundary ordering. Crash restart rehydration and sharded provider replay remain future worker-loop/provider scope.
 
+## 14.1 PTCS Web chat profile integration
+
+Existing PTCS Web chat is implemented by `G:\PulseTrade.fs\Libs\PulseTrade.Comm\src\PulseTrade.Comm.Spa.Host` over the PTCS package in `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`.
+
+Current deployment profile rules:
+
+- `http://127.0.0.1:82/chat` is the local PTCS.Login chat entry for browser validation in this environment.
+- `https://my-ai.co.in:81/chat` is the public GitHub OAuth profile; redirecting to GitHub login is expected for unauthenticated browsers.
+- PTCS `/chat/api/agents` lists registered `agent` participants plus the fixed public channel.
+- PTCS chat send uses `/sync/ws` `chat-send` or `/chat/api/send`, then projects the persisted chat message into `CommSpaMessageFabric`.
+- Public channel messages are visible in the chat thread, but codex.fs workers only receive them when worker actors poll/wait the same PTCS MessageFabric with public/group inclusion enabled.
+
+codex.fs integration rule:
+
+- A standalone `codex.fs.host` tool uses a package-owned in-process PTCS MessageFabric and therefore does not make participants visible in an already running PTCS Web process.
+- Production PTCS Web integration must reference `codex.fs.host` package from the PTCS Host process or a peer cluster node and start runtime with caller-owned PTCS fabric, e.g. `HostRuntime.startWithMessageFabric`.
+- The full worker actor loop must register session/worker participants as `Kind = Some "agent"` in the same PTCS hub/fabric and consume direct/public/group scopes according to its session policy.
+- Browser acceptance must use real PTCS Host and real MessageFabric evidence; fake/mock UI smoke is not an acceptance path.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
@@ -1141,10 +1162,10 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 6. PTCS MessageFabric session binding。
 7. Minimal `codex.fs.host` with PTCS local fabric。
 8. API documentation baseline: XML docs, OpenAPI/Swagger profile for HTTP host surface, and generated SDK docs pipeline。
-9. `codex.fs.cli` terminal client。
+9. `codex.fs.cli` terminal client package / `codex.fs` installed command。
 10. Durable agent task handoff via `CommSpaDurableMessageFabric`。
 11. Compaction。
-12. PTCS Web UI extension/RFC。
+12. PTCS Web UI extension/RFC and local82 profile verifier。
 
 ## 17. Open design items
 

@@ -7,7 +7,7 @@ open System.Threading
 open System.Threading.Tasks
 open CodexFs.Host
 
-/// HTTP client helpers used by codex.fs.cli commands.
+/// HTTP client helpers used by the `codex.fs` terminal command.
 module CliHttp =
 
     /// Raw HTTP result returned by a CLI command client.
