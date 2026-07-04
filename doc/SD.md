@@ -413,11 +413,12 @@ Documentation sources:
 | CLI commands | `FAkka.Argu` DU metadata + command examples | CLI help text and docs snippets |
 | PTCS integration operations | SD mapping table + API comments on adapter functions | SDK docs and integration guide |
 
-Tooling decision and candidates:
+Tooling decision:
 
-- OpenAPI/Swagger MVP: ASP.NET Core HTTP host with Swashbuckle and XML comments.
-- OpenAPI/Swagger future candidate: NSwag may be evaluated later for client generation.
-- SDK reference docs: use F# XML documentation output as the canonical source; evaluate DocFX or FSharp.Formatting for generating human-readable SDK reference pages.
+- OpenAPI JSON MVP: ASP.NET Core HTTP host with `Microsoft.AspNetCore.OpenApi` (`AddOpenApi` / `MapOpenApi`) plus XML comments and typed endpoint metadata.
+- Swagger UI MVP: `Swashbuckle.AspNetCore.SwaggerUi` may be used as UI assets over the generated OpenAPI document when the host profile allows it; it is not the source of truth.
+- OpenAPI future candidates: NSwag may be evaluated later for client generation.
+- SDK reference docs: use F# XML documentation output as the canonical source; FSharp.Formatting/fsdocs is the preferred first reference-site generator for F# APIs, while DocFX remains an optional cross-language/site evaluation.
 - Examples: keep examples close to the API through XML `<example>` blocks or doc-tested snippets when tooling supports it.
 
 Rules:
@@ -595,4 +596,4 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | SD-TBD-003 | Whether compaction uses selected engine or dedicated adapter. |
 | SD-TBD-004 | First supported PTCS package version and exact NuGet reference range. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
-| SD-TBD-006 | Partially resolved: MVP uses Swashbuckle + XML comments for HTTP/OpenAPI. DocFX/FSharp.Formatting SDK reference generation remains an evaluation item. |
+| SD-TBD-006 | Resolved for MVP: OpenAPI JSON uses `Microsoft.AspNetCore.OpenApi`; Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUi` only as optional UI assets; XML docs are canonical for SDK docs; FSharp.Formatting/fsdocs is preferred for F# reference-site generation. |
