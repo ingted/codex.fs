@@ -112,3 +112,11 @@
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; output included `TC-REL-003 host tool start/status passed`.
 - Packaging: packed `codex.fs.host.tool.0.1.0-alpha.1.nupkg` to `G:\codex.fs\bin\rel003-packs-202607042303`; installed to `G:\codex.fs\bin\rel003-host-tool-202607042303`; `codex.fs.host.exe --help`, `status`, and `start --run-seconds 0` passed with LAN advertised URIs.
 - Traceability: WBS `REL-003`, detail `doc/WBS.REL-003.md`, and Test `T-REL-003` updated to `Done` / `Pass`.
+
+## 2026-07-04 23:23 +08:00 UI-001 PTCS Web UI extension RFC
+
+- Scope: added `doc/RFC/RFC-UI-0001.ptcs-web-ui-extension.md` and `doc/WBS.UI-001.md`.
+- Decision: codex.fs Web UI should be a PTCS extension consumer over `CommSpaMessageFabric`, client extension manifest/script/JSON handler seams, and host advertised control URI; it must not introduce a new UI fabric or parallel chat store.
+- Inputs: read PTCS Requirement/SA/SD plus RFC-PTC-SPA-0006, RFC-PTC-SPA-0008, RFC-PTC-SPA-0010, and RFC-SPA-UPSTREAM-0001/0002/0003 from `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc`.
+- Tests: `T-UI-001` marks the RFC/verifier-plan slice as pass and explicitly defers real browser implementation/verifier to a future UI implementation WBS.
+- Traceability: WBS `UI-001`, detail `doc/WBS.UI-001.md`, RFC `RFC-UI-0001`, and Test `T-UI-001` updated to `Done` / `Pass`.

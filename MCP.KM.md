@@ -103,6 +103,14 @@
 - `codex.fs.host start --run-seconds 0 ...` is the bounded verification path; it starts the real Kestrel host and stops immediately after successful startup.
 - Non-dev host tool examples must use LAN/DNS advertise URIs; loopback is only for explicit dev profiles.
 
+## 2026-07-04 UI-001 PTCS Web UI Extension RFC
+
+- codex.fs Web UI should be implemented as a PTCS client extension consumer, not as a new UI/message fabric.
+- Prompt/reply truth remains `CommSpaMessageFabric`; UI sends to session participants and renders MessageFabric replies/artifact references.
+- Host control status/OpenAPI links may use codex.fs advertised control URI or PTCS same-origin allow-list JSON handler; never generic proxy or localhost-only clustered path.
+- Relevant PTCS seams are `RegisterClientExtension`, `RegisterClientExtensionScriptAsset`, registered same-origin JSON POST handler, and page renderer/fallback contracts.
+- `RFC-UI-0001` is an RFC/verifier-plan slice only; future UI implementation must add real browser + MessageFabric verifiers.
+
 ## 2026-07-04 OPS-001 Process Orphan Recovery
 
 - `ProcessRunner.ProcessLease` records pid, process name, observed start time and non-secret marker for codex.fs-owned processes.

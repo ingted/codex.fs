@@ -79,7 +79,7 @@ Status 值：
 | T-E2E-003 | E2E-003 | TC-E2E-003 multi-agent MessageFabric group | E2E | Real PTCS group/direct messages; durable optional | E2E-002/PTCS-003 | two session workers exchange message/reply | Planned | PTCS-003 optional | Requirement §6.3 |
 | T-OPS-001 | OPS-001 | TC-OPS-001 orphan process recovery | Ops | Controlled real OS process fixture | EN-002/HOST-002 | `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; test launched `powershell.exe Start-Sleep`, created a codex.fs process lease from pid/name/start time, recovered it via `recoverLeasedProcessAsync`, and verified the process exited | Pass | None | SA §9, SD §4 |
 | T-OPS-002 | OPS-002 | TC-OPS-002 recovery/ack ordering | Ops/Integration | Real selected durability profile | PTCS-003/SESS-001 | no ack before durable artifact/reply evidence | Blocked | durable profile decision | SA §9, SD §11 |
-| T-UI-001 | UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | Docs/UI | Real PTCS extension path after backend E2E | E2E-002/DOC-003 | RFC accepted + UI verifier plan | Planned | E2E-002/DOC-003 | SD §16.12 |
+| T-UI-001 | UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | Docs/UI | Real PTCS extension path after backend E2E | E2E-002/DOC-003 | `doc/RFC/RFC-UI-0001.ptcs-web-ui-extension.md` accepted for RFC slice; verifier plan requires future real PTCS browser + MessageFabric cases and explicitly forbids fake/mock UI smoke as acceptance | Pass | None | SD §16.12 |
 
 ## 3. Verifier Script Names
 
