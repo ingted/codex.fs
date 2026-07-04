@@ -255,3 +255,11 @@
 - Policy: raw prompt/stdout/stderr/final artifacts are private by default, public exports are redacted-only and require sensitive scanning.
 - Note/compact: `note.md` is a redacted human-readable run summary for browsing and compact input; compact summaries must preserve PTCS message ids, run ids and artifact refs without replacing raw artifacts.
 - Traceability: updated WBS `PERSIST-001`, detail `doc/WBS.PERSIST-001.md`, Test `T-PERSIST-001`, Requirement R-004/R-005/R-008, SA storage/security, SD §12/§13, `RFC_Project_Planing.md` and KM.
+
+## 2026-07-05 04:34 +08:00 WEB-001 PTCS AI chat bundle
+
+- Scope: accepted `RFC-WEB-0001` as a Web bundle contract/RFC slice; no WebSharper implementation was claimed.
+- Boundary: `codex.fs.web` is a PTCS WebSharper extension/bundle such as `useAIChat(...)`, registered through PTCS `CommHub`, not a standalone `codex.fs.host` `/chat` replacement.
+- UX: Web target vocabulary covers Foreman, exact worker participant, public channel and group id; perspective switching is authorized read/render only.
+- Invocation/artifacts: browser controls emit normalized intent metadata while runtime/actor validates policy and renders versioned CLI argv; Web renders redacted summary plus manifest/note refs, not raw stdout/stderr.
+- Traceability: updated `RFC-WEB-0001`, WBS `WEB-001`, detail `doc/WBS.WEB-001.md`, Test `T-WEB-001`, Requirement, SA, SD, `RFC_Project_Planing.md` and KM.

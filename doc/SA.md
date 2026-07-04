@@ -120,6 +120,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `ACTOR-001` resolves the first actor RFC slice: Foreman is the default SessionActor participant, workers register as PTCS `agent` participants, and actor shells call runtime while MessageFabric remains the human/agent chat truth.
 
+`WEB-001` resolves the first Web bundle RFC slice: `codex.fs.web` is a PTCS WebSharper extension/bundle over the same PTCS hub/fabric. It supports Foreman/worker/public/group targets, authorized perspective switching, invocation intent controls and redacted artifact/note refs, but it does not own prompt assembly, raw artifacts, browser-local chat history or standalone `/chat` product UI.
+
 `CLI-010` resolves the first interactive CLI RFC slice: `codex.fs.cli` is a terminal participant client with Foreman default target, explicit participant/worker/public/group switching, visible sender/target/perspective state and invocation-option handoff to runtime/actor. It does not own prompt assembly, headless process execution or chat history truth.
 
 `PERSIST-001` resolves the transcript/note/artifact policy RFC slice: raw run evidence is private by default, MessageFabric/UI/CLI should render redacted summaries plus manifest/note refs, and compacted history must preserve message ids, run ids and artifact refs without replacing raw artifacts.

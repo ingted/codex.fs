@@ -57,6 +57,7 @@ PTCS 已定義：
 - `SessionActor` 是 specialized `WorkerActor`，預設是 Foreman/包工頭 participant；它可 spawn/register 其他 worker participants，並透過 PTCS `MessageFabric` / `ActorFabric` 與人或其他 agents 溝通。
 - `codex.fs.cli` 是 terminal participant client，預設與 Foreman/SessionActor 溝通；只有明確指定 participant/worker 時才切換目標。
 - codex.fs Web UI 應作為 PTCS WebSharper extension/bundle，例如 `useAIChat(...)` 類型的客製 bundle，提供 participant perspective、engine/model/reasoning/invocation controls；不得用 standalone host `/chat` 取代 PTCS chat room。
+- `RFC-WEB-0001` 接受此 Web bundle boundary：browser 使用 PTCS MessageFabric public/direct/group scopes 與 Foreman/worker participants 溝通，只送 invocation intent metadata，artifact/note 顯示遵循 redacted refs policy。
 
 ## 3. 目標
 
@@ -73,6 +74,7 @@ PTCS 已定義：
 9. 支援 terminal client 先行驗證 multi-agent workflow，後續 PTCS Web UI 只需接同一套 fabric。
 10. 支援不同 CLI 版本與不同 capability surface 的 argv render/parse/validate。
 11. 避免 application code 直接手刻 `Process.Start("codex", ...)` 或 `Process.Start("agy", ...)`。
+12. 支援 PTCS WebSharper AI chat bundle，使 browser 使用 Foreman/worker/public/group target、authorized perspective、invocation controls 與 artifact/note refs，且不脫離 PTCS fabric。
 
 ## 4. 非目標
 
@@ -83,6 +85,7 @@ PTCS 已定義：
 5. 不實作另一套 MessageFabric、ActorFabric、transport inbox、ack cursor 或 durable ingress。
 6. 不在初版交付完整 PTCS Web UI；Web UI 應使用 PTCS extension/fabric，而不是另做 UI fabric。
 7. 不把 HTTP request、WebSocket frame、MCP call 或 terminal command 當成 logical work identity；task identity 需沿用 PTCS result-vault/reality boundary。
+8. 不把 standalone `codex.fs.host` `/chat`、fake/mock browser smoke 或 browser-local chat store 當成 Web 產品驗收。
 
 ## 5. 使用者與角色
 

@@ -1341,6 +1341,31 @@ codex.fs integration rule:
 - The full worker actor loop must register session/worker participants as `Kind = Some "agent"` in the same PTCS hub/fabric and consume direct/public/group scopes according to its session policy.
 - Browser acceptance must use real PTCS Host and real MessageFabric evidence; fake/mock UI smoke is not an acceptance path.
 
+`RFC-WEB-0001` accepts the first `codex.fs.web` bundle contract. The Web bundle is a PTCS WebSharper extension following the Dynamic extension pattern:
+
+```text
+PTCS Host / CommHub
+  -> useAIChat(options, runtime/control registration)
+  -> RegisterClientExtension(...)
+  -> RegisterClientExtensionScriptAsset(...)
+  -> RegisterClientExtensionJsonPostHandler(...)
+  -> WebSharper bundle
+```
+
+Recommended extension identity:
+
+```fsharp
+ExtensionId = "codex-fs-ai-chat"
+DisplayName = Some "codex.fs AI Chat"
+AppendPageShapes =
+  [ { Shape = "codexfs-ai-chat"
+      Label = Some "AI Chat"
+      Badge = Some "ai"
+      ClassName = Some "codexfs-ai-chat" } ]
+```
+
+The bundle must be generated from WebSharper/F# and must not require hand-written JavaScript. Same-origin JSON handlers are limited to registered allow-list operations such as metadata, participant capabilities, host health or artifact summary lookups; they are not generic proxies and do not become MessageFabric.
+
 ### 14.2 Interactive CLI and AI chat bundle target
 
 `CLI-010` and `WEB-001` refine the UX after the product reset:
@@ -1389,6 +1414,22 @@ Terminal meta commands are parsed by the CLI and converted to host/PTCS operatio
 ```
 
 Invocation options collected by CLI are intent metadata. Runtime/actor owns validation against policy, engine adapter selection, versioned argv rendering, prompt assembly, local compact, transcript/note/artifact persistence and MessageFabric ack ordering.
+
+`RFC-WEB-0001` accepts the browser-side equivalent:
+
+| Web concept | Contract |
+| --- | --- |
+| extension package | `codex.fs.web`; split `codex.fs.web.server` only when registration/handler size justifies it |
+| host integration | PTCS `CommHub` extension registration, script asset registration and fixed JSON POST handlers |
+| default target | Foreman/SessionActor participant, matching CLI first-use target vocabulary |
+| participant list | real PTCS participants, including spawned workers registered as `agent` participants |
+| public target | PTCS MessageFabric public scope; worker consumption is actor/session policy controlled |
+| group target | PTCS MessageFabric group id and membership |
+| perspective | authorized read/render policy, not sender impersonation |
+| controls | engine/model/reasoning/invocation widgets emit normalized intent metadata |
+| artifacts | redacted final summary plus run id, manifest ref and note ref; raw prompt/stdout/stderr stay under persistence policy |
+
+Future Web verifier `misc/verifyPtcsAiChatBundle.fsx` must drive a real browser against PTCS Host `/chat`, load the extension manifest/assets, send public/direct/group messages through real MessageFabric, verify Foreman/worker participants, switch authorized perspective, and render real artifact/note refs. Standalone `codex.fs.host` `/chat`, fake mailboxes or internal-only UI smoke cannot satisfy `T-WEB-001` implementation acceptance.
 
 ## 15. Testing design preview
 

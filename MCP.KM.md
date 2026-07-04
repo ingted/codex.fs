@@ -230,3 +230,11 @@
 - MessageFabric replies, CLI/Web views and public exports should use redacted summaries plus manifest/note refs, not raw transcript bodies.
 - `note.md` feeds human browsing and `CompactionEntry` values; local compact must preserve message ids, run ids and artifact refs and never overwrite raw artifacts.
 - Future verifier `misc/verifyTranscriptStore.fsx` must prove real runtime/host writes prompt/stdout/stderr/final/manifest/note/session-boundary and blocks high-risk public export.
+
+## 2026-07-05 WEB-001 PTCS AI Chat Bundle
+
+- `codex.fs.web` is a PTCS WebSharper extension/bundle such as `useAIChat(...)`; it must plug into PTCS Host/CommHub using `RegisterClientExtension`, script asset registration and fixed JSON POST handlers.
+- Browser prompt/reply truth remains PTCS `CommSpaMessageFabric`; standalone `codex.fs.host` `/chat`, browser-local stores, fake mailboxes and mock UI smoke are not product acceptance.
+- Web target vocabulary matches CLI/actor vocabulary: Foreman default, exact worker participant, public channel and group id. Perspective switching is authorized read/render only and must not forge `agent.*` sender identity.
+- Engine/model/reasoning/invocation controls emit normalized intent metadata; runtime/actor validates policy and engine adapter capabilities before rendering versioned Codex/Agy argv.
+- Web rendering should show redacted final summary, run id, manifest ref and note ref. Raw prompt/stdout/stderr stay governed by the persistence policy.
