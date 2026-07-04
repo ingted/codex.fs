@@ -223,3 +223,11 @@
 - Actor rule: `SessionActor` is a specialized `WorkerActor` / Foreman participant over PTCS ActorFabric/MessageFabric and future sharded delivery; spawned workers must register as PTCS participants.
 - Follow-up WBS/Test: added `RUNTIME-001`, `ACTOR-001`, `CLI-010`, `WEB-001`, and `PERSIST-001` as planned RFC/test slices.
 - Traceability: updated `Requirement.md`, `SA.md`, `SD.md`, `WBS.md`, `Test.md`, `RFC_Project_Planing.md`, `WBS.PRODUCT-001.md`, and `MCP.KM.md`.
+
+## 2026-07-05 04:25 +08:00 RUNTIME-001 prompt-loop package boundary
+
+- Scope: accepted `RFC-RUNTIME-0001` as a contract/RFC slice; no code split was claimed.
+- Boundary: runtime owns prompt-loop orchestration and side-effect ordering; host/PTCS/actor/CLI/Web own transport, HTTP, delivery and UI concerns.
+- Contract: SD §11.3 now defines `RuntimeCycleInput`, `RuntimeEffect`, `decideCycle`, `interpretCycleAsync`, and ports/effects direction.
+- Migration: `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` remains real bounded E2E evidence but is marked as a migration candidate for runtime extraction.
+- Traceability: updated WBS `RUNTIME-001`, detail `doc/WBS.RUNTIME-001.md`, Test `T-RUNTIME-001`, SD §11.3, and KM.

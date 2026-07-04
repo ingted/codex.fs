@@ -72,7 +72,7 @@
 | Decision | Options | Initial recommendation |
 | --- | --- | --- |
 | 是否新增 `codex.fs.protocol` | Keep DTO in `codex.fs.host`; split to protocol package. | Split once Web/CLI both need stable DTO without host dependency. |
-| 是否新增 `codex.fs.runtime` | Keep in `codex.fs.host`; split runtime logic. | Split, because actor runtime and standalone verifier need same codex-like loop. |
+| 是否新增 `codex.fs.runtime` | Keep in `codex.fs.host`; split runtime logic. | Accepted by `RFC-RUNTIME-0001`: runtime owns prompt-loop orchestration; physical project split happens when actor/verifier/Web consumers need it. |
 | Web package name | `codex.fs.web`, `codex.fs.ptcs.web`, `codex.fs.spa` | Prefer `codex.fs.web` for product UI; namespace can expose PTCS extension functions. |
 | Server extension split | One `codex.fs.web` package; separate `codex.fs.web.server`. | Start single package if small; split if server registration/API handlers grow. |
 | CLI alias | Keep `codex.fs.tool`; merge into `codex.fs.cli`. | Keep alias thin and generated from same source to avoid behavior drift. |
@@ -83,6 +83,7 @@
 | RFC | Purpose |
 | --- | --- |
 | `RFC-PRODUCT-0001.codexfs-agent-runtime-reset.md` | Accepted: Product-level reset for PTCS Host vs codex.fs.host vs runtime/CLI/Web/Actor responsibilities. |
+| `RFC-RUNTIME-0001.prompt-loop-package-boundary.md` | Accepted: Runtime prompt-loop orchestration, ports/effects, side-effect ordering and migration from bounded host helper. |
 | `RFC-ACTOR-0001.session-worker-actor-model.md` | Sharded `SessionActor` / `WorkerActor` protocol, spawn/register, participant routing, durable delivery. |
 | `RFC-WEB-0001.ptcs-ai-chat-bundle.md` | WebSharper `useAIChat(...)` bundle design and PTCS Dynamic reference pattern. |
 | `RFC-CLI-0002.interactive-participant-client.md` | Terminal chat client UX: target participant, perspective switch, model/reasoning/invocation options. |

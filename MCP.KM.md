@@ -200,3 +200,10 @@
 - `SessionActor` is a specialized `WorkerActor` / Foreman participant. It may spawn/register other worker participants, but all communication must remain on PTCS MessageFabric/ActorFabric.
 - `codex.fs.cli` should be an interactive terminal participant client with Foreman default target, participant switching and engine/model/reasoning options.
 - Future Web UI should be a PTCS WebSharper extension/bundle such as `useAIChat(...)`, not standalone host `/chat`.
+
+## 2026-07-05 RUNTIME-001 Prompt-loop Package Boundary
+
+- Runtime owns orchestration and side-effect ordering; adapters own transport/UI/delivery. Host route handlers should validate DTOs and call runtime/PTCS services, not assemble prompts.
+- Preferred runtime shape is deterministic `decideCycle` plus side-effect `interpretCycleAsync` over explicit ports/effects.
+- Required ordering: persist consumed cursor/message ids, persist prompt/request, invoke engine, persist artifacts/result/manifest, write note, emit reply, persist ready-to-ack boundary, then ack.
+- `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` is bounded real E2E evidence and a migration candidate, not the final durable sharded runtime loop.

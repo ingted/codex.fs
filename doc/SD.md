@@ -900,6 +900,59 @@ SessionActor : WorkerActor
 
 Stateful external request chains must use `Akka.Delivery` or `Akka.Cluster.Sharding.Delivery` for the selected profile. Cluster bind/canonical advertise addresses must be LAN/DNS-routable outside explicit single-node dev.
 
+### 11.3 Runtime package boundary
+
+`RFC-RUNTIME-0001` defines runtime as the reusable prompt-loop boundary. Runtime owns orchestration; host/PTCS/actor/CLI/Web adapters own concrete transport and UI concerns.
+
+Runtime owns this ordered loop:
+
+```text
+inbox batch + session state + history refs + policy
+  -> persist consumed cursor/message ids
+  -> assemble prompt and compact if needed
+  -> build normalized RunRequest
+  -> invoke engine through engine/process port
+  -> persist stdout/stderr/final/events/result/manifest
+  -> write note/summary reference
+  -> emit reply intent and ready-to-ack boundary
+```
+
+Preferred F# contract shape:
+
+```fsharp
+module CodexFs.Runtime
+
+type RuntimeCycleInput =
+    { SessionState: SessionBehavior.SessionState
+      InboxBatch: PtcsMessageRef list
+      HistoryEntries: CompactionEntry list
+      EngineSurface: EngineSurface
+      WorkingDirectory: string
+      ArtifactRoot: string
+      Policy: RuntimePolicy }
+
+type RuntimeEffect =
+    | PersistPromptBoundary of RunId * PtcsMessageRef list
+    | PersistHistoryEntries of CompactionEntry list
+    | InvokeEngine of RunRequest
+    | PersistRunArtifacts of RunResult
+    | WriteRunNote of RuntimeNote
+    | SendReply of RuntimeReplyIntent
+    | PersistReadyToAckBoundary of RuntimeAckBoundary
+    | AckInbox of cursor: string option
+
+val decideCycle : RuntimeCycleInput -> RuntimePlan
+val interpretCycleAsync : RuntimePorts -> RuntimePlan -> CancellationToken -> Task<RuntimeCycleResult>
+```
+
+Rules:
+
+- `decideCycle` is deterministic and unit-testable.
+- `interpretCycleAsync` owns side-effect ordering through explicit ports; concrete PTCS/Akka/HTTP code stays outside runtime.
+- `HostControl` route handlers validate DTOs and call runtime/PTCS services only; they must not assemble prompts or decide compaction policy.
+- Actor shells call runtime from delivery/sharding handlers and do not duplicate prompt logic.
+- Existing `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` is bounded host-era E2E evidence and a migration candidate, not the final durable sharded runtime loop.
+
 ## 12. Artifact manifest design
 
 ```fsharp
