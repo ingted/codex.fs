@@ -3,10 +3,26 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>codex.fs</PackageId>
+    <Version>0.1.0-alpha.1</Version>
+    <Authors>ingted</Authors>
+    <Company>ingted</Company>
+    <Description>F# lightweight contracts and helpers for version-aware headless Codex/Agy CLI execution.</Description>
+    <PackageTags>fsharp;codex;agy;agents;ptcs;akka</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ingted/codex.fs</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/ingted/codex.fs</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="FAkka.Argu" Version="10.1.201" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
