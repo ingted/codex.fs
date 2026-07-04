@@ -467,6 +467,118 @@ module Engine =
                       Environment = Map.empty
                       RedactedDisplay = renderRedactedDisplay executablePath args }
 
+                /// Raw Codex stdout/stderr/final output captured from one exec run.
+                type OutputCapture =
+                    { /// Captured stdout text.
+                      Stdout: string
+                      /// Captured stderr text.
+                      Stderr: string
+                      /// Captured JSONL event stream, usually stdout when `--json` is enabled.
+                      EventJsonl: string option
+                      /// Captured final assistant markdown, usually from `--output-last-message`.
+                      FinalMessage: string option
+                      /// UTC process start time.
+                      StartedUtc: DateTimeOffset
+                      /// UTC process completion time.
+                      CompletedUtc: DateTimeOffset option
+                      /// Normalized run outcome.
+                      Outcome: RunOutcome }
+
+                /// Stored artifact mapping for one Codex exec run.
+                type OutputArtifactMapping =
+                    { /// Stored stdout log artifact.
+                      Stdout: FileArtifactStore.StoredArtifact
+                      /// Stored stderr log artifact.
+                      Stderr: FileArtifactStore.StoredArtifact
+                      /// Stored event JSONL artifact, when supplied.
+                      EventJsonl: FileArtifactStore.StoredArtifact option
+                      /// Stored final markdown artifact, when supplied.
+                      FinalMessage: FileArtifactStore.StoredArtifact option
+                      /// In-memory manifest containing the stored artifact refs.
+                      Manifest: ArtifactManifest }
+
+                /// Map captured Codex exec output into file artifacts and an artifact manifest.
+                let mapOutputArtifacts
+                    (storeConfig: FileArtifactStore.FileArtifactStoreConfig)
+                    (request: RunRequest)
+                    (capture: OutputCapture)
+                    =
+                    let createdUtc = capture.CompletedUtc |> Option.defaultValue DateTimeOffset.UtcNow
+
+                    let stdout =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            request.SessionId
+                            request.RunId
+                            StdoutLog
+                            "stdout.log"
+                            capture.Stdout
+                            createdUtc
+
+                    let stderr =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            request.SessionId
+                            request.RunId
+                            StderrLog
+                            "stderr.log"
+                            capture.Stderr
+                            createdUtc
+
+                    let eventJsonl =
+                        match capture.EventJsonl with
+                        | Some text when not (String.IsNullOrWhiteSpace text) ->
+                            FileArtifactStore.writeText
+                                storeConfig
+                                request.SessionId
+                                request.RunId
+                                EventJsonl
+                                "events.jsonl"
+                                text
+                                createdUtc
+                            |> Some
+                        | _ -> None
+
+                    let finalMessage =
+                        match capture.FinalMessage with
+                        | Some text when not (String.IsNullOrWhiteSpace text) ->
+                            FileArtifactStore.writeText
+                                storeConfig
+                                request.SessionId
+                                request.RunId
+                                FinalMarkdown
+                                "final.md"
+                                text
+                                createdUtc
+                            |> Some
+                        | _ -> None
+
+                    let artifactRefs =
+                        [ stdout.Reference
+                          stderr.Reference
+                          match eventJsonl with
+                          | Some artifact -> artifact.Reference
+                          | None -> ()
+                          match finalMessage with
+                          | Some artifact -> artifact.Reference
+                          | None -> () ]
+
+                    { Stdout = stdout
+                      Stderr = stderr
+                      EventJsonl = eventJsonl
+                      FinalMessage = finalMessage
+                      Manifest =
+                        { RunId = request.RunId
+                          SessionId = request.SessionId
+                          Engine = Domain.EngineKind.Codex
+                          SurfaceId = SurfaceId
+                          PtcsMessages = request.PtcsMessages
+                          PtcsTask = request.PtcsTask
+                          StartedUtc = capture.StartedUtc
+                          CompletedUtc = capture.CompletedUtc
+                          Outcome = capture.Outcome
+                          Artifacts = artifactRefs } }
+
     /// Agy CLI engine surfaces.
     module Agy =
 

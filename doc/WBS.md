@@ -39,7 +39,7 @@ Status 值：
 | EN-002 | 實作 process runner/guard contract | EN-001 | 100 | Done | None | 2026-07-04 18:55 +08:00 | 2026-07-04 18:56 +08:00 | SD §4, SA §9 | T-EN-002 | TC-EN-002 temp FSI success/timeout kill | inline |
 | CDX-001 | Codex CLI probe fixtures | EN-001 | 100 | Done | None | 2026-07-04 19:11 +08:00 | 2026-07-04 19:15 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex 0.142.4 exec help/version fixture | inline |
 | CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 100 | Done | None | 2026-07-04 19:16 +08:00 | 2026-07-04 19:21 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex Argu parse/render | inline |
-| CDX-003 | Codex artifact mapping | CDX-002 | 0 | Planned | None | 未動工 | 2026-07-04 19:21 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex output map | inline |
+| CDX-003 | Codex artifact mapping | CDX-002 | 100 | Done | None | 2026-07-04 19:22 +08:00 | 2026-07-04 19:25 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex stdout/stderr/event/final artifact map | inline |
 | AGY-001 | Agy CLI probe fixtures | EN-001 | 100 | Done | None | 2026-07-04 18:58 +08:00 | 2026-07-04 18:59 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy 1.0.16 help/version fixture | inline |
 | AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 100 | Done | None | 2026-07-04 19:00 +08:00 | 2026-07-04 19:05 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy Argu parse/render | inline |
 | AGY-003 | Agy artifact mapping | AGY-002 | 100 | Done | None | 2026-07-04 19:06 +08:00 | 2026-07-04 19:10 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy stdout/stderr/final artifact map | inline |
@@ -60,7 +60,7 @@ Status 值：
 | CLI-003 | CLI attach/drain/status | CLI-002 | 0 | Planned | CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | inline |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 0 | Planned | DOC-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | dotnet tool package | REL-001;HOST-001 | 0 | Planned | REL-001/HOST-001 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement R-001, SD §2 | T-REL-002 | TC-REL-002 tool install/run help | inline |
-| E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 0 | Planned | local engine availability | 未動工 | 2026-07-04 17:53 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 / planned `misc/verifyInstalledEngines.fsx` | inline |
+| E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 0 | Planned | None | 未動工 | 2026-07-04 19:25 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 / planned `misc/verifyInstalledEngines.fsx` | inline |
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-002 | 0 | Planned | HOST-002/CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §10, SA §6.1 | T-E2E-002 | TC-E2E-002 / planned `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-003 | 0 | Planned | PTCS-003 optional durable path | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | inline |
 | OPS-001 | Process orphan recovery | EN-002;HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:56 +08:00 | SA §9 | T-OPS-001 | TC-OPS-001 orphan process recovery | inline |
