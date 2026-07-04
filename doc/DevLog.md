@@ -58,3 +58,10 @@
 - Dependency: added `Microsoft.AspNetCore.OpenApi [10.0.9]`, `Microsoft.OpenApi [2.7.5]`, and `Swashbuckle.AspNetCore.SwaggerUI [10.2.3]`; the direct `Microsoft.OpenApi` reference avoids GHSA-v5pm-xwqc-g5wc affected transitive versions.
 - Tests: `dotnet restore .\codex.fs.slnx` passed without NU1903; `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-DOC-003 OpenAPI available passed`.
 - Traceability: WBS `DOC-003` and Test `T-DOC-003` updated to `Done` / `Pass`.
+
+## 2026-07-04 21:48 +08:00 CLI-001 Argu command/help
+
+- Scope: added `codex.fs.cli` executable project and compiled `CodexFs.Cli.Cli` FAkka.Argu command surface.
+- Behavior: parser covers session/run/host/engine command groups, renders generated help plus stable examples, and returns Argu parse errors for invalid args; runtime host calls are deferred to `CLI-002` / `CLI-003`.
+- Tests: `dotnet restore .\codex.fs.slnx`, `dotnet build .\codex.fs.slnx --no-restore`, and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; output included `TC-CLI-001 Argu parser/help passed`.
+- Traceability: WBS `CLI-001` and Test `T-CLI-001` updated to `Done` / `Pass`; blocker for `CLI-002` cleared.

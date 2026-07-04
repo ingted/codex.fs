@@ -34,6 +34,16 @@ let assertBefore name (first: string) (second: string) (actual: string) =
 let runTask (task: Task<'T>) =
     task.GetAwaiter().GetResult()
 
+let assertParseOk name argv =
+    match CodexFs.Cli.Cli.tryParse argv with
+    | Ok() -> ()
+    | Error message -> failwith $"Assertion failed: {name}; parse failed: {message}"
+
+let assertParseErrorContains name expected argv =
+    match CodexFs.Cli.Cli.tryParse argv with
+    | Ok() -> failwith $"Assertion failed: {name}; expected parse error"
+    | Error message -> assertContains name expected message
+
 let isUsableNonLoopbackIpv4 (address: IPAddress) =
     address.AddressFamily = AddressFamily.InterNetwork
     && not (IPAddress.IsLoopback address)
@@ -443,6 +453,28 @@ assertTrue "host swagger ui no raw token" (not (hostControlSwaggerText.Contains(
 hostOpenApiJson.Dispose()
 
 printfn "TC-DOC-003 OpenAPI available passed"
+
+let cliHelp = CodexFs.Cli.Cli.helpText ()
+
+assertContains "cli help session" "session <options>" cliHelp
+assertContains "cli help run" "run <options>" cliHelp
+assertContains "cli help host" "host <options>" cliHelp
+assertContains "cli help engine" "engine <options>" cliHelp
+assertContains "cli examples header" "Examples:" cliHelp
+assertContains "cli host example" "codex.fs.cli host status --host http://192.168.10.20:8788" cliHelp
+assertContains "cli send example" "codex.fs.cli session send --session sess-001 --prompt @prompt.md" cliHelp
+
+assertParseOk "cli host status" [| "host"; "status"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli session create" [| "session"; "create"; "--engine"; "agy"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli session send" [| "session"; "send"; "--session"; "sess-001"; "--prompt"; "@prompt.md"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli session attach" [| "session"; "attach"; "--session"; "sess-001"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli session drain" [| "session"; "drain"; "--session"; "sess-001"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli run status" [| "run"; "status"; "--run"; "run-001"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli run artifacts" [| "run"; "artifacts"; "--run"; "run-001"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli engine probe" [| "engine"; "probe"; "--engine"; "agy"; "--executable"; "agy" |]
+assertParseErrorContains "cli invalid arg" "unrecognized argument" [| "session"; "send"; "--bogus" |]
+
+printfn "TC-CLI-001 Argu parser/help passed"
 
 let ptcsFabric = MessageFabricBinding.createInProcessFabric ()
 let ptcsRunSuffix = Guid.NewGuid().ToString("N")

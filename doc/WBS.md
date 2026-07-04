@@ -55,8 +55,8 @@ Status 值：
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
 | DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 100 | Done | None | 2026-07-04 21:36 +08:00 | 2026-07-04 21:39 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | [@DOC-003](WBS.DOC-003.md) |
-| CLI-001 | 實作 CLI command DU/help | HOST-003 | 0 | Planned | None | 未動工 | 2026-07-04 21:27 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | inline |
-| CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 0 | Planned | CLI-001/PTCS-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | inline |
+| CLI-001 | 實作 CLI command DU/help | HOST-003 | 100 | Done | None | 2026-07-04 21:44 +08:00 | 2026-07-04 21:48 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | [@CLI-001](WBS.CLI-001.md) |
+| CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 0 | Planned | None | 未動工 | 2026-07-04 21:48 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | inline |
 | CLI-003 | CLI attach/drain/status | CLI-002 | 0 | Planned | CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | inline |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | dotnet tool package | REL-001;HOST-001 | 0 | Planned | None | 未動工 | 2026-07-04 21:03 +08:00 | Requirement R-001, SD §2 | T-REL-002 | TC-REL-002 tool install/run help | inline |
@@ -75,6 +75,7 @@ Status 值：
 | [@HOST-003](WBS.HOST-003.md) | Host control endpoint uses HTTP with bind/advertise config; localhost is dev-only. |
 | [@DOC-001](WBS.DOC-001.md) | API documentation toolchain selection affects NuGet SDK docs and Swagger generation. |
 | [@DOC-003](WBS.DOC-003.md) | OpenAPI JSON and Swagger UI verification uses the real host endpoint through advertised non-loopback URI. |
+| [@CLI-001](WBS.CLI-001.md) | Terminal client command surface is a compiled FAkka.Argu parser; real host execution is deferred to CLI-002/CLI-003. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 
 ## 4. Update Rule

@@ -812,6 +812,42 @@ Argument parsing:
 
 `codex.fs.cli` should submit through host APIs that ultimately use PTCS MessageFabric; it should not write artifacts or MessageFabric streams directly.
 
+Implemented compiled CLI parser package:
+
+```fsharp
+namespace CodexFs.Cli
+
+module Cli
+
+type CliArgument =
+    | Session of ParseResults<SessionCommand>
+    | Run of ParseResults<RunCommand>
+    | Host of ParseResults<HostCommand>
+    | Engine of ParseResults<EngineCommand>
+
+val argumentParser : unit -> ArgumentParser<CliArgument>
+val examples : string list
+val helpText : unit -> string
+val tryParse : string array -> Result<unit, string>
+```
+
+Command groups:
+
+- `session create --engine <codex|agy> --host <advertiseUri>`.
+- `session send --session <id> --prompt <text-or-file> --host <advertiseUri>`.
+- `session attach --session <id> --host <advertiseUri>`.
+- `session drain --session <id> --host <advertiseUri>`.
+- `run status --run <id> --host <advertiseUri>`.
+- `run artifacts --run <id> --host <advertiseUri>`.
+- `host status --host <advertiseUri>`.
+- `engine probe --engine <codex|agy> --executable <path-or-command>`.
+
+Rules:
+
+- `CLI-001` only defines parser/help/examples and the compiled entrypoint; real host calls belong to `CLI-002` / `CLI-003`.
+- No command should interpret prompt text as shell commands.
+- Examples use non-secret LAN sample URI `http://192.168.10.20:8788`.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\codex.fs\codex.fs.fsproj" />
+    <ProjectReference Include="..\..\src\codex.fs.cli\codex.fs.cli.fsproj" />
     <ProjectReference Include="..\..\src\codex.fs.host\codex.fs.host.fsproj" />
     <ProjectReference Include="..\..\src\codex.fs.ptcs\codex.fs.ptcs.fsproj" />
   </ItemGroup>

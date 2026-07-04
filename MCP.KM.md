@@ -58,3 +58,10 @@
 - Direct `Microsoft.OpenApi [2.7.5]` is required because the 2.0.x transitive version is affected by GHSA-v5pm-xwqc-g5wc.
 - Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUI [10.2.3]` and is gated by `apiDocs.exposeSwaggerUi`.
 - Tests must verify `HostControlContract.OpenApiJsonUri` and `SwaggerUiUri` through an advertised non-loopback URI, not localhost.
+
+## 2026-07-04 CLI-001 Argu Command / Help
+
+- `codex.fs.cli` is a compiled executable project with `FAkka.Argu [10.1.301]`.
+- `CodexFs.Cli.Cli` owns parser/help/examples; `Program` only handles entrypoint output and parse errors.
+- Parser command groups are `session`, `run`, `host`, and `engine`.
+- `CLI-001` deliberately does not call host APIs or MessageFabric; real send/attach/drain execution is deferred to `CLI-002` / `CLI-003`.

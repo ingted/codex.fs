@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/codex.fs/codex.fs.fsproj" />
+    <Project Path="src/codex.fs.cli/codex.fs.cli.fsproj" />
     <Project Path="src/codex.fs.host/codex.fs.host.fsproj" />
     <Project Path="src/codex.fs.ptcs/codex.fs.ptcs.fsproj" />
   </Folder>
