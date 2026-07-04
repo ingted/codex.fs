@@ -65,3 +65,10 @@
 - Behavior: parser covers session/run/host/engine command groups, renders generated help plus stable examples, and returns Argu parse errors for invalid args; runtime host calls are deferred to `CLI-002` / `CLI-003`.
 - Tests: `dotnet restore .\codex.fs.slnx`, `dotnet build .\codex.fs.slnx --no-restore`, and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; output included `TC-CLI-001 Argu parser/help passed`.
 - Traceability: WBS `CLI-001` and Test `T-CLI-001` updated to `Done` / `Pass`; blocker for `CLI-002` cleared.
+
+## 2026-07-04 21:56 +08:00 CLI-002 session send real path
+
+- Scope: added host `POST /api/codexfs/session/{sessionId}/messages` and CLI HTTP send client.
+- Behavior: CLI sends prompt to host advertised URI; host registers sender/session participants and appends a direct PTCS MessageFabric message to the derived session participant inbox.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-CLI-002 CLI send through MessageFabric passed`.
+- Traceability: WBS `CLI-002` and Test `T-CLI-002` updated to `Done` / `Pass`; blockers for `CLI-003` and `E2E-002` cleared.

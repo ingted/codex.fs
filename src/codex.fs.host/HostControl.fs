@@ -5,12 +5,14 @@ open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
 open CodexFs
+open CodexFs.Ptcs
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.OpenApi
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open PulseTrade.Comm.Spa
 
 /// HTTP control plane contract and minimal Kestrel host for codex.fs.host.
 module HostControl =
@@ -21,6 +23,10 @@ module HostControl =
         /// Health endpoint used by CLI/Web/admin callers to inspect non-secret host status.
         [<Literal>]
         let Health = "/api/codexfs/host/health"
+
+        /// Session message send route used by codex.fs.cli.
+        [<Literal>]
+        let SessionMessages = "/api/codexfs/session/{sessionId}/messages"
 
         /// OpenAPI document route pattern used by ASP.NET Core `MapOpenApi`.
         [<Literal>]
@@ -36,6 +42,10 @@ module HostControl =
         /// Endpoint name for `GET /api/codexfs/host/health`.
         [<Literal>]
         let Health = "CodexFsHostHealth"
+
+        /// Endpoint name for `POST /api/codexfs/session/{sessionId}/messages`.
+        [<Literal>]
+        let SessionMessages = "CodexFsSessionMessages"
 
     /// Non-secret example attached to an HTTP control endpoint definition.
     type HostControlExample =
@@ -168,6 +178,36 @@ module HostControl =
           /// Non-secret human-readable message.
           Message: string }
 
+    /// Request body accepted by `POST /api/codexfs/session/{sessionId}/messages`.
+    type SessionSendRequest =
+        { /// Prompt text or message body to append to the session inbox.
+          Prompt: string
+          /// Participant id representing the CLI/user sender; defaults are applied by CLI callers.
+          FromParticipantId: string
+          /// Non-secret tags to attach to the PTCS message.
+          Tags: string list
+          /// Optional idempotency/correlation id; use blank when absent.
+          CorrelationId: string }
+
+    /// Response body returned after the host accepts a session message into PTCS MessageFabric.
+    type SessionSendResponse =
+        { /// Stable status text.
+          Status: string
+          /// Session id from the route.
+          SessionId: string
+          /// PTCS participant id derived for the session.
+          SessionParticipantId: string
+          /// Participant id used as the message sender.
+          FromParticipantId: string
+          /// PTCS message id returned by MessageFabric.
+          MessageId: string
+          /// Inbox cursor associated with the accepted message.
+          Cursor: string
+          /// Correlation id echoed from the request, or blank when absent.
+          CorrelationId: string
+          /// Tags attached to the PTCS message.
+          Tags: string list }
+
     let healthSuccessExample =
         { Name = "running-host"
           Description = "A running host that advertises a LAN/routable control URI."
@@ -180,6 +220,18 @@ module HostControl =
           Body =
             """{"code":"invalid-control-endpoint","message":"Cluster/production host config must advertise and bind a routable non-loopback address."}""" }
 
+    let sessionSendSuccessExample =
+        { Name = "message-accepted"
+          Description = "A CLI prompt was accepted into the PTCS inbox owned by one session participant."
+          Body =
+            """{"status":"accepted","sessionId":"sess-001","sessionParticipantId":"agent.codexfs.sess-001","fromParticipantId":"user.codexfs.cli","messageId":"msg-001","cursor":"msg-001","correlationId":"cli-001","tags":["codex.fs","cli","session-send"]}""" }
+
+    let sessionSendFailureExample =
+        { Name = "blank-prompt"
+          Description = "The host rejects a blank prompt before appending anything to MessageFabric."
+          Body =
+            """{"code":"invalid-session-message","message":"Prompt must not be blank."}""" }
+
     /// Endpoint definitions that act as the canonical code-side docs metadata for the HTTP control plane.
     let endpointDefinitions =
         [ { Method = "GET"
@@ -187,7 +239,13 @@ module HostControl =
             Name = EndpointNames.Health
             Summary = "Return non-secret codex.fs host health and network profile metadata."
             SuccessExample = healthSuccessExample
-            FailureExample = healthFailureExample } ]
+            FailureExample = healthFailureExample }
+          { Method = "POST"
+            Route = Routes.SessionMessages
+            Name = EndpointNames.SessionMessages
+            Summary = "Accept one CLI session message into PTCS MessageFabric through the host."
+            SuccessExample = sessionSendSuccessExample
+            FailureExample = sessionSendFailureExample } ]
 
     /// Resolve the configured bind port, falling back to the advertised URI port when no explicit port is configured.
     let resolvePort (control: HostConfig.HostControlEndpointConfig) =
@@ -283,6 +341,92 @@ module HostControl =
           ExposeSwaggerUi = contract.ExposeSwaggerUi
           SwaggerUiUri = contract.SwaggerUiUri }
 
+    /// Build the PTCS participant id owned by a session.
+    let sessionParticipantId (config: HostConfig.HostConfig) sessionId =
+        config.Ptcs.SessionParticipantPrefix.TrimEnd('.') + "." + sessionId
+
+    /// Build the advertised URI for a session message send request.
+    let sessionMessagesUri (contract: HostControlContract) (sessionId: string) =
+        let escapedSessionId = Uri.EscapeDataString sessionId
+        combineAdvertisedRoute contract.AdvertiseUri ($"/api/codexfs/session/{escapedSessionId}/messages")
+
+    let defaultSenderParticipantId = "user.codexfs.cli"
+
+    let normalizeTags tags =
+        if isNull (box tags) || List.isEmpty tags then
+            [ "codex.fs"; "cli"; "session-send" ]
+        else
+            tags
+
+    let optionalNonBlank value =
+        if String.IsNullOrWhiteSpace value then None else Some value
+
+    let errorResult (statusCode: int) code message =
+        Results.Json({ Code = code; Message = message }, statusCode = Nullable<int>(statusCode))
+
+    /// Append one CLI-submitted prompt into the PTCS inbox for the selected session participant.
+    let sendSessionMessageAsync (runtime: HostRuntime.HostRuntime) sessionId (request: SessionSendRequest) =
+        task {
+            match runtime.MessageFabric with
+            | None ->
+                return errorResult StatusCodes.Status503ServiceUnavailable "message-fabric-unavailable" "Host MessageFabric is not initialized."
+            | Some fabric ->
+                if String.IsNullOrWhiteSpace sessionId then
+                    return errorResult StatusCodes.Status400BadRequest "invalid-session-message" "Session id must not be blank."
+                elif isNull (box request) || String.IsNullOrWhiteSpace request.Prompt then
+                    return errorResult StatusCodes.Status400BadRequest "invalid-session-message" "Prompt must not be blank."
+                else
+                    let sessionParticipantId = sessionParticipantId runtime.Config sessionId
+                    let fromParticipantId =
+                        if String.IsNullOrWhiteSpace request.FromParticipantId then defaultSenderParticipantId else request.FromParticipantId
+
+                    let tags = normalizeTags request.Tags
+                    let sessionBinding = MessageFabricBinding.defaultBinding sessionParticipantId
+                    let senderBinding = MessageFabricBinding.defaultBinding fromParticipantId
+
+                    let! _ =
+                        MessageFabricBinding.registerParticipantAsync
+                            fabric
+                            sessionBinding
+                            { MessageFabricBinding.defaultRegistration with
+                                DisplayName = Some sessionParticipantId
+                                Kind = Some "agent"
+                                Labels = Some [ "codex.fs"; "session"; "cli-target" ] }
+
+                    let! _ =
+                        MessageFabricBinding.registerParticipantAsync
+                            fabric
+                            senderBinding
+                            { MessageFabricBinding.defaultRegistration with
+                                DisplayName = Some fromParticipantId
+                                Kind = Some "user"
+                                Labels = Some [ "codex.fs"; "cli"; "sender" ] }
+
+                    let correlationId = optionalNonBlank request.CorrelationId
+
+                    let! envelope =
+                        MessageFabricBinding.sendAsync
+                            fabric
+                            { FromParticipantId = fromParticipantId
+                              Scope = MessageFabricScope.Direct sessionParticipantId
+                              Body = request.Prompt
+                              Tags = tags
+                              CorrelationId = correlationId
+                              CreatedAtUtc = None }
+
+                    let response =
+                        { Status = "accepted"
+                          SessionId = sessionId
+                          SessionParticipantId = sessionParticipantId
+                          FromParticipantId = fromParticipantId
+                          MessageId = envelope.MessageId
+                          Cursor = envelope.MessageId
+                          CorrelationId = correlationId |> Option.defaultValue String.Empty
+                          Tags = tags }
+
+                    return Results.Json(response, statusCode = Nullable<int>(StatusCodes.Status202Accepted))
+        }
+
     /// Attach the current HTTP control endpoints to an ASP.NET Core application.
     let mapEndpoints (application: WebApplication) (contract: HostControlContract) (runtime: HostRuntime.HostRuntime) =
         let healthHandler =
@@ -292,6 +436,18 @@ module HostControl =
             .MapGet(Routes.Health, healthHandler)
             .WithName(EndpointNames.Health)
             .Produces<HostControlHealthResponse>(StatusCodes.Status200OK)
+        |> ignore
+
+        let sessionSendHandler =
+            Func<string, SessionSendRequest, Task<IResult>>(fun sessionId request -> sendSessionMessageAsync runtime sessionId request)
+
+        application
+            .MapPost(Routes.SessionMessages, sessionSendHandler)
+            .WithName(EndpointNames.SessionMessages)
+            .Accepts<SessionSendRequest>("application/json")
+            .Produces<SessionSendResponse>(StatusCodes.Status202Accepted)
+            .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<HostControlErrorResponse>(StatusCodes.Status503ServiceUnavailable)
         |> ignore
 
         application

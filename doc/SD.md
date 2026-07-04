@@ -848,6 +848,49 @@ Rules:
 - No command should interpret prompt text as shell commands.
 - Examples use non-secret LAN sample URI `http://192.168.10.20:8788`.
 
+Implemented session send path:
+
+```fsharp
+module HostControl
+
+type SessionSendRequest =
+    { Prompt: string
+      FromParticipantId: string
+      Tags: string list
+      CorrelationId: string }
+
+type SessionSendResponse =
+    { Status: string
+      SessionId: string
+      SessionParticipantId: string
+      FromParticipantId: string
+      MessageId: string
+      Cursor: string
+      CorrelationId: string
+      Tags: string list }
+
+val sessionMessagesUri : HostControlContract -> string -> string
+val sendSessionMessageAsync : HostRuntime -> string -> SessionSendRequest -> Task<IResult>
+
+module CodexFs.Cli.CliHttp
+
+type CliHttpResult =
+    { StatusCode: int
+      IsSuccess: bool
+      Body: string }
+
+val sessionSendUri : string -> string -> string
+val sendSessionMessageAsync : HttpClient -> CancellationToken -> Cli.SessionSendOptions -> Task<CliHttpResult>
+```
+
+Rules:
+
+- Route: `POST /api/codexfs/session/{sessionId}/messages`.
+- Host derives session participant id as `<ptcs.sessionParticipantPrefix>.<sessionId>`.
+- Host registers sender/session participants in PTCS and sends a direct MessageFabric message to the session participant.
+- CLI sends to the host advertised URI; CLI does not write MessageFabric or artifacts directly.
+- `CLI-002` validates send-to-inbox only. Full attach/drain/status transcript behavior remains `CLI-003`.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

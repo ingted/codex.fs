@@ -189,3 +189,39 @@ module Cli =
             Ok()
         with :? ArguParseException as ex ->
             Error ex.Message
+
+    /// Parsed options for `session send`.
+    type SessionSendOptions =
+        { /// Advertised codex.fs.host control URI.
+          Host: string
+          /// Target session id.
+          SessionId: string
+          /// Prompt text or @file reference.
+          Prompt: string }
+
+    let requireArg name value =
+        match value with
+        | Some result when not (String.IsNullOrWhiteSpace result) -> Ok result
+        | _ -> Error $"Missing required {name}."
+
+    /// Try to extract `session send` options from argv. Other valid commands return `Ok None`.
+    let tryParseSessionSend argv =
+        try
+            let parsed = argumentParser().ParseCommandLine(argv)
+
+            match parsed.TryGetResult CliArgument.Session with
+            | Some sessionCommands ->
+                match sessionCommands.TryGetResult SessionCommand.Send with
+                | Some sendArgs ->
+                    match requireArg "--host" (sendArgs.TryGetResult SessionSendArgument.Host),
+                          requireArg "--session" (sendArgs.TryGetResult SessionSendArgument.Session),
+                          requireArg "--prompt" (sendArgs.TryGetResult SessionSendArgument.Prompt) with
+                    | Ok host, Ok sessionId, Ok prompt ->
+                        Ok(Some { Host = host; SessionId = sessionId; Prompt = prompt })
+                    | Error message, _, _
+                    | _, Error message, _
+                    | _, _, Error message -> Error message
+                | None -> Ok None
+            | None -> Ok None
+        with :? ArguParseException as ex ->
+            Error ex.Message

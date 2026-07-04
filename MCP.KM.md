@@ -65,3 +65,10 @@
 - `CodexFs.Cli.Cli` owns parser/help/examples; `Program` only handles entrypoint output and parse errors.
 - Parser command groups are `session`, `run`, `host`, and `engine`.
 - `CLI-001` deliberately does not call host APIs or MessageFabric; real send/attach/drain execution is deferred to `CLI-002` / `CLI-003`.
+
+## 2026-07-04 CLI-002 Session Send Real Path
+
+- Host route `POST /api/codexfs/session/{sessionId}/messages` accepts `SessionSendRequest` and writes to real PTCS MessageFabric.
+- Session participant id is derived as `<ptcs.sessionParticipantPrefix>.<sessionId>`.
+- CLI send uses `CodexFs.Cli.CliHttp.sendSessionMessageAsync` and the host advertised URI; it never writes MessageFabric directly.
+- `TC-CLI-002` polls the real PTCS inbox for the derived session participant after HTTP 202.

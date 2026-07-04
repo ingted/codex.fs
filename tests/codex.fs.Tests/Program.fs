@@ -404,7 +404,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText =
+let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliSendResponseText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -416,11 +416,44 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText =
         let openApiBody = runTask (openApiResponse.Content.ReadAsStringAsync())
         let swaggerResponse = runTask (client.GetAsync(hostControlServer.Contract.SwaggerUiUri))
         let swaggerBody = runTask (swaggerResponse.Content.ReadAsStringAsync())
+        let cli002RunSuffix = Guid.NewGuid().ToString("N")
+        let cli002SessionId = $"cli002.{cli002RunSuffix}"
+        let cli002Prompt = "CLI-002 prompt through host and PTCS MessageFabric"
+
+        let cliSendResult =
+            runTask
+                (CodexFs.Cli.CliHttp.sendSessionMessageAsync
+                    client
+                    CancellationToken.None
+                    { Host = hostControlServer.Contract.AdvertiseUri
+                      SessionId = cli002SessionId
+                      Prompt = cli002Prompt })
+
+        let cli002SessionParticipantId = CodexFs.Host.HostControl.sessionParticipantId hostControlServer.Runtime.Config cli002SessionId
+        let cli002Binding = MessageFabricBinding.defaultBinding cli002SessionParticipantId
+
+        let cli002Fabric =
+            hostControlServer.Runtime.MessageFabric |> Option.defaultWith (fun () -> failwith "expected host MessageFabric")
+
+        let cli002Batch = runTask (MessageFabricBinding.pollInboxAsync cli002Fabric cli002Binding None)
+        let cli002Refs = MessageFabricBinding.batchToMessageRefs cli002Batch
 
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
         assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
         assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
-        body, openApiBody, swaggerBody
+        assertEqual "cli send status" 202 cliSendResult.StatusCode
+        assertTrue "cli send success" cliSendResult.IsSuccess
+        assertTrue
+            "cli send message in inbox"
+            (cli002Batch.Messages
+             |> List.exists (fun message ->
+                 message.FromParticipantId = "user.codexfs.cli"
+                 && message.Body = cli002Prompt))
+        assertTrue
+            "cli send message ref to participant"
+            (cli002Refs |> List.exists (fun messageRef -> messageRef.ToParticipantId = Some cli002SessionParticipantId))
+
+        body, openApiBody, swaggerBody, cliSendResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -453,6 +486,16 @@ assertTrue "host swagger ui no raw token" (not (hostControlSwaggerText.Contains(
 hostOpenApiJson.Dispose()
 
 printfn "TC-DOC-003 OpenAPI available passed"
+
+let cliSendJson = JsonDocument.Parse(cliSendResponseText)
+let cliSendRoot = cliSendJson.RootElement
+
+assertEqual "cli send response status" "accepted" (cliSendRoot.GetProperty("status").GetString())
+assertEqual "cli send response sender" "user.codexfs.cli" (cliSendRoot.GetProperty("fromParticipantId").GetString())
+assertTrue "cli send response message id" (not (String.IsNullOrWhiteSpace(cliSendRoot.GetProperty("messageId").GetString())))
+cliSendJson.Dispose()
+
+printfn "TC-CLI-002 CLI send through MessageFabric passed"
 
 let cliHelp = CodexFs.Cli.Cli.helpText ()
 

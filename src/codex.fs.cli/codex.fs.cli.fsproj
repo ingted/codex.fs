@@ -25,11 +25,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\codex.fs.host\codex.fs.host.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Cli.fs" />
+    <Compile Include="CliHttp.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
