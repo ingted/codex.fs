@@ -86,18 +86,22 @@ module MessageFabricBinding =
 
         fabric.RegisterParticipantAsync args
 
+    /// Upsert one MessageFabric group with the supplied participant list.
+    let upsertGroupAsync (fabric: CommSpaMessageFabric) groupId participantIds tags =
+        let args: MessageFabricGroupUpsert =
+            { GroupId = groupId
+              DisplayName = Some groupId
+              ParticipantIds = participantIds
+              Tags = Some tags }
+
+        fabric.UpsertGroupAsync args
+
     /// Upsert the configured group when `GroupId` is present.
     let tryUpsertConfiguredGroupAsync (fabric: CommSpaMessageFabric) (binding: SessionBinding) =
         match binding.GroupId with
         | Some groupId ->
-            let args: MessageFabricGroupUpsert =
-                { GroupId = groupId
-                  DisplayName = Some groupId
-                  ParticipantIds = [ binding.ParticipantId ]
-                  Tags = Some [ "codex.fs"; "session-group" ] }
-
             task {
-                let! groupView = fabric.UpsertGroupAsync args
+                let! groupView = upsertGroupAsync fabric groupId [ binding.ParticipantId ] [ "codex.fs"; "session-group" ]
                 return Some groupView
             }
         | None -> Task.FromResult None

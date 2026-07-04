@@ -120,3 +120,11 @@
 - Inputs: read PTCS Requirement/SA/SD plus RFC-PTC-SPA-0006, RFC-PTC-SPA-0008, RFC-PTC-SPA-0010, and RFC-SPA-UPSTREAM-0001/0002/0003 from `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc`.
 - Tests: `T-UI-001` marks the RFC/verifier-plan slice as pass and explicitly defers real browser implementation/verifier to a future UI implementation WBS.
 - Traceability: WBS `UI-001`, detail `doc/WBS.UI-001.md`, RFC `RFC-UI-0001`, and Test `T-UI-001` updated to `Done` / `Pass`.
+
+## 2026-07-04 23:38 +08:00 E2E-003 multi-agent MessageFabric group
+
+- Scope: completed the non-durable multi-agent collaboration slice before entering durability refactor.
+- Fix: `E2E-003` had been incorrectly treated as blocked by `PTCS-003`; this slice proves the group/direct collaboration path can run over real PTCS MessageFabric without durable ingress.
+- Behavior: two session-worker participants join a PTCS MessageFabric group, alpha sends a group task, beta receives it and replies direct to alpha, and alpha acknowledges the reply cursor.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings / 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and output included `TC-E2E-003 multi-agent MessageFabric group passed`.
+- Traceability: WBS `E2E-003`, detail `doc/WBS.E2E-003.md`, and Test `T-E2E-003` updated to `Done` / `Pass`.

@@ -720,6 +720,74 @@ assertTrue "group poll contains message" (groupBatch.Messages |> List.exists (fu
 
 printfn "TC-PTCS-002 MessageFabric binding passed"
 
+let e2e003RunSuffix = Guid.NewGuid().ToString("N")
+let e2e003GroupId = $"group.e2e003.{e2e003RunSuffix}"
+let e2e003Alpha = MessageFabricBinding.defaultBinding $"agent.e2e003.alpha.{e2e003RunSuffix}"
+let e2e003Beta = { MessageFabricBinding.defaultBinding $"agent.e2e003.beta.{e2e003RunSuffix}" with GroupId = Some e2e003GroupId; IncludeGroups = true }
+
+let e2e003Registration participantId =
+    { MessageFabricBinding.defaultRegistration with
+        DisplayName = Some participantId
+        Kind = Some "agent"
+        Labels = Some [ "codex.fs"; "e2e003"; "session-worker" ] }
+
+runTask (MessageFabricBinding.registerParticipantAsync ptcsFabric e2e003Alpha (e2e003Registration e2e003Alpha.ParticipantId))
+|> ignore
+
+runTask (MessageFabricBinding.registerParticipantAsync ptcsFabric e2e003Beta (e2e003Registration e2e003Beta.ParticipantId))
+|> ignore
+
+let e2e003GroupView =
+    runTask
+        (MessageFabricBinding.upsertGroupAsync
+            ptcsFabric
+            e2e003GroupId
+            [ e2e003Alpha.ParticipantId; e2e003Beta.ParticipantId ]
+            [ "codex.fs"; "e2e003"; "multi-agent" ])
+
+assertTrue "e2e003 group contains alpha" (e2e003GroupView.ParticipantIds |> List.contains e2e003Alpha.ParticipantId)
+assertTrue "e2e003 group contains beta" (e2e003GroupView.ParticipantIds |> List.contains e2e003Beta.ParticipantId)
+
+let e2e003TaskBody = "E2E-003 alpha asks beta to inspect artifact manifest reference"
+
+let e2e003GroupMessage =
+    runTask
+        (MessageFabricBinding.sendAsync
+            ptcsFabric
+            { FromParticipantId = e2e003Alpha.ParticipantId
+              Scope = PulseTrade.Comm.Spa.MessageFabricScope.Group e2e003GroupId
+              Body = e2e003TaskBody
+              Tags = [ "codex.fs"; "e2e003"; "task" ]
+              CorrelationId = Some $"e2e003-task-{e2e003RunSuffix}"
+              CreatedAtUtc = None })
+
+let e2e003BetaBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric e2e003Beta None)
+assertTrue "e2e003 beta received group task" (e2e003BetaBatch.Messages |> List.exists (fun message -> message.MessageId = e2e003GroupMessage.MessageId))
+
+let e2e003BetaRefs = MessageFabricBinding.batchToMessageRefs e2e003BetaBatch
+assertTrue "e2e003 beta ref has group" (e2e003BetaRefs |> List.exists (fun message -> message.GroupId = Some e2e003GroupId))
+
+let e2e003ReplyBody = "E2E-003 beta reviewed manifest reference and replies to alpha"
+
+let e2e003Reply =
+    runTask
+        (MessageFabricBinding.sendDirectReplyAsync
+            ptcsFabric
+            e2e003Beta
+            e2e003Alpha.ParticipantId
+            e2e003ReplyBody
+            [ "codex.fs"; "e2e003"; "reply" ]
+            (Some $"e2e003-reply-{e2e003RunSuffix}"))
+
+let e2e003AlphaBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric e2e003Alpha None)
+assertTrue "e2e003 alpha received beta reply" (e2e003AlphaBatch.Messages |> List.exists (fun message -> message.MessageId = e2e003Reply.MessageId))
+assertTrue "e2e003 alpha reply body" (e2e003AlphaBatch.Messages |> List.exists (fun message -> message.Body = e2e003ReplyBody))
+
+let e2e003Ack = runTask (MessageFabricBinding.ackInboxAsync ptcsFabric e2e003Alpha e2e003AlphaBatch.NextCursor)
+assertEqual "e2e003 alpha ack" "ok" e2e003Ack.Status
+
+printfn "TC-E2E-003 multi-agent MessageFabric group passed"
+
 let startControlledSleepProcess () =
     let psi = ProcessStartInfo()
     psi.FileName <- "powershell.exe"

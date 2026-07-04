@@ -111,6 +111,13 @@
 - Relevant PTCS seams are `RegisterClientExtension`, `RegisterClientExtensionScriptAsset`, registered same-origin JSON POST handler, and page renderer/fallback contracts.
 - `RFC-UI-0001` is an RFC/verifier-plan slice only; future UI implementation must add real browser + MessageFabric verifiers.
 
+## 2026-07-04 E2E-003 Non-durable Multi-agent Collaboration
+
+- `PTCS-003` durable handoff is not a blocker for first-slice multi-agent collaboration.
+- Non-durable collaboration uses real `CommSpaMessageFabric` group/direct messages: one session-worker sends a group task, another session-worker receives it and replies direct.
+- `MessageFabricBinding.upsertGroupAsync` supports groups with multiple participant ids; `tryUpsertConfiguredGroupAsync` remains the single-binding convenience wrapper.
+- Durable task admission/retry/restart remains separate under `PTCS-003` / `OPS-002`.
+
 ## 2026-07-04 OPS-001 Process Orphan Recovery
 
 - `ProcessRunner.ProcessLease` records pid, process name, observed start time and non-secret marker for codex.fs-owned processes.
