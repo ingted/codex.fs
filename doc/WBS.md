@@ -38,8 +38,8 @@ Status 值：
 | EN-001 | 實作 engine adapter contract | CF-002 | 100 | Done | None | 2026-07-04 18:50 +08:00 | 2026-07-04 18:53 +08:00 | SD §4, §16.2 | T-EN-001 | TC-EN-001 `CodexFs.Engine` build/XML docs | inline |
 | EN-002 | 實作 process runner/guard contract | EN-001 | 100 | Done | None | 2026-07-04 18:55 +08:00 | 2026-07-04 18:56 +08:00 | SD §4, SA §9 | T-EN-002 | TC-EN-002 temp FSI success/timeout kill | inline |
 | CDX-001 | Codex CLI probe fixtures | EN-001 | 100 | Done | None | 2026-07-04 19:11 +08:00 | 2026-07-04 19:15 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex 0.142.4 exec help/version fixture | inline |
-| CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 0 | Planned | None | 未動工 | 2026-07-04 19:15 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex argv render | inline |
-| CDX-003 | Codex artifact mapping | CDX-002 | 0 | Planned | CDX-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex output map | inline |
+| CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 100 | Done | None | 2026-07-04 19:16 +08:00 | 2026-07-04 19:21 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex Argu parse/render | inline |
+| CDX-003 | Codex artifact mapping | CDX-002 | 0 | Planned | None | 未動工 | 2026-07-04 19:21 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex output map | inline |
 | AGY-001 | Agy CLI probe fixtures | EN-001 | 100 | Done | None | 2026-07-04 18:58 +08:00 | 2026-07-04 18:59 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy 1.0.16 help/version fixture | inline |
 | AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 100 | Done | None | 2026-07-04 19:00 +08:00 | 2026-07-04 19:05 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy Argu parse/render | inline |
 | AGY-003 | Agy artifact mapping | AGY-002 | 100 | Done | None | 2026-07-04 19:06 +08:00 | 2026-07-04 19:10 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy stdout/stderr/final artifact map | inline |

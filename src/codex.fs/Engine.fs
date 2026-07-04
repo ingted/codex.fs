@@ -131,6 +131,342 @@ module Engine =
                       VersionText = normalizeVersionText versionText
                       Surfaces = trySurface versionText helpText |> Option.toList }
 
+                /// Codex exec sandbox mode values.
+                type SandboxMode =
+                    /// Read-only sandbox.
+                    | ReadOnly
+                    /// Workspace-write sandbox.
+                    | WorkspaceWrite
+                    /// Full-access sandbox.
+                    | DangerFullAccess
+
+                /// Codex exec color output mode values.
+                type ColorMode =
+                    /// Always emit color.
+                    | Always
+                    /// Never emit color.
+                    | Never
+                    /// Let Codex decide based on terminal detection.
+                    | Auto
+
+                /// FAkka.Argu DU for the Codex CLI 0.142.x exec surface.
+                type CliArgument =
+                    /// Initial instructions for the agent as a positional prompt.
+                    | [<MainCommand>] Prompt of prompt: string
+                    /// Override one config value, repeatable.
+                    | [<AltCommandLine("-c")>] Config of assignment: string
+                    /// Enable a feature, repeatable.
+                    | Enable of feature: string
+                    /// Disable a feature, repeatable.
+                    | Disable of feature: string
+                    /// Error when config contains fields not recognized by this Codex version.
+                    | Strict_Config
+                    /// Attach an image to the initial prompt, repeatable.
+                    | [<AltCommandLine("-i")>] Image of path: string
+                    /// Model the agent should use.
+                    | [<AltCommandLine("-m")>] Model of model: string
+                    /// Use open-source provider.
+                    | Oss
+                    /// Local provider to use with OSS mode.
+                    | Local_Provider of provider: string
+                    /// Config profile name.
+                    | [<AltCommandLine("-p")>] Profile of profile: string
+                    /// Sandbox policy value.
+                    | [<AltCommandLine("-s")>] Sandbox of mode: string
+                    /// Bypass approvals and sandbox for externally sandboxed automation.
+                    | Dangerously_Bypass_Approvals_And_Sandbox
+                    /// Run enabled hooks without persisted hook trust.
+                    | Dangerously_Bypass_Hook_Trust
+                    /// Working root for the agent.
+                    | [<AltCommandLine("-C")>] Cd of directory: string
+                    /// Additional writable directory, repeatable.
+                    | Add_Dir of directory: string
+                    /// Allow running outside a Git repository.
+                    | Skip_Git_Repo_Check
+                    /// Run without persisting session files to disk.
+                    | Ephemeral
+                    /// Do not load user config.
+                    | Ignore_User_Config
+                    /// Do not load user or project execpolicy rules.
+                    | Ignore_Rules
+                    /// JSON schema file for the final response shape.
+                    | Output_Schema of path: string
+                    /// Color output mode.
+                    | Color of mode: string
+                    /// Print events to stdout as JSONL.
+                    | Json
+                    /// File where the last message should be written.
+                    | [<AltCommandLine("-o")>] Output_Last_Message of path: string
+
+                    interface IArgParserTemplate with
+                        member this.Usage =
+                            match this with
+                            | Prompt _ -> "Initial instructions for the agent as a positional prompt."
+                            | Config _ -> "Override one config value; repeatable."
+                            | Enable _ -> "Enable a feature; repeatable."
+                            | Disable _ -> "Disable a feature; repeatable."
+                            | Strict_Config -> "Reject unrecognized config fields."
+                            | Image _ -> "Attach an image to the initial prompt; repeatable."
+                            | Model _ -> "Model the agent should use."
+                            | Oss -> "Use open-source provider."
+                            | Local_Provider _ -> "Local provider to use with OSS mode."
+                            | Profile _ -> "Config profile name."
+                            | Sandbox _ -> "Sandbox policy value."
+                            | Dangerously_Bypass_Approvals_And_Sandbox -> "Bypass approvals and sandbox."
+                            | Dangerously_Bypass_Hook_Trust -> "Bypass hook trust prompt."
+                            | Cd _ -> "Working root for the agent."
+                            | Add_Dir _ -> "Additional writable directory; repeatable."
+                            | Skip_Git_Repo_Check -> "Allow running outside a Git repository."
+                            | Ephemeral -> "Run without persisting session files to disk."
+                            | Ignore_User_Config -> "Do not load user config."
+                            | Ignore_Rules -> "Do not load user/project execpolicy rules."
+                            | Output_Schema _ -> "JSON schema file for final response shape."
+                            | Color _ -> "Color output mode."
+                            | Json -> "Print events to stdout as JSONL."
+                            | Output_Last_Message _ -> "File where the last message should be written."
+
+                /// Normalized Codex 0.142.x exec arguments.
+                type Args =
+                    { /// Optional positional prompt. Prefer stdin/prompt artifact policy for long prompts.
+                      Prompt: string option
+                      /// Repeatable `-c` / `--config` values.
+                      Config: string list
+                      /// Repeatable `--enable` values.
+                      Enable: string list
+                      /// Repeatable `--disable` values.
+                      Disable: string list
+                      /// Render `--strict-config`.
+                      StrictConfig: bool
+                      /// Repeatable `--image` values.
+                      Images: string list
+                      /// Render `--model <model>`.
+                      Model: string option
+                      /// Render `--oss`.
+                      Oss: bool
+                      /// Render `--local-provider <provider>`.
+                      LocalProvider: string option
+                      /// Render `--profile <name>`.
+                      Profile: string option
+                      /// Render `--sandbox <mode>`.
+                      Sandbox: SandboxMode option
+                      /// Render `--dangerously-bypass-approvals-and-sandbox`.
+                      DangerouslyBypassApprovalsAndSandbox: bool
+                      /// Render `--dangerously-bypass-hook-trust`.
+                      DangerouslyBypassHookTrust: bool
+                      /// Render `--cd <dir>`.
+                      Cd: string option
+                      /// Repeatable `--add-dir` values.
+                      AddDirs: string list
+                      /// Render `--skip-git-repo-check`.
+                      SkipGitRepoCheck: bool
+                      /// Render `--ephemeral`.
+                      Ephemeral: bool
+                      /// Render `--ignore-user-config`.
+                      IgnoreUserConfig: bool
+                      /// Render `--ignore-rules`.
+                      IgnoreRules: bool
+                      /// Render `--output-schema <file>`.
+                      OutputSchema: string option
+                      /// Render `--color <mode>`.
+                      Color: ColorMode option
+                      /// Render `--json`.
+                      Json: bool
+                      /// Render `--output-last-message <file>`.
+                      OutputLastMessage: string option }
+
+                /// Empty Codex exec args.
+                let emptyArgs =
+                    { Prompt = None
+                      Config = []
+                      Enable = []
+                      Disable = []
+                      StrictConfig = false
+                      Images = []
+                      Model = None
+                      Oss = false
+                      LocalProvider = None
+                      Profile = None
+                      Sandbox = None
+                      DangerouslyBypassApprovalsAndSandbox = false
+                      DangerouslyBypassHookTrust = false
+                      Cd = None
+                      AddDirs = []
+                      SkipGitRepoCheck = false
+                      Ephemeral = false
+                      IgnoreUserConfig = false
+                      IgnoreRules = false
+                      OutputSchema = None
+                      Color = None
+                      Json = false
+                      OutputLastMessage = None }
+
+                /// Create an Argu parser for the Codex 0.142.x exec surface.
+                let argumentParser programName =
+                    ArgumentParser.Create<CliArgument>(programName = programName)
+
+                /// Parse a Codex sandbox mode string.
+                let parseSandboxMode (text: string) =
+                    match text.Trim().ToLowerInvariant() with
+                    | "read-only" -> ReadOnly
+                    | "workspace-write" -> WorkspaceWrite
+                    | "danger-full-access" -> DangerFullAccess
+                    | _ -> invalidArg "text" $"Unsupported Codex sandbox mode: {text}"
+
+                /// Render a Codex sandbox mode string.
+                let formatSandboxMode mode =
+                    match mode with
+                    | ReadOnly -> "read-only"
+                    | WorkspaceWrite -> "workspace-write"
+                    | DangerFullAccess -> "danger-full-access"
+
+                /// Parse a Codex color mode string.
+                let parseColorMode (text: string) =
+                    match text.Trim().ToLowerInvariant() with
+                    | "always" -> Always
+                    | "never" -> Never
+                    | "auto" -> Auto
+                    | _ -> invalidArg "text" $"Unsupported Codex color mode: {text}"
+
+                /// Render a Codex color mode string.
+                let formatColorMode mode =
+                    match mode with
+                    | Always -> "always"
+                    | Never -> "never"
+                    | Auto -> "auto"
+
+                /// Convert parsed FAkka.Argu results into normalized Codex exec args.
+                let fromParseResults (results: ParseResults<CliArgument>) =
+                    { emptyArgs with
+                        Prompt = results.TryGetResult Prompt
+                        Config = results.GetResults Config
+                        Enable = results.GetResults Enable
+                        Disable = results.GetResults Disable
+                        StrictConfig = results.Contains Strict_Config
+                        Images = results.GetResults Image
+                        Model = results.TryGetResult Model
+                        Oss = results.Contains Oss
+                        LocalProvider = results.TryGetResult Local_Provider
+                        Profile = results.TryGetResult Profile
+                        Sandbox = results.TryGetResult Sandbox |> Option.map parseSandboxMode
+                        DangerouslyBypassApprovalsAndSandbox = results.Contains Dangerously_Bypass_Approvals_And_Sandbox
+                        DangerouslyBypassHookTrust = results.Contains Dangerously_Bypass_Hook_Trust
+                        Cd = results.TryGetResult Cd
+                        AddDirs = results.GetResults Add_Dir
+                        SkipGitRepoCheck = results.Contains Skip_Git_Repo_Check
+                        Ephemeral = results.Contains Ephemeral
+                        IgnoreUserConfig = results.Contains Ignore_User_Config
+                        IgnoreRules = results.Contains Ignore_Rules
+                        OutputSchema = results.TryGetResult Output_Schema
+                        Color = results.TryGetResult Color |> Option.map parseColorMode
+                        Json = results.Contains Json
+                        OutputLastMessage = results.TryGetResult Output_Last_Message }
+
+                /// Render normalized Codex exec args into argv without shell interpolation.
+                let renderArguments (args: Args) =
+                    [ "exec"
+                      for config in args.Config do
+                          "-c"
+                          config
+                      for feature in args.Enable do
+                          "--enable"
+                          feature
+                      for feature in args.Disable do
+                          "--disable"
+                          feature
+                      if args.StrictConfig then
+                          "--strict-config"
+                      for image in args.Images do
+                          "--image"
+                          image
+                      match args.Model with
+                      | Some model ->
+                          "--model"
+                          model
+                      | None -> ()
+                      if args.Oss then
+                          "--oss"
+                      match args.LocalProvider with
+                      | Some provider ->
+                          "--local-provider"
+                          provider
+                      | None -> ()
+                      match args.Profile with
+                      | Some profile ->
+                          "--profile"
+                          profile
+                      | None -> ()
+                      match args.Sandbox with
+                      | Some mode ->
+                          "--sandbox"
+                          formatSandboxMode mode
+                      | None -> ()
+                      if args.DangerouslyBypassApprovalsAndSandbox then
+                          "--dangerously-bypass-approvals-and-sandbox"
+                      if args.DangerouslyBypassHookTrust then
+                          "--dangerously-bypass-hook-trust"
+                      match args.Cd with
+                      | Some directory ->
+                          "--cd"
+                          directory
+                      | None -> ()
+                      for addDir in args.AddDirs do
+                          "--add-dir"
+                          addDir
+                      if args.SkipGitRepoCheck then
+                          "--skip-git-repo-check"
+                      if args.Ephemeral then
+                          "--ephemeral"
+                      if args.IgnoreUserConfig then
+                          "--ignore-user-config"
+                      if args.IgnoreRules then
+                          "--ignore-rules"
+                      match args.OutputSchema with
+                      | Some path ->
+                          "--output-schema"
+                          path
+                      | None -> ()
+                      match args.Color with
+                      | Some color ->
+                          "--color"
+                          formatColorMode color
+                      | None -> ()
+                      if args.Json then
+                          "--json"
+                      match args.OutputLastMessage with
+                      | Some path ->
+                          "--output-last-message"
+                          path
+                      | None -> ()
+                      match args.Prompt with
+                      | Some prompt ->
+                          prompt
+                      | None -> () ]
+
+                /// Quote a display argument for diagnostic text only.
+                let quoteDisplayArgument (argument: string) =
+                    if String.IsNullOrEmpty argument then
+                        "\"\""
+                    elif argument.IndexOfAny [| ' '; '\t'; '\r'; '\n'; '"' |] >= 0 then
+                        "\"" + argument.Replace("\"", "\\\"") + "\""
+                    else
+                        argument
+
+                /// Render a redacted human-readable command display.
+                let renderRedactedDisplay executablePath args =
+                    executablePath :: renderArguments args
+                    |> List.map quoteDisplayArgument
+                    |> String.concat " "
+                    |> Redaction.redactHighRisk
+                    |> fun result -> result.Text
+
+                /// Render a normalized command record for the process runner boundary.
+                let renderCommand executablePath workingDirectory args =
+                    { FileName = executablePath
+                      Arguments = renderArguments args
+                      WorkingDirectory = workingDirectory
+                      Environment = Map.empty
+                      RedactedDisplay = renderRedactedDisplay executablePath args }
+
     /// Agy CLI engine surfaces.
     module Agy =
 
