@@ -146,3 +146,14 @@
 - `--prompt @file` is resolved in the CLI process before HTTP submission; the host receives prompt text and never reads caller filesystem paths.
 - Manual self-use evidence used LAN URI `http://10.28.112.93:10481` and real PTCS MessageFabric: host status running, session send accepted, pendingCount 1 before drain, drained, and pendingCount 0 after drain.
 - Evidence summary path: `G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\summary.json`.
+
+## 2026-07-05 HOST-004/DOC-004/REL-004 Host Usability Handoff
+
+- Host health is not a sufficient product gate. User-facing handoff must verify the advertised root URL, visible docs UI, OpenAPI JSON, and the actual installed tool path.
+- `GET /` is the codex.fs host operator landing page. It links to health, OpenAPI JSON, Swagger UI, and the CLI `host status` command.
+- OpenAPI metadata now applies endpoint tag/summary/description from `HostControl.endpointDefinitions`, so Swagger UI shows `Host Control` with readable operation summaries instead of handler-generated names.
+- Global tool handoff uses `codex.fs.cli` and `codex.fs.host.tool` installed under `C:\Users\Administrator\.dotnet\tools`; `dotnet run --project` is only a bounded dev/internal verification path.
+- Final alpha.2 evidence paths:
+  - host run summary: `G:\codex.fs\.codex.fs\host-run\20260705004149-alpha2\summary.json`
+  - browser summary/screenshots: `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\summary.json`, `root.png`, `docs.png`
+  - packages: `G:\codex.fs\bin\host-usability-packs-20260705004149-alpha2`

@@ -52,9 +52,11 @@ Status 值：
 | HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 100 | Done | None | 2026-07-04 20:55 +08:00 | 2026-07-04 21:03 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
 | HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 100 | Done | None | 2026-07-04 21:08 +08:00 | 2026-07-04 21:14 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host runtime/health | inline |
 | HOST-003 | 定義並實作 host control endpoint | HOST-002 | 100 | Done | None | 2026-07-04 21:21 +08:00 | 2026-07-04 21:27 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
+| HOST-004 | Host operator landing page / usability gate | HOST-003;DOC-003 | 100 | Done | None | 2026-07-05 00:41 +08:00 | 2026-07-05 01:00 +08:00 | SD §9, §10 | T-HOST-004 | TC-HOST-004 root landing browser gate | [@HOST-004](WBS.HOST-004.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
 | DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 100 | Done | None | 2026-07-04 21:36 +08:00 | 2026-07-04 21:39 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | [@DOC-003](WBS.DOC-003.md) |
+| DOC-004 | API/SDK docs handoff gate | DOC-003;HOST-004 | 100 | Done | None | 2026-07-05 00:41 +08:00 | 2026-07-05 01:00 +08:00 | SD §10 | T-DOC-004 | TC-DOC-004 Swagger/OpenAPI/XML docs visible | [@DOC-004](WBS.DOC-004.md) |
 | CLI-001 | 實作 CLI command DU/help | HOST-003 | 100 | Done | None | 2026-07-04 21:44 +08:00 | 2026-07-04 21:48 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | [@CLI-001](WBS.CLI-001.md) |
 | CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 100 | Done | None | 2026-07-04 21:51 +08:00 | 2026-07-04 21:56 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | [@CLI-002](WBS.CLI-002.md) |
 | CLI-003 | CLI attach/drain/status | CLI-002 | 100 | Done | None | 2026-07-04 22:00 +08:00 | 2026-07-04 22:09 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | [@CLI-003](WBS.CLI-003.md) |
@@ -62,6 +64,7 @@ Status 值：
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | codex.fs.cli dotnet tool package | REL-001;HOST-001;CLI-003 | 100 | Done | None | 2026-07-04 22:35 +08:00 | 2026-07-04 22:41 +08:00 | Requirement R-001, SD §2, §14 | T-REL-002 | TC-REL-002 tool install/run help | [@REL-002](WBS.REL-002.md) |
 | REL-003 | codex.fs.host standalone tool entrypoint | REL-002;HOST-003;E2E-002 | 100 | Done | None | 2026-07-04 22:55 +08:00 | 2026-07-04 23:06 +08:00 | Requirement R-001, SD §2, §9 | T-REL-003 | TC-REL-003 host tool start/status | [@REL-003](WBS.REL-003.md) |
+| REL-004 | Global tool install and host handoff | REL-003;HOST-004;DOC-004 | 100 | Done | None | 2026-07-05 00:41 +08:00 | 2026-07-05 01:00 +08:00 | SD §2, §9, §10 | T-REL-004 | TC-REL-004 global tool install + LAN host docs | [@REL-004](WBS.REL-004.md) |
 | E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 100 | Done | None | 2026-07-04 19:41 +08:00 | 2026-07-04 19:47 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 installed codex/agy probe real path | inline |
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-003 | 100 | Done | None | 2026-07-04 22:13 +08:00 | 2026-07-04 22:27 +08:00 | Requirement §10, SA §6.1, SD §14 | T-E2E-002 | TC-E2E-002 `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-002 | 100 | Done | None | 2026-07-04 23:28 +08:00 | 2026-07-04 23:38 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | [@E2E-003](WBS.E2E-003.md) |
@@ -76,8 +79,10 @@ Status 值：
 | [@PTCS-002](WBS.PTCS-002.md) | MessageFabric session binding is a high-risk integration slice; detail file tracks exact PTCS operations and acceptance gates. |
 | [@PTCS-003](WBS.PTCS-003.md) | Durable task handoff uses real PTCS `CommSpaDurableMessageFabric` ticketed admission; crash-durable recovery remains OPS-002/future provider profile scope. |
 | [@HOST-003](WBS.HOST-003.md) | Host control endpoint uses HTTP with bind/advertise config; localhost is dev-only. |
+| [@HOST-004](WBS.HOST-004.md) | Host root URL is a human-facing landing page verified by browser/Playwright, not a 404 or hidden health-only endpoint. |
 | [@DOC-001](WBS.DOC-001.md) | API documentation toolchain selection affects NuGet SDK docs and Swagger generation. |
 | [@DOC-003](WBS.DOC-003.md) | OpenAPI JSON and Swagger UI verification uses the real host endpoint through advertised non-loopback URI. |
+| [@DOC-004](WBS.DOC-004.md) | API/SDK docs handoff requires visible Swagger/OpenAPI plus packaged XML docs evidence. |
 | [@CLI-001](WBS.CLI-001.md) | Terminal client command surface is a compiled FAkka.Argu parser; real host execution is deferred to CLI-002/CLI-003. |
 | [@CLI-002](WBS.CLI-002.md) | CLI session send uses real host HTTP endpoint and PTCS MessageFabric; attach/drain/status remains CLI-003. |
 | [@CLI-003](WBS.CLI-003.md) | CLI status/attach/drain read the real session inbox through host control endpoints and drain acknowledges the cursor. |
@@ -85,6 +90,7 @@ Status 值：
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
 | [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |
+| [@REL-004](WBS.REL-004.md) | User-facing handoff verifies global tool path, LAN host URL, root page, OpenAPI JSON and Swagger UI. |
 | [@E2E-003](WBS.E2E-003.md) | Non-durable multi-agent collaboration uses real PTCS MessageFabric group/direct messages; durable hardening remains PTCS-003/OPS-002. |
 | [@OPS-001](WBS.OPS-001.md) | Process orphan recovery kills only a pid/name/start-time matched codex.fs-owned lease. |
 | [@OPS-002](WBS.OPS-002.md) | Session single-cycle runner writes a ready-to-ack persistence boundary after reply evidence and before MessageFabric ack. |

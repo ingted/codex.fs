@@ -1,6 +1,7 @@
 namespace CodexFs.Host
 
 open System
+open System.Net
 open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
@@ -19,6 +20,10 @@ module HostControl =
 
     /// Stable host control routes.
     module Routes =
+
+        /// Human-facing landing page for operators opening the advertised host root URL.
+        [<Literal>]
+        let Root = "/"
 
         /// Health endpoint used by CLI/Web/admin callers to inspect non-secret host status.
         [<Literal>]
@@ -50,6 +55,10 @@ module HostControl =
 
     /// Stable endpoint names for OpenAPI metadata and CLI documentation.
     module EndpointNames =
+
+        /// Endpoint name for `GET /`.
+        [<Literal>]
+        let Root = "CodexFsHostRoot"
 
         /// Endpoint name for `GET /api/codexfs/host/health`.
         [<Literal>]
@@ -300,9 +309,20 @@ module HostControl =
           Body =
             """{"code":"message-fabric-unavailable","message":"Host MessageFabric is not initialized."}""" }
 
+    let rootSuccessExample =
+        { Name = "operator-landing"
+          Description = "A human-facing landing page with links to health, OpenAPI JSON, and Swagger UI when available."
+          Body = """<html><body><h1>codex.fs host</h1></body></html>""" }
+
     /// Endpoint definitions that act as the canonical code-side docs metadata for the HTTP control plane.
     let endpointDefinitions =
         [ { Method = "GET"
+            Route = Routes.Root
+            Name = EndpointNames.Root
+            Summary = "Return a human-facing codex.fs host landing page."
+            SuccessExample = rootSuccessExample
+            FailureExample = healthFailureExample }
+          { Method = "GET"
             Route = Routes.Health
             Name = EndpointNames.Health
             Summary = "Return non-secret codex.fs host health and network profile metadata."
@@ -465,6 +485,62 @@ module HostControl =
     let errorResult (statusCode: int) code message =
         Results.Json({ Code = code; Message = message }, statusCode = Nullable<int>(statusCode))
 
+    let htmlEncode (text: string) = WebUtility.HtmlEncode(if isNull text then String.Empty else text)
+
+    let rootPageHtml (contract: HostControlContract) =
+        let docsItems =
+            [ yield $"<li><a href=\"{htmlEncode contract.HealthUri}\">Host health JSON</a></li>"
+              if contract.GenerateOpenApi then
+                  yield $"<li><a href=\"{htmlEncode contract.OpenApiJsonUri}\">OpenAPI JSON</a></li>"
+              if contract.GenerateOpenApi && contract.ExposeSwaggerUi then
+                  yield $"<li><a href=\"{htmlEncode contract.SwaggerUiUri}\">Swagger UI</a></li>" ]
+            |> String.concat Environment.NewLine
+
+        $"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>codex.fs host</title>
+  <style>
+    body {{ font-family: system-ui, -apple-system, Segoe UI, sans-serif; max-width: 860px; margin: 48px auto; padding: 0 24px; line-height: 1.5; }}
+    code {{ background: #f4f4f4; padding: 2px 5px; border-radius: 4px; }}
+    .status {{ display: inline-block; padding: 2px 8px; border: 1px solid #7fbf7f; border-radius: 4px; color: #166116; }}
+  </style>
+</head>
+<body>
+  <h1>codex.fs host</h1>
+  <p class="status">running</p>
+  <p>Advertised URI: <code>{htmlEncode contract.AdvertiseUri}</code></p>
+  <h2>Available endpoints</h2>
+  <ul>
+    {docsItems}
+  </ul>
+  <h2>CLI</h2>
+  <p><code>codex.fs.cli host status --host {htmlEncode contract.AdvertiseUri}</code></p>
+</body>
+</html>"""
+
+    let endpointDefinition name =
+        endpointDefinitions
+        |> List.find (fun definition -> String.Equals(definition.Name, name, StringComparison.Ordinal))
+
+    let endpointDescription (definition: HostControlEndpointDefinition) =
+        String.concat
+            Environment.NewLine
+            [ definition.Summary
+              $"Success example: {definition.SuccessExample.Description}"
+              $"Failure example: {definition.FailureExample.Description}" ]
+
+    let withEndpointDoc name (builder: RouteHandlerBuilder) =
+        let definition = endpointDefinition name
+
+        builder
+            .WithName(definition.Name)
+            .WithTags("Host Control")
+            .WithSummary(definition.Summary)
+            .WithDescription(endpointDescription definition)
+
     let sessionBinding (config: HostConfig.HostConfig) sessionId =
         { MessageFabricBinding.defaultBinding (sessionParticipantId config sessionId) with
             InboxLimit = config.Ptcs.DefaultInboxLimit }
@@ -613,21 +689,24 @@ module HostControl =
 
     /// Attach the current HTTP control endpoints to an ASP.NET Core application.
     let mapEndpoints (application: WebApplication) (contract: HostControlContract) (runtime: HostRuntime.HostRuntime) =
+        let rootHandler =
+            Func<IResult>(fun () -> Results.Content(rootPageHtml contract, "text/html; charset=utf-8"))
+
+        (application.MapGet(Routes.Root, rootHandler) |> withEndpointDoc EndpointNames.Root)
+            .Produces(StatusCodes.Status200OK, contentType = "text/html")
+        |> ignore
+
         let healthHandler =
             Func<IResult>(fun () -> Results.Json(healthResponse contract runtime))
 
-        application
-            .MapGet(Routes.Health, healthHandler)
-            .WithName(EndpointNames.Health)
+        (application.MapGet(Routes.Health, healthHandler) |> withEndpointDoc EndpointNames.Health)
             .Produces<HostControlHealthResponse>(StatusCodes.Status200OK)
         |> ignore
 
         let sessionSendHandler =
             Func<string, SessionSendRequest, Task<IResult>>(fun sessionId request -> sendSessionMessageAsync runtime sessionId request)
 
-        application
-            .MapPost(Routes.SessionMessages, sessionSendHandler)
-            .WithName(EndpointNames.SessionMessages)
+        (application.MapPost(Routes.SessionMessages, sessionSendHandler) |> withEndpointDoc EndpointNames.SessionMessages)
             .Accepts<SessionSendRequest>("application/json")
             .Produces<SessionSendResponse>(StatusCodes.Status202Accepted)
             .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)
@@ -637,9 +716,7 @@ module HostControl =
         let sessionStatusHandler =
             Func<string, Task<IResult>>(fun sessionId -> sessionStatusAsync runtime sessionId)
 
-        application
-            .MapGet(Routes.SessionStatus, sessionStatusHandler)
-            .WithName(EndpointNames.SessionStatus)
+        (application.MapGet(Routes.SessionStatus, sessionStatusHandler) |> withEndpointDoc EndpointNames.SessionStatus)
             .Produces<SessionInboxResponse>(StatusCodes.Status200OK)
             .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<HostControlErrorResponse>(StatusCodes.Status503ServiceUnavailable)
@@ -648,9 +725,7 @@ module HostControl =
         let sessionAttachHandler =
             Func<string, Task<IResult>>(fun sessionId -> sessionAttachAsync runtime sessionId)
 
-        application
-            .MapPost(Routes.SessionAttach, sessionAttachHandler)
-            .WithName(EndpointNames.SessionAttach)
+        (application.MapPost(Routes.SessionAttach, sessionAttachHandler) |> withEndpointDoc EndpointNames.SessionAttach)
             .Produces<SessionInboxResponse>(StatusCodes.Status200OK)
             .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<HostControlErrorResponse>(StatusCodes.Status503ServiceUnavailable)
@@ -659,9 +734,7 @@ module HostControl =
         let sessionDrainHandler =
             Func<string, Task<IResult>>(fun sessionId -> sessionDrainAsync runtime sessionId)
 
-        application
-            .MapPost(Routes.SessionDrain, sessionDrainHandler)
-            .WithName(EndpointNames.SessionDrain)
+        (application.MapPost(Routes.SessionDrain, sessionDrainHandler) |> withEndpointDoc EndpointNames.SessionDrain)
             .Produces<SessionInboxResponse>(StatusCodes.Status200OK)
             .Produces<HostControlErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<HostControlErrorResponse>(StatusCodes.Status503ServiceUnavailable)

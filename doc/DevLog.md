@@ -154,3 +154,17 @@
 - Manual CLI self-use: started `codex.fs.host` on LAN URI `http://10.28.112.93:10481`, ran compiled CLI `host status`, `session send --prompt @G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\prompt.md`, `session status`, `session drain`, and final `session status`; results were running, accepted, pendingCount 1, drained, and pendingCount 0.
 - Evidence: `G:\codex.fs\src\codex.fs\.codex.fs\cli004-selfuse\summary.json`.
 - Traceability: WBS `CLI-004`, detail `doc/WBS.CLI-004.md`, Test `T-CLI-004`, SD §14, and KM updated.
+
+## 2026-07-05 01:00 +08:00 HOST-004/DOC-004/REL-004 host usability handoff
+
+- Scope: fixed the reported usability defect where `http://10.28.112.93:10481/` returned 404 and global tools were not present under `C:\Users\Administrator\.dotnet\tools`.
+- Behavior: `GET /` now returns a human-facing host landing page with health/OpenAPI/Swagger links; OpenAPI metadata applies endpoint summaries/descriptions; global handoff uses installed `codex.fs.cli` and `codex.fs.host` commands from `0.1.0-alpha.2`.
+- Packaging: bumped package versions to `0.1.0-alpha.2`, packed all packages to `G:\codex.fs\bin\host-usability-packs-20260705004149-alpha2`, and installed global `codex.fs.cli` / `codex.fs.host.tool`.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; HTTP checks for `/`, health, `/openapi/v1.json`, and `/docs/index.html` returned 200; `codex.fs.cli host status --host http://10.28.112.93:10481` returned running host JSON.
+- Browser/API docs evidence: Playwright verified root and Swagger UI at `G:\codex.fs\.codex.fs\host-usability-playwright-20260705004149-alpha2\summary.json`; screenshots are `root.png` and `docs.png`; OpenAPI includes root summary and expected host/session paths.
+- SDK docs evidence: alpha.2 nupkg files contain generated XML docs under `lib/net10.0/*.xml` or tool package `tools/net10.0/any/*.xml`.
+- Traceability: RFC `doc/RFC/RFC-OPS-0001.host-tool-usability.md`, `DEVOP.md`, WBS `HOST-004` / `DOC-004` / `REL-004`, Test `T-HOST-004` / `T-DOC-004` / `T-REL-004`, SD §9-§10, and KM updated.
+
+## 2026-07-05 01:02 +08:00 Correction: RFC ID traceability
+
+- Correction for the previous `HOST-004/DOC-004/REL-004 host usability handoff` entry: the RFC traceability target is `RFC-OPS-0001` at `doc/RFC/RFC-OPS-0001.host-tool-usability.md`.

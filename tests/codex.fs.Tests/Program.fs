@@ -406,12 +406,14 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
+let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
         client.Timeout <- TimeSpan.FromSeconds 10.0
 
+        let rootResponse = runTask (client.GetAsync(hostControlServer.Contract.AdvertiseUri + "/"))
+        let rootBody = runTask (rootResponse.Content.ReadAsStringAsync())
         let response = runTask (client.GetAsync(hostControlServer.Contract.HealthUri))
         let body = runTask (response.Content.ReadAsStringAsync())
         let openApiResponse = runTask (client.GetAsync(hostControlServer.Contract.OpenApiJsonUri))
@@ -447,6 +449,7 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cli
         let cliDrainResult = runTask (CodexFs.Cli.CliHttp.drainSessionAsync client CancellationToken.None cli002Target)
         let cliAfterDrainStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None cli002Target)
 
+        assertEqual "host root http status" HttpStatusCode.OK rootResponse.StatusCode
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
         assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
         assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
@@ -463,7 +466,7 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cli
         assertEqual "cli after drain status" 200 cliAfterDrainStatusResult.StatusCode
         assertTrue "cli after drain success" cliAfterDrainStatusResult.IsSuccess
 
-        body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
+        rootBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -484,6 +487,12 @@ assertTrue "host control response no raw token" (not (hostControlResponseText.Co
 hostControlJson.Dispose()
 
 printfn "TC-HOST-003 endpoint contract passed"
+
+assertContains "host root title" "codex.fs host" hostControlRootPageText
+assertContains "host root health link" hostControlServer.Contract.HealthUri hostControlRootPageText
+assertContains "host root openapi link" hostControlServer.Contract.OpenApiJsonUri hostControlRootPageText
+assertContains "host root swagger link" hostControlServer.Contract.SwaggerUiUri hostControlRootPageText
+assertTrue "host root no raw token" (not (hostControlRootPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 
 let cliHostStatusJson = JsonDocument.Parse(cliHostStatusText)
 let cliHostStatusRoot = cliHostStatusJson.RootElement

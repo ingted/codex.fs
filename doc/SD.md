@@ -630,6 +630,7 @@ namespace CodexFs.Host
 module HostControl
 
 module Routes =
+    val Root : string // "/"
     val Health : string // "/api/codexfs/host/health"
 
 type HostControlContract =
@@ -639,7 +640,11 @@ type HostControlContract =
       BindUri: string
       AdvertiseUri: string
       HealthUri: string
+      OpenApiJsonUri: string
+      SwaggerUiUri: string
       AllowLoopbackOnly: bool
+      GenerateOpenApi: bool
+      ExposeSwaggerUi: bool
       Endpoints: HostControlEndpointDefinition list }
 
 type HostControlHealthResponse =
@@ -672,13 +677,14 @@ val stopAsync : CancellationToken -> HostControlServer -> Task<HostRuntime>
 
 Rules:
 
-- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /api/codexfs/host/health`.
+- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /` plus `GET /api/codexfs/host/health`.
+- `GET /` is the operator landing page. It must return HTTP 200 HTML and link to health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled.
 - `HostControlContract.HealthUri` is built from `control.advertiseUri`; CLI/Web/admin callers must use the advertised URI, not the bind URI when these differ.
 - Non-loopback clustered profiles are validated by `HostConfig`; `control.allowLoopbackOnly = false` rejects loopback bind/advertise config before HTTP start.
 - The health endpoint returns non-secret operational metadata only. It reports executable override keys but never executable override values.
 - Starting the HTTP control endpoint may initialize the in-process PTCS MessageFabric via `HostRuntime`; this HTTP slice still does not create an ActorSystem and does not become a MessageFabric transport.
 - Future ActorSystem initialization belongs to the PTCS ActorFabric/session-worker slice and must use the same non-loopback cluster profile rules as above.
-- Endpoint definitions include success/failure examples and typed response metadata (`Produces<HostControlHealthResponse>`) so `DOC-003` can add generated OpenAPI JSON and Swagger UI without hand-written YAML.
+- Endpoint definitions include success/failure examples and typed response metadata so `DOC-003` / `DOC-004` can expose generated OpenAPI JSON and Swagger UI without hand-written YAML.
 
 Host standalone tool contract:
 
@@ -690,6 +696,8 @@ Host standalone tool contract:
   - `codex.fs.host start --setting <key=value> [--run-seconds <n>]` starts the real HTTP control endpoint through `HostControl.tryStartAsync`.
 - `--run-seconds` is for bounded automation and verification; omitting it runs until Ctrl+C.
 - Clustered/non-dev usage must set `control.bindAddress`, `control.port`, `control.advertiseUri`, and `control.allowLoopbackOnly=false` with a LAN/DNS-reachable advertised URI. Loopback remains dev-only.
+- Handoff to a user must run from an installed global tool or an isolated tool path. Do not leave a long-running `dotnet run` process over `bin/Debug` as the handed-off host because it can lock build outputs.
+- Global tool handoff must verify `C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe --help` and `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help` before claiming CLI/tool availability.
 - The tool does not wire durable task handoff into the host worker loop, does not implement process lease persistence, and does not initialize an ActorSystem; those remain `OPS-002` / future host-worker slices.
 
 ## 10. API documentation / SDK docs design
@@ -737,10 +745,12 @@ Implemented HTTP docs routes:
   - `Microsoft.AspNetCore.OpenApi [10.0.9]`.
   - `Microsoft.OpenApi [2.7.5]` direct override to avoid GHSA-v5pm-xwqc-g5wc affected 2.0.x transitive versions.
   - `Swashbuckle.AspNetCore.SwaggerUI [10.2.3]`.
+- Operator landing page route: `GET /`, returning HTML with links to health, OpenAPI JSON and Swagger UI when enabled.
 - OpenAPI JSON route: `GET /openapi/v1.json`, mapped through `MapOpenApi("/openapi/{documentName}.json")` when `apiDocs.generateOpenApi = true`.
 - Swagger UI route: `/<apiDocs.swaggerRoutePrefix>/index.html`, enabled only when both `apiDocs.generateOpenApi = true` and `apiDocs.exposeSwaggerUi = true`.
 - Test profile uses `apiDocs.swaggerRoutePrefix = docs`, therefore the advertised UI URI is `<control.advertiseUri>/docs/index.html`.
-- OpenAPI JSON and Swagger UI must be verified through `HostControlContract.OpenApiJsonUri` / `SwaggerUiUri`, not through localhost-only URLs.
+- Root, OpenAPI JSON and Swagger UI must be verified through `HostControlContract.AdvertiseUri` / `OpenApiJsonUri` / `SwaggerUiUri`, not through localhost-only URLs.
+- User-facing host release evidence must include browser or Playwright verification for root and Swagger UI, plus a JSON/OpenAPI check proving expected paths are present.
 
 ## 11. Session behavior design
 
