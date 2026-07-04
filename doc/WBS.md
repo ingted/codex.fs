@@ -12,13 +12,11 @@
 
 Status 值：
 
-| Status | 意義 |
-| --- | --- |
-| Planned | 已排入，但尚未動工。 |
-| InProgress | 已動工，尚未達到對應 Test DoD。 |
-| Blocked | 有明確 blocker，暫時不能完成。 |
-| Done | 對應 Test item 已通過，且必要文件/API docs 已同步。 |
-| Deferred | 已決定延後，不在目前 delivery slice。 |
+- `Planned`：已排入，但尚未動工。
+- `InProgress`：已動工，尚未達到對應 Test DoD。
+- `Blocked`：有明確 blocker，暫時不能完成。
+- `Done`：對應 Test item 已通過，且必要文件/API docs 已同步。
+- `Deferred`：已決定延後，不在目前 delivery slice。
 
 完成條件：
 
