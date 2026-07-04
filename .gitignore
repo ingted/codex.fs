@@ -1,0 +1,14 @@
+# .NET build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Local editor and OS files
+.vs/
+.idea/
+*.user
+*.suo
+*.swp
+Thumbs.db
+Desktop.ini

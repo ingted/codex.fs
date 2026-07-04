@@ -43,8 +43,8 @@ Status 值：
 | Test ID | WBS ID | Test case / verifier | Type | Real path requirement | Preconditions | Expected evidence | Status | Blocker | SD item |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | T-PLAN-001 | PLAN-001 | TC-PLAN-001 doc traceability | Docs | File-based doc trace is enough | WBS/Test docs exist | `check.fsx` doc traceability PASS | Pass | None | SD §15-§16 |
-| T-CF-001 | CF-001 | TC-CF-001 / planned `misc/verifySolutionBuild.fsx` | Compile | `dotnet restore/build` on real solution | Project scaffold exists | build log and package graph | Planned | CF-001 not implemented | SD §2 |
-| T-CF-002 | CF-002 | TC-CF-002 domain compile/serialization | Unit | Real compiled core project | CF-001 | unit test output for domain types | Planned | CF-001 | SD §3 |
+| T-CF-001 | CF-001 | TC-CF-001 `dotnet restore/build .\codex.fs.slnx` | Compile | `dotnet restore/build` on real solution | Project scaffold exists | restore succeeded; build succeeded with 0 warnings and 0 errors | Pass | None | SD §2 |
+| T-CF-002 | CF-002 | TC-CF-002 domain compile/serialization | Unit | Real compiled core project | CF-001 | unit test output for domain types | Planned | None | SD §3 |
 | T-CF-003 | CF-003 | TC-CF-003 manifest roundtrip | Unit | Real artifact manifest implementation | CF-002 | roundtrip + schema compatibility test | Planned | CF-002 | SD §12 |
 | T-CF-004 | CF-004 | TC-CF-004 / planned `misc/verifyArtifactStore.fsx` | Integration | Real file artifact store on temp workspace | CF-003 | manifest files, sha256, append-only behavior | Planned | CF-003 | SD §12 |
 | T-CF-005 | CF-005 | TC-CF-005 redaction cases | Unit/Ops | Real redaction module | CF-004 | token-like samples redacted, safe text unchanged | Planned | CF-004 | SD §13 |
