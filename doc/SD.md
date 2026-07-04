@@ -410,6 +410,48 @@ type PtcsHostConfig =
       ReplyParticipantId: string option
       DurableAgentTasks: bool
       DefaultInboxLimit: int }
+```
+
+Implemented MVP config loader:
+
+```fsharp
+module CodexFs.HostConfig
+
+val defaults : HostConfig
+
+val loadFromMap : Map<string, string> -> HostConfigLoadResult
+
+type HostConfigLoadResult =
+    { Config: HostConfig option
+      Issues: HostConfigIssue list
+      Diagnostics: HostConfigDiagnostic list }
+
+type HostConfigDiagnostic =
+    { Key: string
+      Value: string
+      WasRedacted: bool }
+```
+
+Accepted setting keys are case-insensitive and normalized internally. MVP keys include:
+
+| Area | Keys |
+| --- | --- |
+| artifact | `artifact.root` |
+| engine | `engine.default`, `engine.enabled`, `engine.codex.executable`, `engine.agy.executable`, `timeout.default` |
+| session turn | `message.maxPendingPerTurn` |
+| control endpoint | `control.protocol`, `control.bindAddress`, `control.port`, `control.advertiseUri`, `control.allowLoopbackOnly` |
+| API docs | `apiDocs.generateXmlDocs`, `apiDocs.generateOpenApi`, `apiDocs.exposeSwaggerUi`, `apiDocs.swaggerRoutePrefix`, `apiDocs.includeExamples` |
+| PTCS | `ptcs.fabricMode`, `ptcs.sessionParticipantPrefix`, `ptcs.replyParticipantId`, `ptcs.durableAgentTasks`, `ptcs.defaultInboxLimit` |
+| policies | `compaction.maxSummaryChars`, `compaction.recentEntryCount`, `compaction.maxEntryTextChars`, `redaction.enableHighRiskRules` |
+
+Validation rules:
+
+- fatal parse/validation issue returns `Config = None`。
+- diagnostics are redacted with core `Redaction.redactHighRisk` and must not echo raw token-like values。
+- `AllowLoopbackOnly = true` permits single-node development loopback config。
+- `AllowLoopbackOnly = false` rejects loopback bind or advertised URI; clustered/production hosts must advertise a routable address。
+
+```fsharp
 
 type HostCommand =
     | CreateSession of CreateSessionRequest

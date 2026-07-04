@@ -28,3 +28,10 @@
 - `DrainInboxAsync` both returns the current batch and lets PTCS ack the returned cursor.
 - `MessageFabricBinding.batchToMessageRefs` maps each PTCS envelope to core `PtcsMessageRef` with `Cursor = Some message.MessageId`.
 - `tryUpsertConfiguredGroupAsync` returns `None` when a binding has no `GroupId`; do not synthesize empty PTCS group views.
+
+## 2026-07-04 HOST-001 Host Config Loading
+
+- `CodexFs.HostConfig.loadFromMap` is the pure config boundary for the future host runtime; `HOST-002` should consume `HostConfig` instead of parsing settings again.
+- Setting keys are case-insensitive but diagnostics store normalized lowercase keys.
+- Diagnostics are redacted with core `Redaction.redactHighRisk`; redacted diagnostics may show `[REDACTED]`, but must not echo token-like raw values.
+- `control.allowLoopbackOnly = false` rejects loopback bind/advertise config; clustered hosts must advertise a routable address rather than `localhost`.

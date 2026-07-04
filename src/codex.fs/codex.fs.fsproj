@@ -32,6 +32,7 @@
     <Compile Include="Artifacts.fs" />
     <Compile Include="FileArtifactStore.fs" />
     <Compile Include="Redaction.fs" />
+    <Compile Include="HostConfig.fs" />
     <Compile Include="Engine.fs" />
     <Compile Include="ProcessRunner.fs" />
     <Compile Include="Session.fs" />

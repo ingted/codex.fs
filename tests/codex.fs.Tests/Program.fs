@@ -197,6 +197,84 @@ assertContains "actor fabric options type" "PulseTrade.Comm.Spa.CommSpaActorFabr
 
 printfn "TC-PTCS-001 PTCS restore/reference passed"
 
+let fakeGithubToken = "ghp_" + String.replicate 24 "a"
+
+let hostSettings =
+    Map.ofList
+        [ "artifact.root", ".codex.fs/host-artifacts"
+          "engine.default", "agy"
+          "engine.enabled", "codex, agy"
+          "engine.codex.executable", $"codex.exe --token {fakeGithubToken}"
+          "timeout.default", "00:05:00"
+          "message.maxPendingPerTurn", "25"
+          "control.protocol", "http"
+          "control.bindAddress", "192.168.10.20"
+          "control.port", "8788"
+          "control.advertiseUri", "http://192.168.10.20:8788"
+          "control.allowLoopbackOnly", "false"
+          "apiDocs.generateXmlDocs", "true"
+          "apiDocs.generateOpenApi", "true"
+          "apiDocs.exposeSwaggerUi", "true"
+          "apiDocs.swaggerRoutePrefix", "docs"
+          "apiDocs.includeExamples", "true"
+          "ptcs.fabricMode", "caller-owned-cluster"
+          "ptcs.sessionParticipantPrefix", "agent.codexfs"
+          "ptcs.replyParticipantId", "agent.codexfs.host"
+          "ptcs.durableAgentTasks", "false"
+          "ptcs.defaultInboxLimit", "25"
+          "compaction.maxSummaryChars", "1200"
+          "compaction.recentEntryCount", "3"
+          "compaction.maxEntryTextChars", "240"
+          "redaction.enableHighRiskRules", "true" ]
+
+let hostLoad = CodexFs.HostConfig.loadFromMap hostSettings
+let hostErrors = hostLoad.Issues |> List.filter (fun issue -> issue.Severity = CodexFs.HostConfig.IssueError)
+assertEqual "host config error count" 0 hostErrors.Length
+assertTrue "host config loaded" hostLoad.Config.IsSome
+
+let hostConfig =
+    hostLoad.Config |> Option.defaultWith (fun () -> failwith "expected host config")
+
+assertEqual "host artifact root" ".codex.fs/host-artifacts" hostConfig.ArtifactRoot
+assertEqual "host default engine" Agy hostConfig.DefaultEngine
+assertTrue "host codex enabled" (hostConfig.EnabledEngines |> List.contains Codex)
+assertTrue "host agy enabled" (hostConfig.EnabledEngines |> List.contains Agy)
+assertEqual "host codex override" $"codex.exe --token {fakeGithubToken}" hostConfig.EngineExecutableOverrides[Codex]
+assertEqual "host timeout" (TimeSpan.FromMinutes 5.0) hostConfig.DefaultTimeout
+assertEqual "host pending limit" 25 hostConfig.MaxPendingMessagesPerTurn
+assertEqual "host bind address" "192.168.10.20" hostConfig.ControlEndpoint.BindAddress
+assertEqual "host advertise uri" "http://192.168.10.20:8788" hostConfig.ControlEndpoint.AdvertiseUri
+assertEqual "host loopback false" false hostConfig.ControlEndpoint.AllowLoopbackOnly
+assertEqual "host swagger prefix" (Some "docs") hostConfig.ApiDocs.SwaggerRoutePrefix
+assertEqual "host fabric mode" "caller-owned-cluster" hostConfig.Ptcs.FabricMode
+assertEqual "host reply participant" (Some "agent.codexfs.host") hostConfig.Ptcs.ReplyParticipantId
+assertEqual "host inbox limit" 25 hostConfig.Ptcs.DefaultInboxLimit
+assertEqual "host compact max" (Some 1200) hostConfig.Compaction.MaxSummaryChars
+assertEqual "host compact recent" 3 hostConfig.Compaction.RecentEntryCount
+assertEqual "host compact entry" (Some 240) hostConfig.Compaction.MaxEntryTextChars
+
+let codexExecutableDiagnostic =
+    hostLoad.Diagnostics |> List.find (fun diagnostic -> diagnostic.Key = "engine.codex.executable")
+
+assertTrue "host diagnostic redacted" codexExecutableDiagnostic.WasRedacted
+assertContains "host diagnostic replacement" "[REDACTED]" codexExecutableDiagnostic.Value
+assertTrue "host diagnostic no raw token" (not (codexExecutableDiagnostic.Value.Contains(fakeGithubToken, StringComparison.Ordinal)))
+
+let productionLoopbackLoad =
+    CodexFs.HostConfig.loadFromMap
+        (Map.ofList
+            [ "control.allowLoopbackOnly", "false"
+              "control.bindAddress", "127.0.0.1"
+              "control.advertiseUri", "http://localhost:8788" ])
+
+assertTrue "production loopback rejected" productionLoopbackLoad.Config.IsNone
+assertTrue
+    "production loopback issue"
+    (productionLoopbackLoad.Issues
+     |> List.exists (fun issue -> issue.Key = "control.advertiseuri" && issue.Severity = CodexFs.HostConfig.IssueError))
+
+printfn "TC-HOST-001 config parse/redaction passed"
+
 let ptcsFabric = MessageFabricBinding.createLocalFabric ()
 let ptcsRunSuffix = Guid.NewGuid().ToString("N")
 let ptcsAgentId = $"agent.ptcs002.{ptcsRunSuffix}"
