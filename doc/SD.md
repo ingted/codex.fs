@@ -624,6 +624,17 @@ WBS definition of done for API-facing items:
 - Tests or verification commands cover generated OpenAPI availability when an HTTP host is part of the slice.
 - Breaking API changes update migration notes before the package/tool is published.
 
+Implemented HTTP docs routes:
+
+- Package references in `codex.fs.host`:
+  - `Microsoft.AspNetCore.OpenApi [10.0.9]`.
+  - `Microsoft.OpenApi [2.7.5]` direct override to avoid GHSA-v5pm-xwqc-g5wc affected 2.0.x transitive versions.
+  - `Swashbuckle.AspNetCore.SwaggerUI [10.2.3]`.
+- OpenAPI JSON route: `GET /openapi/v1.json`, mapped through `MapOpenApi("/openapi/{documentName}.json")` when `apiDocs.generateOpenApi = true`.
+- Swagger UI route: `/<apiDocs.swaggerRoutePrefix>/index.html`, enabled only when both `apiDocs.generateOpenApi = true` and `apiDocs.exposeSwaggerUi = true`.
+- Test profile uses `apiDocs.swaggerRoutePrefix = docs`, therefore the advertised UI URI is `<control.advertiseUri>/docs/index.html`.
+- OpenAPI JSON and Swagger UI must be verified through `HostControlContract.OpenApiJsonUri` / `SwaggerUiUri`, not through localhost-only URLs.
+
 ## 11. Session behavior design
 
 Domain behavior should be testable without Akka and without live PTCS process.

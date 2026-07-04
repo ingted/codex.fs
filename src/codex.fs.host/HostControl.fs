@@ -8,6 +8,7 @@ open CodexFs
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.OpenApi
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
@@ -20,6 +21,14 @@ module HostControl =
         /// Health endpoint used by CLI/Web/admin callers to inspect non-secret host status.
         [<Literal>]
         let Health = "/api/codexfs/host/health"
+
+        /// OpenAPI document route pattern used by ASP.NET Core `MapOpenApi`.
+        [<Literal>]
+        let OpenApiJsonPattern = "/openapi/{documentName}.json"
+
+        /// Concrete OpenAPI v1 JSON route.
+        [<Literal>]
+        let OpenApiJson = "/openapi/v1.json"
 
     /// Stable endpoint names for OpenAPI metadata and CLI documentation.
     module EndpointNames =
@@ -69,7 +78,17 @@ module HostControl =
           /// True only for explicit single-node development loopback profiles.
           AllowLoopbackOnly: bool
           /// Endpoint definitions and examples for SDK/OpenAPI generation.
-          Endpoints: HostControlEndpointDefinition list }
+          Endpoints: HostControlEndpointDefinition list
+          /// True when OpenAPI JSON is mapped by the host.
+          GenerateOpenApi: bool
+          /// Concrete advertised OpenAPI JSON URI.
+          OpenApiJsonUri: string
+          /// True when Swagger UI is exposed by the host profile.
+          ExposeSwaggerUi: bool
+          /// Route prefix used for Swagger UI.
+          SwaggerUiRoutePrefix: string
+          /// Concrete advertised Swagger UI URI.
+          SwaggerUiUri: string }
 
     /// Redacted diagnostic value returned by the health endpoint.
     type HostControlDiagnosticResponse =
@@ -121,7 +140,15 @@ module HostControl =
           /// Non-secret operator warnings.
           Warnings: string list
           /// Redacted config diagnostics.
-          Diagnostics: HostControlDiagnosticResponse list }
+          Diagnostics: HostControlDiagnosticResponse list
+          /// True when OpenAPI JSON is mapped by the host.
+          GenerateOpenApi: bool
+          /// Advertised OpenAPI JSON URI.
+          OpenApiJsonUri: string
+          /// True when Swagger UI is exposed by the host profile.
+          ExposeSwaggerUi: bool
+          /// Advertised Swagger UI URI.
+          SwaggerUiUri: string }
 
     /// Running HTTP control server. The application is exposed so callers can attach package-owned hosting policy if required.
     type HostControlServer =
@@ -185,6 +212,19 @@ module HostControl =
         let routeText = if route.StartsWith("/", StringComparison.Ordinal) then route else "/" + route
         baseUri + routeText
 
+    /// Normalize a Swagger UI route prefix for ASP.NET Core middleware.
+    let normalizeSwaggerRoutePrefix (routePrefix: string option) =
+        match routePrefix with
+        | Some value when not (String.IsNullOrWhiteSpace value) -> value.Trim().Trim('/')
+        | _ -> "swagger"
+
+    /// Convert a Swagger UI route prefix into the advertised index route.
+    let swaggerUiIndexRoute routePrefix =
+        if String.IsNullOrWhiteSpace routePrefix then
+            "/index.html"
+        else
+            "/" + routePrefix.Trim('/') + "/index.html"
+
     /// Build the effective HTTP control contract from a validated host configuration.
     let buildContract (config: HostConfig.HostConfig) =
         let control = config.ControlEndpoint
@@ -193,6 +233,7 @@ module HostControl =
         let bindAddress = control.BindAddress.Trim()
         let bindUri = $"{protocol}://{formatHostForUrl bindAddress}:{port}"
         let advertiseUri = control.AdvertiseUri.TrimEnd('/')
+        let swaggerRoutePrefix = normalizeSwaggerRoutePrefix config.ApiDocs.SwaggerRoutePrefix
 
         { Protocol = protocol
           BindAddress = bindAddress
@@ -201,7 +242,12 @@ module HostControl =
           AdvertiseUri = advertiseUri
           HealthUri = combineAdvertisedRoute advertiseUri Routes.Health
           AllowLoopbackOnly = control.AllowLoopbackOnly
-          Endpoints = endpointDefinitions }
+          Endpoints = endpointDefinitions
+          GenerateOpenApi = config.ApiDocs.GenerateOpenApi
+          OpenApiJsonUri = combineAdvertisedRoute advertiseUri Routes.OpenApiJson
+          ExposeSwaggerUi = config.ApiDocs.ExposeSwaggerUi
+          SwaggerUiRoutePrefix = swaggerRoutePrefix
+          SwaggerUiUri = combineAdvertisedRoute advertiseUri (swaggerUiIndexRoute swaggerRoutePrefix) }
 
     /// Convert runtime health into an option-free JSON DTO for stable CLI/Web consumption.
     let healthResponse (contract: HostControlContract) (runtime: HostRuntime.HostRuntime) : HostControlHealthResponse =
@@ -231,7 +277,11 @@ module HostControl =
             |> List.map (fun diagnostic ->
                 { Key = diagnostic.Key
                   Value = diagnostic.Value
-                  WasRedacted = diagnostic.WasRedacted }) }
+                  WasRedacted = diagnostic.WasRedacted })
+          GenerateOpenApi = contract.GenerateOpenApi
+          OpenApiJsonUri = contract.OpenApiJsonUri
+          ExposeSwaggerUi = contract.ExposeSwaggerUi
+          SwaggerUiUri = contract.SwaggerUiUri }
 
     /// Attach the current HTTP control endpoints to an ASP.NET Core application.
     let mapEndpoints (application: WebApplication) (contract: HostControlContract) (runtime: HostRuntime.HostRuntime) =
@@ -243,6 +293,19 @@ module HostControl =
             .WithName(EndpointNames.Health)
             .Produces<HostControlHealthResponse>(StatusCodes.Status200OK)
         |> ignore
+
+        application
+
+    /// Attach OpenAPI JSON and optional Swagger UI routes according to the active host profile.
+    let mapApiDocs (application: WebApplication) (contract: HostControlContract) =
+        if contract.GenerateOpenApi then
+            application.MapOpenApi(Routes.OpenApiJsonPattern) |> ignore
+
+        if contract.GenerateOpenApi && contract.ExposeSwaggerUi then
+            application.UseSwaggerUI(fun options ->
+                options.RoutePrefix <- contract.SwaggerUiRoutePrefix
+                options.SwaggerEndpoint(Routes.OpenApiJson, "codex.fs host control v1"))
+            |> ignore
 
         application
 
@@ -264,12 +327,16 @@ module HostControl =
                 let contract = buildContract runtime.Config
                 let builder = WebApplication.CreateBuilder([||])
 
+                if contract.GenerateOpenApi then
+                    builder.Services.AddOpenApi("v1") |> ignore
+
                 builder.Services.ConfigureHttpJsonOptions(fun options -> options.SerializerOptions.PropertyNamingPolicy <- JsonNamingPolicy.CamelCase)
                 |> ignore
 
                 builder.WebHost.UseUrls(contract.BindUri) |> ignore
 
                 let application = builder.Build()
+                mapApiDocs application contract |> ignore
                 mapEndpoints application contract runtime |> ignore
 
                 do! application.StartAsync(cancellationToken)

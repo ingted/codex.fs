@@ -51,3 +51,10 @@
 - Clustered profiles must keep `control.allowLoopbackOnly = false`; `HostConfig.validate` rejects localhost/127.* bind or advertise settings before HTTP start.
 - `HostControlHealthResponse` is an option-free JSON DTO with camelCase output; it reports non-secret runtime state and redacted diagnostics only.
 - Endpoint definitions carry success/failure examples and typed response metadata for future OpenAPI/Swagger generation; the endpoint remains control plane only and never replaces PTCS MessageFabric.
+
+## 2026-07-04 DOC-003 OpenAPI / Swagger
+
+- `codex.fs.host` maps OpenAPI JSON with `Microsoft.AspNetCore.OpenApi [10.0.9]` and `MapOpenApi("/openapi/{documentName}.json")`.
+- Direct `Microsoft.OpenApi [2.7.5]` is required because the 2.0.x transitive version is affected by GHSA-v5pm-xwqc-g5wc.
+- Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUI [10.2.3]` and is gated by `apiDocs.exposeSwaggerUi`.
+- Tests must verify `HostControlContract.OpenApiJsonUri` and `SwaggerUiUri` through an advertised non-loopback URI, not localhost.

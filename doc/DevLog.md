@@ -51,3 +51,10 @@
 - Behavior: `GET /api/codexfs/host/health` returns non-secret host health over `control.advertiseUri`; clustered profiles remain non-loopback and HTTP remains control plane only, not a MessageFabric or ActorSystem transport.
 - Tests: `dotnet restore .\codex.fs.slnx` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-HOST-003 endpoint contract passed` after a real HTTP 200 through a non-loopback advertised URI.
 - Traceability: WBS `HOST-003` and Test `T-HOST-003` updated to `Done` / `Pass`; blockers for `DOC-003` and `CLI-001` cleared.
+
+## 2026-07-04 21:39 +08:00 DOC-003 OpenAPI / Swagger
+
+- Scope: added OpenAPI JSON and Swagger UI route mapping to `CodexFs.Host.HostControl`.
+- Dependency: added `Microsoft.AspNetCore.OpenApi [10.0.9]`, `Microsoft.OpenApi [2.7.5]`, and `Swashbuckle.AspNetCore.SwaggerUI [10.2.3]`; the direct `Microsoft.OpenApi` reference avoids GHSA-v5pm-xwqc-g5wc affected transitive versions.
+- Tests: `dotnet restore .\codex.fs.slnx` passed without NU1903; `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-DOC-003 OpenAPI available passed`.
+- Traceability: WBS `DOC-003` and Test `T-DOC-003` updated to `Done` / `Pass`.

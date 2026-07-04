@@ -54,7 +54,7 @@ Status 值：
 | HOST-003 | 定義並實作 host control endpoint | HOST-002 | 100 | Done | None | 2026-07-04 21:21 +08:00 | 2026-07-04 21:27 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
-| DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 0 | Planned | None | 未動工 | 2026-07-04 21:27 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | inline |
+| DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 100 | Done | None | 2026-07-04 21:36 +08:00 | 2026-07-04 21:39 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | [@DOC-003](WBS.DOC-003.md) |
 | CLI-001 | 實作 CLI command DU/help | HOST-003 | 0 | Planned | None | 未動工 | 2026-07-04 21:27 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | inline |
 | CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 0 | Planned | CLI-001/PTCS-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | inline |
 | CLI-003 | CLI attach/drain/status | CLI-002 | 0 | Planned | CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | inline |
@@ -74,6 +74,7 @@ Status 值：
 | [@PTCS-002](WBS.PTCS-002.md) | MessageFabric session binding is a high-risk integration slice; detail file tracks exact PTCS operations and acceptance gates. |
 | [@HOST-003](WBS.HOST-003.md) | Host control endpoint uses HTTP with bind/advertise config; localhost is dev-only. |
 | [@DOC-001](WBS.DOC-001.md) | API documentation toolchain selection affects NuGet SDK docs and Swagger generation. |
+| [@DOC-003](WBS.DOC-003.md) | OpenAPI JSON and Swagger UI verification uses the real host endpoint through advertised non-loopback URI. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 
 ## 4. Update Rule

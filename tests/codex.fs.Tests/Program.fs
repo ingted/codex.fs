@@ -378,6 +378,10 @@ let hostControlServer =
 assertEqual "host control bind address" (hostControlAddress.ToString()) hostControlServer.Contract.BindAddress
 assertEqual "host control advertise uri" hostControlAdvertiseUri hostControlServer.Contract.AdvertiseUri
 assertContains "host control health route" CodexFs.Host.HostControl.Routes.Health hostControlServer.Contract.HealthUri
+assertEqual "host control openapi uri" $"{hostControlAdvertiseUri}/openapi/v1.json" hostControlServer.Contract.OpenApiJsonUri
+assertEqual "host control swagger ui uri" $"{hostControlAdvertiseUri}/docs/index.html" hostControlServer.Contract.SwaggerUiUri
+assertEqual "host control generate openapi" true hostControlServer.Contract.GenerateOpenApi
+assertEqual "host control expose swagger ui" true hostControlServer.Contract.ExposeSwaggerUi
 assertTrue "host control not localhost" (not (hostControlServer.Contract.HealthUri.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
 assertTrue "host control not 127" (not (hostControlServer.Contract.HealthUri.Contains("127.", StringComparison.Ordinal)))
 assertTrue
@@ -390,7 +394,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlResponseText =
+let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -398,9 +402,15 @@ let hostControlResponseText =
 
         let response = runTask (client.GetAsync(hostControlServer.Contract.HealthUri))
         let body = runTask (response.Content.ReadAsStringAsync())
+        let openApiResponse = runTask (client.GetAsync(hostControlServer.Contract.OpenApiJsonUri))
+        let openApiBody = runTask (openApiResponse.Content.ReadAsStringAsync())
+        let swaggerResponse = runTask (client.GetAsync(hostControlServer.Contract.SwaggerUiUri))
+        let swaggerBody = runTask (swaggerResponse.Content.ReadAsStringAsync())
 
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
-        body
+        assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
+        assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
+        body, openApiBody, swaggerBody
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -421,6 +431,18 @@ assertTrue "host control response no raw token" (not (hostControlResponseText.Co
 hostControlJson.Dispose()
 
 printfn "TC-HOST-003 endpoint contract passed"
+
+let hostOpenApiJson = JsonDocument.Parse(hostControlOpenApiText)
+let hostOpenApiRoot = hostOpenApiJson.RootElement
+let mutable hostHealthPath = Unchecked.defaultof<JsonElement>
+
+assertTrue "host openapi version" (hostOpenApiRoot.GetProperty("openapi").GetString().StartsWith("3.", StringComparison.Ordinal))
+assertTrue "host openapi has health path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.Health, &hostHealthPath))
+assertTrue "host swagger ui html" (hostControlSwaggerText.Contains("SwaggerUIBundle", StringComparison.Ordinal) || hostControlSwaggerText.Contains("swagger-ui", StringComparison.OrdinalIgnoreCase))
+assertTrue "host swagger ui no raw token" (not (hostControlSwaggerText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+hostOpenApiJson.Dispose()
+
+printfn "TC-DOC-003 OpenAPI available passed"
 
 let ptcsFabric = MessageFabricBinding.createInProcessFabric ()
 let ptcsRunSuffix = Guid.NewGuid().ToString("N")
