@@ -48,8 +48,8 @@ Package IDs:
 | Package | Assembly namespace | Purpose |
 | --- | --- | --- |
 | `codex.fs` | `CodexFs` | Core engine/artifact/compaction contracts。 |
-| `codex.fs.host` | `CodexFs.Host` | Host runtime package and dotnet tool。 |
-| `codex.fs.cli` | `CodexFs.Cli` | Terminal client。 |
+| `codex.fs.host` | `CodexFs.Host` | Host runtime package; standalone host dotnet tool entrypoint remains `REL-003` so the library package stays referenceable。 |
+| `codex.fs.cli` | `CodexFs.Cli` | Terminal client and dotnet tool。 |
 | `codex.fs.engine.codex` | `CodexFs.Engine.Codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | `CodexFs.Engine.Agy` | Agy CLI adapter。 |
 | `codex.fs.ptcs` | `CodexFs.Ptcs` | Thin integration over PTCS ActorFabric/MessageFabric。 |
@@ -812,6 +812,7 @@ Argument parsing:
 - Implement with `FAkka.Argu` DU per command group。
 - Use `defaultArgumentsText` pattern for `.fsx` demos only; compiled tools use argv through Argu。
 - Do not parse user prompts as shell commands。
+- Root `--help`, `-h`, `help`, `/?`, and empty argv must print command help and return exit code 0 for dotnet tool ergonomics.
 
 `codex.fs.cli` should submit through host APIs that ultimately use PTCS MessageFabric; it should not write artifacts or MessageFabric streams directly.
 

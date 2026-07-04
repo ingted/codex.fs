@@ -88,3 +88,11 @@
 - Fix: Agy argv rendering must put flags before `--print`; otherwise Agy treats `--print-timeout` as prompt content.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyMessageToEngineReply.fsx` passed. The verifier printed `TC-E2E-002 message to engine reply passed`.
 - Traceability: WBS `E2E-002`, detail `doc/WBS.E2E-002.md`, Test `T-E2E-002`, and `doc/Verification.md` updated to `Done` / `Pass`; durable/crash recovery remains `PTCS-003` / `OPS-002`.
+
+## 2026-07-04 22:41 +08:00 REL-002 CLI dotnet tool package
+
+- Scope: validated `codex.fs.cli` as a local dotnet tool package from generated nupkg.
+- Fix: root `--help` initially exited 1 because Argu expects `help`; added `CodexFs.Cli.Program.isRootHelp` so `--help`, `-h`, `help`, `/?`, and empty argv return help with exit code 0.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed after the fix.
+- Packaging: packed `codex.fs`, `codex.fs.ptcs`, `codex.fs.host`, and `codex.fs.cli` to `G:\codex.fs\bin\rel002-packs-202607042243`; installed `codex.fs.cli` to `G:\codex.fs\bin\rel002-tool-202607042243`; `codex.fs.cli.exe --help` returned exit code 0.
+- Traceability: WBS `REL-002`, detail `doc/WBS.REL-002.md`, and Test `T-REL-002` updated to `Done` / `Pass`; standalone `codex.fs.host` dotnet tool remains `REL-003`.

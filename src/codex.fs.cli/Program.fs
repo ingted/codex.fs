@@ -6,10 +6,16 @@ open System.Threading
 
 module Program =
 
+    /// Return true when argv asks for root help without entering command dispatch.
+    let isRootHelp (argv: string array) =
+        argv.Length = 0
+        || (argv.Length = 1
+            && (argv[0] = "help" || argv[0] = "--help" || argv[0] = "-h" || argv[0] = "/?"))
+
     /// Entry point for the compiled codex.fs.cli terminal client.
     [<EntryPoint>]
-    let main argv =
-        if argv.Length = 0 then
+    let main (argv: string array) =
+        if isRootHelp argv then
             printfn "%s" (Cli.helpText ())
             0
         else

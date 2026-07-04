@@ -87,3 +87,10 @@
 - Artifacts are written through `FileArtifactStore` and include prompt, PTCS batch JSONL, request JSON, rendered argv JSON, stdout/stderr, final markdown, result JSON and manifest JSON.
 - Agy CLI must render options before `--print`; placing `--print` before `--print-timeout` causes Agy to treat the timeout flag as prompt content.
 - `misc/verifyMessageToEngineReply.fsx` is the real E2E verifier and may consume the current user's installed CLI auth/session.
+
+## 2026-07-04 REL-002 CLI Dotnet Tool
+
+- `codex.fs.cli` installs as a local dotnet tool from `codex.fs.cli.0.1.0-alpha.1.nupkg` when local source also contains `codex.fs`, `codex.fs.ptcs`, and `codex.fs.host` packages.
+- The tool command is `codex.fs.cli`.
+- Root `--help`, `-h`, `help`, `/?`, and empty argv are handled by `CodexFs.Cli.Program.isRootHelp` before Argu command dispatch.
+- `codex.fs.host` remains a referenceable library package; standalone host tool entrypoint is tracked separately as `REL-003`.

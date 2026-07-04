@@ -519,6 +519,11 @@ printfn "TC-CLI-003 attach/drain/status passed"
 
 let cliHelp = CodexFs.Cli.Cli.helpText ()
 
+assertTrue "cli program empty help" (CodexFs.Cli.Program.isRootHelp [||])
+assertTrue "cli program long help" (CodexFs.Cli.Program.isRootHelp [| "--help" |])
+assertTrue "cli program short help" (CodexFs.Cli.Program.isRootHelp [| "-h" |])
+assertTrue "cli program word help" (CodexFs.Cli.Program.isRootHelp [| "help" |])
+assertTrue "cli program command not root help" (not (CodexFs.Cli.Program.isRootHelp [| "session"; "send" |]))
 assertContains "cli help session" "session <options>" cliHelp
 assertContains "cli help run" "run <options>" cliHelp
 assertContains "cli help host" "host <options>" cliHelp
