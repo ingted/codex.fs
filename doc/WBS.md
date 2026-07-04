@@ -31,8 +31,8 @@ Status 值：
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- |
 | PLAN-001 | 建立 WBS/Test baseline | START | 100 | Done | None | 2026-07-04 17:53 +08:00 | 2026-07-04 17:53 +08:00 | SD §15-§16 | T-PLAN-001 | TC-PLAN-001 doc traceability | inline |
 | CF-001 | 建立 solution/project scaffold | PLAN-001 | 100 | Done | None | 2026-07-04 18:23 +08:00 | 2026-07-04 18:25 +08:00 | SD §2, §16.1 | T-CF-001 | TC-CF-001 `dotnet restore/build .\codex.fs.slnx` | inline |
-| CF-002 | 實作 core domain model | CF-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:25 +08:00 | SD §3, §16.1 | T-CF-002 | TC-CF-002 domain compile/serialization | inline |
-| CF-003 | 實作 artifact manifest model | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §12, §16.1 | T-CF-003 | TC-CF-003 manifest roundtrip | inline |
+| CF-002 | 實作 core domain model | CF-001 | 100 | Done | None | 2026-07-04 18:27 +08:00 | 2026-07-04 18:30 +08:00 | SD §3, §16.1 | T-CF-002 | TC-CF-002 `CodexFs.Domain` build/XML docs | inline |
+| CF-003 | 實作 artifact manifest model | CF-002 | 0 | Planned | None | 未動工 | 2026-07-04 18:30 +08:00 | SD §12, §16.1 | T-CF-003 | TC-CF-003 manifest roundtrip | inline |
 | CF-004 | 實作 file artifact store | CF-003 | 0 | Planned | CF-003 | 未動工 | 2026-07-04 17:53 +08:00 | SD §12, §16.5 | T-CF-004 | TC-CF-004 / planned `misc/verifyArtifactStore.fsx` | inline |
 | CF-005 | 實作 redaction model | CF-004 | 0 | Planned | CF-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §13 | T-CF-005 | TC-CF-005 redaction cases | inline |
 | EN-001 | 實作 engine adapter contract | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §4, §16.2 | T-EN-001 | TC-EN-001 adapter contract compile | inline |
