@@ -994,6 +994,9 @@ type ArtifactKind =
     | EventJsonl
     | FinalMarkdown
     | ResultJson
+    | SessionBoundaryJson
+    | RunNoteMarkdown
+    | RedactionJson
     | CompactionMarkdown
 
 type ArtifactRef =
@@ -1015,6 +1018,53 @@ type ArtifactManifest =
       Outcome: RunOutcome
       Artifacts: ArtifactRef list }
 ```
+
+`RFC-PERSIST-0001` defines the transcript/note/artifact policy used by future runtime/actor work.
+
+Preferred private file layout:
+
+```text
+<artifactRoot>/
+  sessions/
+    <session-id>/
+      history.jsonl
+      messagefabric-cursors.json
+      compacted/
+        <compact-id>.md
+      runs/
+        <run-id>/
+          prompt.md
+          ptcs-messages.jsonl
+          request.json
+          rendered-argv.json
+          stdout.log
+          stderr.log
+          events.jsonl
+          final.md
+          result.json
+          note.md
+          redaction.json
+          manifest.json
+          session-boundary.json
+```
+
+Minimum run evidence:
+
+| Evidence | Required rule |
+| --- | --- |
+| PTCS message/task identity | Persist consumed message ids, cursors and durable task/ticket ids before ack. |
+| prompt / request / argv | Persist rendered prompt, normalized request and rendered argv metadata before or with engine execution evidence. |
+| stdout/stderr/final/events | Persist raw private artifacts where policy allows; events are optional and engine-capability dependent. |
+| result/manifest | Manifest records relative artifact refs, SHA-256, size, created UTC, engine/surface, PTCS refs and outcome. |
+| run note | `note.md` is a redacted human-readable summary for CLI/Web/compact; it is not the raw transcript. |
+| ready-to-ack boundary | `session-boundary.json` records reply evidence and selected cursor before MessageFabric ack. |
+
+Provider boundary:
+
+- runtime calls a persistence port for run evidence, notes, history entries, compaction output and ready-to-ack boundary;
+- host/actor constructs the concrete provider and supplies `artifact.root`;
+- first provider can remain file-based, but raw private artifacts must stay outside tracked public repo paths unless explicitly exported through a redacted export workflow;
+- MessageFabric replies carry redacted summaries and manifest/note refs, not raw prompt/stdout/stderr bodies.
 
 ## 13. Redaction design
 
@@ -1038,6 +1088,8 @@ Raw CLI stdout/stderr policy is configurable:
 - public export: redacted only。
 - never log environment variable values。
 - MessageFabric body should use redacted summary and artifact references, not full raw transcript by default。
+- high-risk redaction hits block public export until removed/redacted or recorded as false positive in an operation log。
+- public repo `notes/` is not the default artifact root; if an export writes there, changed notes must pass sensitive scanning before commit/push。
 
 ## 14. CLI client design
 
@@ -1375,7 +1427,7 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | ID | Item |
 | --- | --- |
 | SD-TBD-001 | Resolved: HTTP control endpoint. Clustered profiles must use bind address + advertised LAN/routable URI; localhost is dev-only. |
-| SD-TBD-002 | Exact artifact root layout for multi-workspace use. |
+| SD-TBD-002 | Resolved for RFC slice by `PERSIST-001`: preferred artifact root layout, private raw/public redacted boundary, run notes and provider-shaped persistence boundary are defined. Multi-workspace provider implementation remains future work. |
 | SD-TBD-003 | Resolved for MVP: rule-based local compaction in `codex.fs`; selected-engine or dedicated LLM compaction is a future adapter over the same contract. |
 | SD-TBD-004 | Resolved: first supported PTCS package is `PulseTrade.Comm.Spa [0.2.5-beta71]`; `codex.fs.ptcs` owns the exact reference while `codex.fs` core remains PTCS-independent. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |

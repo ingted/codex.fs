@@ -247,3 +247,11 @@
 - UX: first-use prompt targets Foreman by default; future interactive mode supports target switching across Foreman, session, exact participant/worker, public and group scopes, with visible sender/target/perspective state.
 - Invocation: CLI may collect engine/model/reasoning/invocation options, but runtime/actor validates policy and engine adapters render versioned argv.
 - Traceability: updated WBS `CLI-010`, detail `doc/WBS.CLI-010.md`, Test `T-CLI-010`, Requirement R-002, SA §3.6, SD §14.2, `RFC_Project_Planing.md` and KM.
+
+## 2026-07-05 04:27 +08:00 PERSIST-001 transcript/note/artifact policy
+
+- Scope: accepted `RFC-PERSIST-0001` as a contract/RFC slice; no new persistence provider implementation was claimed.
+- Boundary: runtime owns run evidence write ordering; host/actor construct the concrete provider; CLI/Web render redacted summaries and manifest/note refs.
+- Policy: raw prompt/stdout/stderr/final artifacts are private by default, public exports are redacted-only and require sensitive scanning.
+- Note/compact: `note.md` is a redacted human-readable run summary for browsing and compact input; compact summaries must preserve PTCS message ids, run ids and artifact refs without replacing raw artifacts.
+- Traceability: updated WBS `PERSIST-001`, detail `doc/WBS.PERSIST-001.md`, Test `T-PERSIST-001`, Requirement R-004/R-005/R-008, SA storage/security, SD §12/§13, `RFC_Project_Planing.md` and KM.

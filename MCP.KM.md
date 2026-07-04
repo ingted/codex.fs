@@ -222,3 +222,11 @@
 - Target switching vocabulary covers Foreman, explicit session, exact participant/worker, public channel and MessageFabric group. Perspective switching is authorized read/render only and must not silently forge `agent.*` sender ids.
 - CLI may collect engine/model/reasoning/invocation options, but runtime/actor validates policy and engine adapters render versioned argv.
 - Future verifier `misc/verifyCliParticipantChat.fsx` must use installed `codex.fs.cli` / `codex.fs` against real host/PTCS fabric; fake mailbox smoke is not acceptance.
+
+## 2026-07-05 PERSIST-001 Transcript / Note / Artifact Store
+
+- Minimum run evidence includes PTCS refs/cursor, prompt, normalized request, rendered argv metadata, stdout/stderr, final/events/result, manifest, redacted run note and ready-to-ack boundary.
+- Raw run artifacts are private by default and should live under configured artifact roots, often gitignored `.codex.fs/` for local verification. Public repo `notes/` is not the default artifact root.
+- MessageFabric replies, CLI/Web views and public exports should use redacted summaries plus manifest/note refs, not raw transcript bodies.
+- `note.md` feeds human browsing and `CompactionEntry` values; local compact must preserve message ids, run ids and artifact refs and never overwrite raw artifacts.
+- Future verifier `misc/verifyTranscriptStore.fsx` must prove real runtime/host writes prompt/stdout/stderr/final/manifest/note/session-boundary and blocks high-risk public export.

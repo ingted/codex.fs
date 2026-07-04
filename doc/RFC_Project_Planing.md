@@ -87,4 +87,4 @@
 | `RFC-ACTOR-0001.session-worker-actor-model.md` | Accepted: Sharded `SessionActor` / `WorkerActor` protocol, spawn/register, participant routing, durable delivery and runtime call boundary. |
 | `RFC-WEB-0001.ptcs-ai-chat-bundle.md` | WebSharper `useAIChat(...)` bundle design and PTCS Dynamic reference pattern. |
 | `RFC-CLI-0002.interactive-participant-client.md` | Accepted: Terminal chat client UX: Foreman default target, target participant/public/group switching, perspective display and model/reasoning/invocation option handoff. |
-| `RFC-PERSIST-0001.transcript-note-artifact-store.md` | Prompt/reply/stdio capture, notes layout, local compact and recovery boundaries. |
+| `RFC-PERSIST-0001.transcript-note-artifact-store.md` | Accepted: Prompt/reply/stdio capture, private raw artifacts, redacted run notes, local compact refs and recovery boundaries. |

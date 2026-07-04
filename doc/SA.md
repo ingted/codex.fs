@@ -122,6 +122,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `CLI-010` resolves the first interactive CLI RFC slice: `codex.fs.cli` is a terminal participant client with Foreman default target, explicit participant/worker/public/group switching, visible sender/target/perspective state and invocation-option handoff to runtime/actor. It does not own prompt assembly, headless process execution or chat history truth.
 
+`PERSIST-001` resolves the transcript/note/artifact policy RFC slice: raw run evidence is private by default, MessageFabric/UI/CLI should render redacted summaries plus manifest/note refs, and compacted history must preserve message ids, run ids and artifact refs without replacing raw artifacts.
+
 ## 4. Runtime components
 
 | Component | Responsibility |
@@ -230,7 +232,7 @@ Capability dimensions:
 
 ## 8. Storage architecture
 
-Artifact store should be append-only per run.
+Artifact store should be append-only per run. `note.md` is a redacted human-readable summary for browsing and compaction; it is not the canonical raw transcript.
 
 ```text
 artifacts/
@@ -255,7 +257,7 @@ artifacts/
 
 `events.jsonl` is optional and only present when the engine supports structured events.
 
-MessageFabric remains the communication fact source. Artifact store is the execution evidence store.
+MessageFabric remains the communication fact source. Artifact store is the execution evidence store. Public exports are redacted summaries/references only and must pass sensitive scanning before entering tracked repo paths.
 
 ## 9. Reliability architecture
 
@@ -315,7 +317,7 @@ Config should be expressed as typed records and load from explicit file/env/prov
 | ID | Decision needed |
 | --- | --- |
 | SA-TBD-001 | Resolved: HTTP control endpoint for MVP; MessageFabric stays communication fact source; loopback is dev-only, clustered runtime uses advertised LAN/routable URI. |
-| SA-TBD-002 | Artifact storage provider: file-only first or pluggable store first. |
+| SA-TBD-002 | Resolved for RFC slice by `PERSIST-001`: file provider can be first, but runtime must depend on a provider-shaped persistence boundary for run evidence, notes, history entries, compaction output and ready-to-ack boundary. |
 | SA-TBD-003 | Compactor engine: same selected CLI, separate cheap adapter, or pluggable function. |
 | SA-TBD-004 | Resolved: first codex.fs durable handoff profile uses PTCS `CommSpaDurableMessageFabric` with volatile durable admission as the package-level ticketed boundary; production sharded crash-durable provider proof remains an OPS-002/future profile gate. |
 | SA-TBD-005 | Whether first host starts package-owned PTCS fabric or requires caller-owned attachment. |
