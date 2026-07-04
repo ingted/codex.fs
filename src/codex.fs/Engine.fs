@@ -706,6 +706,8 @@ module Engine =
                       Print: bool
                       /// Render `--prompt`, the Agy 1.0.x alias for `--print`.
                       PromptAlias: bool
+                      /// Optional positional prompt text passed to Agy print mode.
+                      PromptText: string option
                       /// Render `--continue`.
                       Continue: bool
                       /// Render `--conversation <id>`.
@@ -731,6 +733,7 @@ module Engine =
                 let emptyArgs =
                     { Print = false
                       PromptAlias = false
+                      PromptText = None
                       Continue = false
                       Conversation = None
                       AddDirs = []
@@ -821,11 +824,7 @@ module Engine =
 
                 /// Render normalized Agy print args into argv without shell interpolation.
                 let renderArguments (args: Args) =
-                    [ if args.Print then
-                          "--print"
-                      if args.PromptAlias then
-                          "--prompt"
-                      if args.Continue then
+                    [ if args.Continue then
                           "--continue"
                       match args.Conversation with
                       | Some conversationId ->
@@ -854,13 +853,20 @@ module Engine =
                       | None -> ()
                       match args.PrintTimeout with
                       | Some timeout ->
-                          "--print-timeout"
-                          formatDurationText timeout
+                          $"--print-timeout={formatDurationText timeout}"
                       | None -> ()
                       if args.Sandbox then
                           "--sandbox"
                       if args.DangerouslySkipPermissions then
-                          "--dangerously-skip-permissions" ]
+                          "--dangerously-skip-permissions"
+                      if args.Print then
+                          "--print"
+                      if args.PromptAlias then
+                          "--prompt"
+                      match args.PromptText with
+                      | Some promptText ->
+                          promptText
+                      | None -> () ]
 
                 /// Quote a display argument for diagnostic text only.
                 let quoteDisplayArgument (argument: string) =

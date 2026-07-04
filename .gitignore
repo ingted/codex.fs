@@ -12,3 +12,6 @@ obj/
 *.swp
 Thumbs.db
 Desktop.ini
+
+# Local codex.fs verifier artifacts
+.codex.fs/

@@ -938,6 +938,47 @@ Rules:
 - CLI read commands use the host advertised URI and never bypass host-owned MessageFabric binding.
 - `Transcript` is terminal-oriented output for early CLI usability; durable artifacts and engine replies remain E2E scope.
 
+Implemented E2E single-cycle runner:
+
+```fsharp
+module CodexFs.Host.SessionEngineCycle
+
+type SingleCycleOptions =
+    { SessionId: string
+      Engine: EngineKind option
+      ExecutablePath: string option
+      WorkingDirectory: string option
+      ArtifactRoot: string option
+      Timeout: TimeSpan option
+      SystemInstruction: string option
+      AdditionalDirectories: string list }
+
+type SingleCycleResult =
+    { Status: string
+      SessionId: string
+      SessionParticipantId: string
+      RunId: string
+      ConsumedMessageCount: int
+      AckCursor: string
+      Outcome: string
+      ExitCode: string
+      ArtifactManifestPath: string
+      FinalMessagePath: string
+      ReplyMessageId: string
+      ReplyBody: string }
+
+val runSingleCycleAsync : HostRuntime -> SingleCycleOptions -> CancellationToken -> Task<SingleCycleResult>
+```
+
+Rules:
+
+- `runSingleCycleAsync` is a bounded package helper for `E2E-002`; it is not the durable sharded actor loop.
+- The function polls the session inbox once, assembles a prompt, invokes the selected installed engine, persists artifacts, sends a PTCS reply, then acknowledges the inbox cursor.
+- Current real engine implementation is Agy `1.0.x --print`; Agy flags must render before `--print`, and the prompt text is the final positional argument.
+- Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON and manifest JSON.
+- Reply body contains a redacted/truncated summary plus artifact references; it must not contain the raw prompt transcript.
+- The in-process/package-owned profile only proves ack-after-artifact-and-reply ordering; durable crash recovery remains `PTCS-003` / `OPS-002`.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

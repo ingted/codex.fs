@@ -74,15 +74,15 @@ Status 值：
 | T-REL-001 | REL-001 | TC-REL-001 pack metadata/docs | Compile/Docs | Real `dotnet pack` | DOC-002/CF-001 | nupkg contains README.md, lib/net10.0 dll/xml, MIT license expression, repository metadata, FAkka.Argu/FSharp.Core dependencies | Pass | None | SD §2, §10 |
 | T-REL-002 | REL-002 | TC-REL-002 tool install/run help | CLI/Package | Real local tool install from nupkg | REL-001/HOST-001 | tool install output and `--help` | Planned | None | Requirement R-001 |
 | T-E2E-001 | E2E-001 | TC-E2E-001 installed codex/agy probe real path | E2E | Real installed Codex/Agy where available | CDX-003/AGY-003 | ProcessRunner probed installed Codex `0.142.4` and Agy `1.0.16`; parsed surfaces `codex-exec-0.142` and `agy-print-1.0`; Agy help direct output observed on stderr | Pass | None | SD §15 |
-| T-E2E-002 | E2E-002 | TC-E2E-002 / planned `misc/verifyMessageToEngineReply.fsx` | E2E | Real MessageFabric, host, installed engine, artifact store | HOST-002/CLI-002 | prompt, run manifest, final reply reference | Planned | dependencies | Requirement §10, SA §6.1 |
+| T-E2E-002 | E2E-002 | TC-E2E-002 `misc/verifyMessageToEngineReply.fsx` | E2E | Real MessageFabric, host, installed Agy engine, artifact store | HOST-002/CLI-003 | `dotnet fsi --exec .\misc\verifyMessageToEngineReply.fsx` passed; verifier sent a real PTCS direct message, ran Agy `--print`, wrote prompt/batch/request/rendered-argv/stdout/stderr/final/result/manifest artifacts under `.codex.fs/e2e002-artifacts`, sent PTCS reply containing manifest reference, and verified session inbox empty after ack | Pass | None | Requirement §10, SA §6.1 |
 | T-E2E-003 | E2E-003 | TC-E2E-003 multi-agent MessageFabric group | E2E | Real PTCS group/direct messages; durable optional | E2E-002/PTCS-003 | two session workers exchange message/reply | Planned | PTCS-003 optional | Requirement §6.3 |
 | T-OPS-001 | OPS-001 | TC-OPS-001 orphan process recovery | Ops | Controlled real OS process fixture | EN-002/HOST-002 | recovery detects or kills orphan process | Planned | None | SA §9 |
 | T-OPS-002 | OPS-002 | TC-OPS-002 recovery/ack ordering | Ops/Integration | Real selected durability profile | PTCS-003/SESS-001 | no ack before durable artifact/reply evidence | Blocked | durable profile decision | SA §9, SD §11 |
 | T-UI-001 | UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | Docs/UI | Real PTCS extension path after backend E2E | E2E-002/DOC-003 | RFC accepted + UI verifier plan | Planned | E2E-002/DOC-003 | SD §16.12 |
 
-## 3. Planned Verifier Script Names
+## 3. Verifier Script Names
 
-These script names are planned contracts. They must not be referenced as passing evidence until the scripts exist and have been executed.
+These script names are verifier contracts. They must not be referenced as passing evidence until the scripts exist and have been executed.
 
 | Script | Purpose | Related tests |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ These script names are planned contracts. They must not be referenced as passing
 | `misc/verifyArtifactStore.fsx` | File artifact store append-only and manifest integrity. | T-CF-004 |
 | `misc/verifyPtcsMessageFabric.fsx` | Real PTCS register/send/poll/wait/ack/drain path. | T-PTCS-002 |
 | `misc/verifyInstalledEngines.fsx` | Real installed Codex/Agy probe and capability map. | T-E2E-001 |
-| `misc/verifyMessageToEngineReply.fsx` | First closed-loop participant -> MessageFabric -> worker -> engine -> artifact -> reply path. | T-E2E-002 |
+| `misc/verifyMessageToEngineReply.fsx` | First closed-loop participant -> MessageFabric -> worker -> engine -> artifact -> reply path. Implemented and passed for Agy single-cycle profile. | T-E2E-002 |
 
 ## 4. Evidence Rule
 

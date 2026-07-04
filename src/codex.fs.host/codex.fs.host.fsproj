@@ -39,6 +39,7 @@
   <ItemGroup>
     <Compile Include="HostRuntime.fs" />
     <Compile Include="HostControl.fs" />
+    <Compile Include="SessionEngineCycle.fs" />
   </ItemGroup>
 
 </Project>

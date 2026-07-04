@@ -80,3 +80,11 @@
 - SD correction: clarified that `HostRuntime` local/in-process wording does not mean a `127.0.0.1` ActorSystem contract; future PTCS ActorFabric/sharded cluster binding must advertise LAN/DNS-reachable addresses.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-CLI-003 attach/drain/status passed`.
 - Traceability: WBS `CLI-003`, detail `doc/WBS.CLI-003.md`, and Test `T-CLI-003` updated to `Done` / `Pass`.
+
+## 2026-07-04 22:27 +08:00 E2E-002 message to engine reply
+
+- Scope: added `CodexFs.Host.SessionEngineCycle` bounded single-cycle runner and `misc/verifyMessageToEngineReply.fsx`.
+- Behavior: runner polls a real PTCS session inbox, assembles prompt, invokes real Agy `--print`, persists prompt/batch/request/rendered-argv/stdout/stderr/final/result/manifest artifacts, sends a PTCS direct reply with artifact reference, then acknowledges the cursor.
+- Fix: Agy argv rendering must put flags before `--print`; otherwise Agy treats `--print-timeout` as prompt content.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyMessageToEngineReply.fsx` passed. The verifier printed `TC-E2E-002 message to engine reply passed`.
+- Traceability: WBS `E2E-002`, detail `doc/WBS.E2E-002.md`, Test `T-E2E-002`, and `doc/Verification.md` updated to `Done` / `Pass`; durable/crash recovery remains `PTCS-003` / `OPS-002`.

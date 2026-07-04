@@ -79,3 +79,11 @@
 - `status` and `attach` return transcript JSON without acknowledging messages; `drain` acknowledges through `MessageFabricBinding.drainInboxAsync`.
 - CLI `session status|attach|drain` uses `CodexFs.Cli.CliHttp` and the host advertised URI, not direct MessageFabric access.
 - `SessionInboxResponse.Transcript` is early terminal output only; durable run artifacts and engine replies are still `E2E-002`.
+
+## 2026-07-04 E2E-002 Single-Cycle Engine Reply
+
+- `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` is the first real closed-loop helper: PTCS inbox -> prompt assembly -> Agy `--print` -> artifacts -> PTCS reply -> ack.
+- It is bounded single-cycle code, not the durable sharded actor loop.
+- Artifacts are written through `FileArtifactStore` and include prompt, PTCS batch JSONL, request JSON, rendered argv JSON, stdout/stderr, final markdown, result JSON and manifest JSON.
+- Agy CLI must render options before `--print`; placing `--print` before `--print-timeout` causes Agy to treat the timeout flag as prompt content.
+- `misc/verifyMessageToEngineReply.fsx` is the real E2E verifier and may consume the current user's installed CLI auth/session.
