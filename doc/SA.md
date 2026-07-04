@@ -13,7 +13,7 @@ Production path：
 ```text
 Human / PTCS UI / codex.fs.cli / upstream actor
   -> PTCS CommSpaMessageFabric / durable agent task
-  -> codex.fs.host session worker
+  -> codex.fs runtime / worker actor hosted by codex.fs.host or PTCS host process
   -> Engine Adapter
   -> External CLI process
   -> Artifact Store
@@ -102,15 +102,33 @@ Integration layer 負責：
 - attach `CommSpaActorFabric` 到 caller-owned ActorSystem，或使用 package-owned PTCS fabric。
 - 把 MessageFabric envelope / durable task envelope 轉成 `codex.fs` session/run request。
 
+### 3.6 Product reset responsibility view
+
+`RFC-PRODUCT-0001` defines the reset boundary for future implementation:
+
+| Boundary | Responsibility | Must not own |
+| --- | --- | --- |
+| PTCS Host | WebSharper chat room, auth profile, PTCS hub/fabric ownership and browser extension hosting. | Headless engine invocation loop or codex.fs transcript persistence by default. |
+| codex.fs runtime | Prompt/history assembly, local compact, headless CLI invocation, stdio capture, notes/artifacts and recovery boundary. | HTTP route concerns or PTCS Web UI layout. |
+| codex.fs actor | `WorkerActor` and specialized `SessionActor` protocol, spawn/register/route, sharded delivery and participant lifecycle. | A second message fabric or direct browser chat store. |
+| codex.fs host | Composition root, config, control endpoint, OpenAPI/Swagger, process/tool hosting, caller-owned PTCS fabric seam. | Canonical prompt semantics or product chat IA. |
+| codex.fs CLI | Terminal participant client, default Foreman target, participant switching, engine/model/reasoning options and artifact queries. | Actor/message truth outside PTCS MessageFabric. |
+| codex.fs Web | PTCS WebSharper extension/bundle such as `useAIChat(...)`, participant perspective and AI controls. | Standalone `/chat` replacement for PTCS chat. |
+
+Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.host` can invoke that behavior and expose diagnostics, but it is not the owner of the stitched conversation contract.
+
 ## 4. Runtime components
 
 | Component | Responsibility |
 | --- | --- |
 | Host Service | 啟動 runtime、載入 config、接入 PTCS fabric、暴露 CLI/control endpoint。 |
+| Runtime Orchestrator | 組合 MessageFabric batch、history、compaction、engine request、artifact/note persistence 與 reply intent。 |
 | PTCS MessageFabric | canonical chat/mailbox fabric，負責 send/poll/ack/wait/drain。 |
 | PTCS ActorFabric | actor/sharding runtime，負責 region/proxy/health/reality metadata。 |
 | DurableIngress | durable task admission、task ticket、deadline/reality checks。 |
-| Session Worker | 從 MessageFabric inbox 取訊息，管理 run loop、compaction、reply。 |
+| WorkerActor | 共通 agent actor capability：register participant、consume work、call runtime、reply and coordinate children。 |
+| SessionActor | Specialized WorkerActor / Foreman participant，負責 session mailbox、spawn/coordinate workers 與預設人機對話入口。 |
+| Session Worker | Runtime-level session behavior；從 MessageFabric inbox 取訊息，管理 run loop、compaction、reply。 |
 | Engine Registry | 根據 engine kind/version/capability 選 adapter。 |
 | Process Runner | 啟動外部 CLI、capture stdout/stderr、處理 timeout/cancel。 |
 | Artifact Store | 保存 prompt/output/event/final/result/manifest。 |

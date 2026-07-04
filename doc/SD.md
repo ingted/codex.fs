@@ -62,6 +62,16 @@ Package IDs:
 
 There is no standalone `codex.fs.akka` fabric package in the initial design. PTCS owns the fabric.
 
+`RFC-PRODUCT-0001` adds the following target split for upcoming work:
+
+| Future package | Preferred purpose | Current migration rule |
+| --- | --- | --- |
+| `codex.fs.runtime` | Prompt/history assembly, local compact, headless invocation loop, stdio capture, notes/artifacts and recovery boundary. | New prompt-loop code should be written as reusable runtime modules, not inside HTTP routes. Existing bounded helpers under host must be treated as migration candidates. |
+| `codex.fs.actor` | PTCS ActorFabric adapter with `WorkerActor`, specialized `SessionActor`, spawn/register/route protocol and durable delivery. | Actor code must depend on PTCS ActorFabric/MessageFabric contracts and may call runtime; it must not implement another mailbox fabric. |
+| `codex.fs.web` | PTCS WebSharper AI chat bundle/extension such as `useAIChat(...)`. | Web UI must plug into PTCS Host/WebSharper and use the same PTCS hub/fabric. |
+| `codex.fs.persistence` | Transcript/note/artifact provider boundary when file store and note policy outgrow core runtime. | Raw terminal transcript persistence must remain redacted and outside public repo by default. |
+| `codex.fs.protocol` | Stable DTO/protocol package if CLI/Web/host need shared contracts without host dependency. | Split only when more than one public consumer needs DTOs without referencing host. |
+
 ## 3. Core domain model
 
 ```fsharp
@@ -573,6 +583,7 @@ Host responsibilities:
 - start session workers。
 - expose control endpoint for CLI/Web/admin callers。
 - expose Swagger UI only when the selected host control endpoint is HTTP and the active profile allows it。
+- compose and call runtime/actor services; do not own canonical prompt/history assembly, local compact, stdio note persistence or worker orchestration semantics。
 
 Implemented minimal runtime package:
 
@@ -617,6 +628,7 @@ Rules:
 - `local` / `in-process` means node-local object ownership only; it must not imply a `127.0.0.1` ActorSystem contract。
 - PTCS ActorSystem / sharded cluster setup is outside this in-process MessageFabric slice; when `HostRuntime` wires `CommSpaActorFabric`, Akka remoting/sharding bind and canonical advertise host must come from the cluster profile and be reachable by peer nodes, such as LAN IP or DNS, not `127.0.0.1` / `localhost`。
 - `127.0.0.1` is allowed only for explicitly selected single-node development profiles where no cross-node actor/session communication is expected。
+- Prompt assembly, history splice, local compact, engine invocation and stdio/note persistence belong to `codex.fs.runtime` / `SessionBehavior` / worker actor behavior. `HostControl` route handlers may validate input, call runtime services and return DTOs only.
 
 Host control endpoint decision:
 
@@ -772,7 +784,7 @@ Implemented HTTP docs routes:
 
 ## 11. Session behavior design
 
-Domain behavior should be testable without Akka and without live PTCS process.
+Domain behavior should be testable without Akka and without live PTCS process. After `RFC-PRODUCT-0001`, this section is the runtime prompt-loop contract, not a host route contract. `codex.fs.host` may host the implementation; actor shells and CLI verifiers should be able to call the same runtime behavior.
 
 ```fsharp
 module CodexFs.SessionBehavior
@@ -865,6 +877,28 @@ Retention rules:
 - Recent non-critical entries are retained by `RecentEntryCount`.
 - Summary body text may be truncated per entry, but retained refs and ids must remain visible.
 - `MaxSummaryChars` is a soft budget for non-critical recent entries. Mandatory retained content may exceed the budget and sets `OverBudget = true`; it must not silently drop blockers, decisions, open items, message ids, run ids, or artifact refs.
+
+### 11.2 Worker actor model target
+
+Planned `ACTOR-001` must define this model before actor code expands:
+
+```text
+WorkerActor
+  - register/refresh PTCS participant
+  - consume direct/public/group or actor-routed work
+  - call codex.fs runtime
+  - persist transcript/artifacts/notes
+  - send MessageFabric reply/result reference
+  - coordinate child workers when policy allows
+
+SessionActor : WorkerActor
+  - stable Foreman/session participant identity
+  - default human target from CLI/Web
+  - session history/compaction policy owner
+  - spawns/registers worker participants
+```
+
+Stateful external request chains must use `Akka.Delivery` or `Akka.Cluster.Sharding.Delivery` for the selected profile. Cluster bind/canonical advertise addresses must be LAN/DNS-routable outside explicit single-node dev.
 
 ## 12. Artifact manifest design
 
@@ -1174,6 +1208,14 @@ codex.fs integration rule:
 - The full worker actor loop must register session/worker participants as `Kind = Some "agent"` in the same PTCS hub/fabric and consume direct/public/group scopes according to its session policy.
 - Browser acceptance must use real PTCS Host and real MessageFabric evidence; fake/mock UI smoke is not an acceptance path.
 
+### 14.2 Interactive CLI and AI chat bundle target
+
+`CLI-010` and `WEB-001` refine the UX after the product reset:
+
+- `codex.fs.cli` is the terminal participant client. It defaults to Foreman/SessionActor, supports switching participant/worker perspective, engine/model/reasoning/invocation options, run/artifact query, and readable transport failures.
+- `codex.fs.web` should follow the PTCS Dynamic/WebSharper extension style, exposing a `useAIChat(...)`-like bundle for participant perspective, model/reasoning controls and artifact references.
+- Both clients send user intent through PTCS MessageFabric and/or host control APIs that delegate to runtime/actor services. Neither client owns a separate chat history.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
@@ -1204,6 +1246,7 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 10. Durable agent task handoff via `CommSpaDurableMessageFabric`。
 11. Compaction。
 12. PTCS Web UI extension/RFC and local82 profile verifier。
+13. Product reset follow-up: runtime package boundary (`RUNTIME-001`), worker actor RFC (`ACTOR-001`), interactive CLI client (`CLI-010`), PTCS AI chat bundle (`WEB-001`) and transcript/note persistence provider (`PERSIST-001`)。
 
 ## 17. Open design items
 
@@ -1215,3 +1258,5 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | SD-TBD-004 | Resolved: first supported PTCS package is `PulseTrade.Comm.Spa [0.2.5-beta71]`; `codex.fs.ptcs` owns the exact reference while `codex.fs` core remains PTCS-independent. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
 | SD-TBD-006 | Resolved for MVP: OpenAPI JSON uses `Microsoft.AspNetCore.OpenApi`; Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUi` only as optional UI assets; XML docs are canonical for SDK docs; FSharp.Formatting/fsdocs is preferred for F# reference-site generation. |
+| SD-TBD-007 | Planned by `RUNTIME-001`: exact migration from bounded host helper to reusable `codex.fs.runtime` modules. |
+| SD-TBD-008 | Planned by `ACTOR-001`: `WorkerActor` / `SessionActor` protocol, sharding entity ids, delivery semantics and participant registration lifecycle. |

@@ -47,6 +47,17 @@ PTCS 已定義：
 - CLI engine 可替換，初期支援 Codex CLI 與 Agy CLI。
 - Production workflow 必須透過 PTCS `MessageFabric`、`ActorFabric`、必要時 `DurableIngress` / task result vault，不直接建立另一套 message bus 或 cluster fabric。
 
+### 2.1 產品責任邊界
+
+`RFC-PRODUCT-0001` 將目前產品責任重設如下：
+
+- `PTCS Host` 是 WebSharper chat/hub/auth profile 宿主；它不是 headless Codex invocation runtime，也不會自動保存 CLI stdio/notes。
+- `codex.fs.host` 是 codex.fs runtime composition/control/docs/deployment boundary；它可以 reference PTCS fabric，也可以作 dotnet tool，但不擁有 prompt assembly semantics。
+- prompt/history 拼接、local compact、headless CLI invocation、stdio capture、note/artifact persistence 與 recovery boundary 屬於 runtime/session worker 行為；在專案拆出 `codex.fs.runtime` 前，相關 module 必須與 HTTP route handler 保持清楚邊界。
+- `SessionActor` 是 specialized `WorkerActor`，預設是 Foreman/包工頭 participant；它可 spawn/register 其他 worker participants，並透過 PTCS `MessageFabric` / `ActorFabric` 與人或其他 agents 溝通。
+- `codex.fs.cli` 是 terminal participant client，預設與 Foreman/SessionActor 溝通；只有明確指定 participant/worker 時才切換目標。
+- codex.fs Web UI 應作為 PTCS WebSharper extension/bundle，例如 `useAIChat(...)` 類型的客製 bundle，提供 participant perspective、engine/model/reasoning/invocation controls；不得用 standalone host `/chat` 取代 PTCS chat room。
+
 ## 3. 目標
 
 1. 提供可嵌入、可獨立執行的 agent execution host。
@@ -164,13 +175,15 @@ CLI client 不得繞過 PTCS MessageFabric 建立平行 chat store。
 
 ### R-003 Session worker run loop
 
-Session worker 必須支援：
+Session worker / runtime 必須支援：
 
 - Idle / PreparingPrompt / RunningEngine / PersistingArtifacts / Replying / Compacting 狀態。
 - run 期間以 MessageFabric inbox/cursor 收集 pending messages。
 - run 完成後將 pending batch append 到下一輪 prompt。
 - run artifacts 與 MessageFabric chat history 分離保存。
 - reply 以 MessageFabric envelope 或 result-vault reference 傳回。
+
+Prompt assembly 不應由 `codex.fs.host` HTTP route handler 實作；host 只能呼叫 runtime/session worker contract 並暴露 control/docs/health。
 
 ### R-004 Artifact capture
 
@@ -247,9 +260,14 @@ host 必須支援 local compaction policy：
 | Package / Tool | 用途 |
 | --- | --- |
 | `codex.fs` | Core engine contracts、domain models、policy vocabulary。 |
-| `codex.fs.host` | PTCS fabric consumer host package 與 dotnet tool。 |
+| `codex.fs.runtime` | Planned reusable prompt loop、headless invocation、stdio/notes/artifacts、local compact 與 recovery boundary；拆出前以清楚 module 邊界暫留 core/host。 |
+| `codex.fs.actor` | Planned PTCS ActorFabric adapter，包含 `WorkerActor` / specialized `SessionActor` protocol、spawn/register/route 與 durable delivery。 |
+| `codex.fs.host` | PTCS fabric consumer host package；composition/control/OpenAPI/Swagger/deployment boundary，不直接擁有 prompt semantics。 |
+| `codex.fs.host.tool` | Standalone dotnet tool command `codex.fs.host`，包裝 host package。 |
 | `codex.fs.cli` | Terminal client dotnet tool package；installed command `codex.fs.cli`。 |
 | `codex.fs.tool` | Short alias dotnet tool package；installed command `codex.fs`。 |
+| `codex.fs.web` | Planned PTCS WebSharper AI chat extension/bundle，提供 participant perspective 與 engine controls。 |
+| `codex.fs.persistence` | Planned transcript/note/artifact provider boundary。 |
 | `codex.fs.engine.codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | Agy CLI adapter。 |
 

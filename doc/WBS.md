@@ -80,6 +80,12 @@ Status 值：
 | OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 100 | Done | None | 2026-07-04 23:44 +08:00 | 2026-07-04 23:46 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 `misc/verifyMessageToEngineReply.fsx` boundary gate | [@OPS-002](WBS.OPS-002.md) |
 | UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 100 | Done | None | 2026-07-04 23:13 +08:00 | 2026-07-04 23:23 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | [@UI-001](WBS.UI-001.md) |
 | UI-002 | PTCS local82 chat profile/browser correction | UI-001;HOST-005 | 100 | Done | None | 2026-07-05 01:22 +08:00 | 2026-07-05 01:22 +08:00 | SD §9, §16.12 | T-UI-002 | TC-UI-002 real PTCS Host 82 login/send + worker visibility boundary | [@UI-002](WBS.UI-002.md) |
+| PRODUCT-001 | Product responsibility reset RFC and stock docs | UI-002;HOST-007;CLI-009 | 100 | Done | None | 2026-07-05 04:05 +08:00 | 2026-07-05 04:22 +08:00 | Requirement §2.1, SA §3.6, SD §2, §9, §11, §14.2 | T-PRODUCT-001 | TC-PRODUCT-001 product boundary doc traceability | [@PRODUCT-001](WBS.PRODUCT-001.md) |
+| RUNTIME-001 | Runtime prompt-loop package boundary RFC | PRODUCT-001 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §2, §11, §16 | T-RUNTIME-001 | TC-RUNTIME-001 runtime RFC + pure prompt-loop verifier plan | inline |
+| ACTOR-001 | SessionWorker sharded actor model RFC | PRODUCT-001;RUNTIME-001;PTCS-003 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §8, §11.2, §17 | T-ACTOR-001 | TC-ACTOR-001 actor protocol RFC + PTCS ActorFabric verifier plan | inline |
+| CLI-010 | Interactive participant CLI client RFC | PRODUCT-001;CLI-009 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §14, §14.2 | T-CLI-010 | TC-CLI-010 installed CLI participant switch/foreman loop plan | inline |
+| WEB-001 | PTCS AI chat bundle RFC | PRODUCT-001;UI-002 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §14.1, §14.2 | T-WEB-001 | TC-WEB-001 PTCS WebSharper bundle real browser plan | inline |
+| PERSIST-001 | Transcript note/artifact store RFC | PRODUCT-001;OPS-002 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §12, §13, RFC-PRODUCT-0001 | T-PERSIST-001 | TC-PERSIST-001 transcript/note artifact policy plan | inline |
 
 ## 3. Roll-up / Detail Files
 
@@ -113,6 +119,7 @@ Status 值：
 | [@OPS-002](WBS.OPS-002.md) | Session single-cycle runner writes a ready-to-ack persistence boundary after reply evidence and before MessageFabric ack. |
 | [@UI-001](WBS.UI-001.md) | PTCS Web UI extension RFC defines codex.fs as a PTCS extension consumer over MessageFabric, not a new UI fabric. |
 | [@UI-002](WBS.UI-002.md) | PTCS Host profile verification uses `http://127.0.0.1:82/chat` local-login for real browser prompt send; 81 OAuth redirect is expected for the public profile. |
+| [@PRODUCT-001](WBS.PRODUCT-001.md) | Product reset distinguishes PTCS Host, codex.fs.host, runtime, actor, CLI, Web and persistence boundaries before further implementation. |
 
 ## 4. Update Rule
 

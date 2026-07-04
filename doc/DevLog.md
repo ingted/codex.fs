@@ -214,3 +214,12 @@
 - Availability: root, `/chat`, `/diagnostics/session-send`, health, OpenAPI, and Swagger returned HTTP 200; health reports `diagnosticsSessionSendUri` and no `chatUri`; OpenAPI includes `/chat`, `/diagnostics/session-send`, and `/api/codexfs/foreman/messages`.
 - CLI installed-tool evidence: `codex.fs.cli session send --host http://10.28.112.93:10481 --prompt ...` and `codex.fs session send --host http://10.28.112.93:10481 --prompt ...` both returned `sessionId = foreman` and `targetParticipantId = agent.codexfs.foreman`; `session status --session foreman` showed both prompts in the real MessageFabric inbox.
 - Browser evidence: Playwright summary `G:\codex.fs\.codex.fs\ptcs-hub-align-20260705030317-alpha6\summary.json` passed root PTCS note, `/chat` guard without prompt composer, diagnostics foreman default, mobile diagnostics geometry, and Swagger UI checks.
+
+## 2026-07-05 04:22 +08:00 PRODUCT-001 product responsibility reset
+
+- Scope: accepted `RFC-PRODUCT-0001` to reset product responsibility before more runtime/actor/Web code is added.
+- Boundary: `PTCS Host` remains the WebSharper chat/hub/auth profile host; `codex.fs.host` is composition/control/docs/deployment and must not own canonical prompt assembly.
+- Runtime rule: prompt/history splice, local compact, headless CLI invocation, stdio capture, note/artifact persistence and recovery boundary belong to runtime/session worker behavior.
+- Actor rule: `SessionActor` is a specialized `WorkerActor` / Foreman participant over PTCS ActorFabric/MessageFabric and future sharded delivery; spawned workers must register as PTCS participants.
+- Follow-up WBS/Test: added `RUNTIME-001`, `ACTOR-001`, `CLI-010`, `WEB-001`, and `PERSIST-001` as planned RFC/test slices.
+- Traceability: updated `Requirement.md`, `SA.md`, `SD.md`, `WBS.md`, `Test.md`, `RFC_Project_Planing.md`, `WBS.PRODUCT-001.md`, and `MCP.KM.md`.

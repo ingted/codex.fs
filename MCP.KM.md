@@ -192,3 +192,11 @@
 - Standalone prompt testing moved to `GET/POST /diagnostics/session-send`; blank diagnostics `sessionId` defaults to `foreman`.
 - CLI first-use send no longer requires `--session`. `SessionSendOptions.SessionId = None` posts to `/api/codexfs/foreman/messages` and targets `<ptcs.sessionParticipantPrefix>.foreman`.
 - Host health JSON exposes `diagnosticsSessionSendUri`; `chatUri` is no longer the current contract field.
+
+## 2026-07-05 PRODUCT-001 Product Responsibility Reset
+
+- `PTCS Host` and `codex.fs.host` are different products: PTCS Host owns WebSharper chat/hub/auth profile; `codex.fs.host` owns codex.fs composition/control/docs/deployment.
+- Prompt assembly is not a host HTTP responsibility. It belongs to runtime/session worker behavior together with local compact, headless CLI invocation, stdio capture, notes/artifacts and recovery boundary.
+- `SessionActor` is a specialized `WorkerActor` / Foreman participant. It may spawn/register other worker participants, but all communication must remain on PTCS MessageFabric/ActorFabric.
+- `codex.fs.cli` should be an interactive terminal participant client with Foreman default target, participant switching and engine/model/reasoning options.
+- Future Web UI should be a PTCS WebSharper extension/bundle such as `useAIChat(...)`, not standalone host `/chat`.
