@@ -10,6 +10,7 @@
     <Compile Include="Artifacts.fs" />
     <Compile Include="FileArtifactStore.fs" />
     <Compile Include="Redaction.fs" />
+    <Compile Include="Engine.fs" />
     <Compile Include="Library.fs" />
   </ItemGroup>
 
