@@ -283,7 +283,7 @@ Config should be expressed as typed records and load from explicit file/env/prov
 | Mode | 說明 |
 | --- | --- |
 | PTCS-embedded | A PTCS host references `codex.fs.host` and starts services in-process. |
-| Dotnet tool host | `codex.fs.host` runs standalone with package-owned or attached PTCS fabric. |
+| Dotnet tool host | `codex.fs.host` runs standalone with package-owned or attached PTCS fabric; HTTP control endpoint must publish a LAN/routable advertised URI outside single-node dev. |
 | Terminal client | `codex.fs.cli` connects to a running host and uses MessageFabric-backed session interaction. |
 | Caller-owned ActorSystem | Host merges PTCS required config before ActorSystem creation and attaches `CommSpaActorFabric`. |
 
@@ -291,7 +291,7 @@ Config should be expressed as typed records and load from explicit file/env/prov
 
 | ID | Decision needed |
 | --- | --- |
-| SA-TBD-001 | Host control endpoint protocol for `codex.fs.cli`; MessageFabric stays communication fact source. |
+| SA-TBD-001 | Resolved: HTTP control endpoint for MVP; MessageFabric stays communication fact source; loopback is dev-only, clustered runtime uses advertised LAN/routable URI. |
 | SA-TBD-002 | Artifact storage provider: file-only first or pluggable store first. |
 | SA-TBD-003 | Compactor engine: same selected CLI, separate cheap adapter, or pluggable function. |
 | SA-TBD-004 | Exact PTCS durable profile for first production demo. |

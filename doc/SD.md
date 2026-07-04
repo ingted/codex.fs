@@ -339,8 +339,16 @@ type HostConfig =
       MaxPendingMessagesPerTurn: int
       Compaction: CompactionPolicy
       Redaction: RedactionPolicy
+      ControlEndpoint: HostControlEndpointConfig
       ApiDocs: ApiDocsConfig
       Ptcs: PtcsHostConfig }
+
+type HostControlEndpointConfig =
+    { Protocol: string
+      BindAddress: string
+      Port: int option
+      AdvertiseUri: string
+      AllowLoopbackOnly: bool }
 
 type ApiDocsConfig =
     { GenerateXmlDocs: bool
@@ -382,6 +390,15 @@ Host responsibilities:
 - expose control endpoint for CLI/Web/admin callers。
 - expose Swagger UI only when the selected host control endpoint is HTTP and the active profile allows it。
 
+Host control endpoint decision:
+
+- MVP protocol is HTTP.
+- Single-node development may bind to loopback only when `AllowLoopbackOnly = true`.
+- Production and clustered profiles must bind to a LAN or otherwise routable address and publish an `AdvertiseUri` reachable by other nodes/clients.
+- The advertised URI, not `localhost`, is the address other nodes and CLI clients use.
+- HTTP is control plane only. Actor/session collaboration and message truth remain PTCS `CommSpaActorFabric` / `CommSpaMessageFabric`.
+- Swagger/OpenAPI documents the HTTP control surface, not MessageFabric as a separate transport.
+
 ## 10. API documentation / SDK docs design
 
 API documentation is part of the implementation contract, not a post-processing task.
@@ -395,9 +412,10 @@ Documentation sources:
 | CLI commands | `FAkka.Argu` DU metadata + command examples | CLI help text and docs snippets |
 | PTCS integration operations | SD mapping table + API comments on adapter functions | SDK docs and integration guide |
 
-Tooling candidates:
+Tooling decision and candidates:
 
-- OpenAPI/Swagger: prefer ASP.NET Core OpenAPI integration with Swashbuckle or NSwag if `codex.fs.host` exposes HTTP endpoints.
+- OpenAPI/Swagger MVP: ASP.NET Core HTTP host with Swashbuckle and XML comments.
+- OpenAPI/Swagger future candidate: NSwag may be evaluated later for client generation.
 - SDK reference docs: use F# XML documentation output as the canonical source; evaluate DocFX or FSharp.Formatting for generating human-readable SDK reference pages.
 - Examples: keep examples close to the API through XML `<example>` blocks or doc-tested snippets when tooling supports it.
 
@@ -571,9 +589,9 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 
 | ID | Item |
 | --- | --- |
-| SD-TBD-001 | Host endpoint protocol for CLI client while MessageFabric remains communication fact source. |
+| SD-TBD-001 | Resolved: HTTP control endpoint. Clustered profiles must use bind address + advertised LAN/routable URI; localhost is dev-only. |
 | SD-TBD-002 | Exact artifact root layout for multi-workspace use. |
 | SD-TBD-003 | Whether compaction uses selected engine or dedicated adapter. |
 | SD-TBD-004 | First supported PTCS package version and exact NuGet reference range. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
-| SD-TBD-006 | Final OpenAPI generator and SDK reference documentation toolchain, including DocFX/FSharp.Formatting evaluation. |
+| SD-TBD-006 | Partially resolved: MVP uses Swashbuckle + XML comments for HTTP/OpenAPI. DocFX/FSharp.Formatting SDK reference generation remains an evaluation item. |

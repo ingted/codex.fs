@@ -4,7 +4,7 @@ WBS ID：`DOC-001`
 狀態：Planned  
 Progress：0  
 StartTime：未動工  
-UpdatedAt：2026-07-04 17:53 +08:00  
+UpdatedAt：2026-07-04 18:10 +08:00  
 Previous：`CF-001`  
 SD：`SD §10`, `SD §17 SD-TBD-006`  
 Test：`T-DOC-001`
@@ -17,17 +17,17 @@ Test：`T-DOC-001`
 
 | Area | Candidate |
 | --- | --- |
-| OpenAPI/Swagger | ASP.NET Core OpenAPI + Swashbuckle or NSwag |
-| SDK reference | XML docs + DocFX or FSharp.Formatting |
+| OpenAPI/Swagger | MVP decision: ASP.NET Core HTTP host + Swashbuckle + XML comments |
+| SDK reference | XML docs first; DocFX or FSharp.Formatting remains an evaluation |
 | CLI docs | FAkka.Argu command metadata + examples |
 
 ## Acceptance
 
 - Toolchain choice recorded in SD or a linked decision note.
 - Sample public API can generate XML docs.
-- If HTTP endpoint is selected, sample endpoint can generate OpenAPI JSON.
+- Sample HTTP endpoint can generate OpenAPI JSON with Swashbuckle.
 - Examples use non-secret sample values.
 
 ## Blockers
 
-- Final choice remains `SD-TBD-006`.
+- None for MVP docs baseline. Static SDK reference generator evaluation remains open but does not block Swagger/OpenAPI baseline.
