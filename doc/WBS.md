@@ -48,7 +48,7 @@ Status 值：
 | PTCS-003 | 實作 durable task handoff | PTCS-002 | 0 | Blocked | SA-TBD-004 durable profile | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | inline |
 | SESS-001 | 實作 session state/effect model | CF-002 | 100 | Done | None | 2026-07-04 19:58 +08:00 | 2026-07-04 20:04 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
 | SESS-002 | 實作 prompt assembly | SESS-001 | 100 | Done | None | 2026-07-04 19:57 +08:00 | 2026-07-04 20:04 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 `tests/codex.fs.Tests` prompt batch assembly | inline |
-| SESS-003 | 實作 rule-based local compact | SESS-002 | 0 | Planned | SD-TBD-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement R-005, SD §17 | T-SESS-003 | TC-SESS-003 compact preserves blockers | inline |
+| SESS-003 | 實作 rule-based local compact | SESS-002 | 100 | Done | None | 2026-07-04 20:08 +08:00 | 2026-07-04 20:12 +08:00 | Requirement R-005, SD §11.1, §17 | T-SESS-003 | TC-SESS-003 `tests/codex.fs.Tests` compact preserves blockers | inline |
 | HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
 | HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 0 | Planned | HOST-001/PTCS-002 | 未動工 | 2026-07-04 20:04 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host boot/health | inline |
 | HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:10 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |

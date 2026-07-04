@@ -28,6 +28,7 @@
   <ItemGroup>
     <Compile Include="Domain.fs" />
     <Compile Include="PromptAssembly.fs" />
+    <Compile Include="Compaction.fs" />
     <Compile Include="Artifacts.fs" />
     <Compile Include="FileArtifactStore.fs" />
     <Compile Include="Redaction.fs" />

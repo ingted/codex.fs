@@ -475,6 +475,66 @@ let decide (state: SessionState) (command: SessionCommand) : SessionState * Sess
 
 Akka shell, if needed, is an adapter around this behavior and PTCS ActorFabric. It must not introduce a second persistent truth for messages.
 
+### 11.1 Local compaction design
+
+`SESS-003` resolves `SD-TBD-003` for the MVP: local compaction uses a deterministic rule-based compactor in `codex.fs` core. It does not call the selected engine and does not require a dedicated LLM adapter. A future engine-backed or dedicated-adapter compactor may reuse the same input/output contract after the host has durable artifacts and PTCS binding in place.
+
+Core contract:
+
+```fsharp
+module CodexFs.Compaction
+
+type CompactionEntryKind =
+    | Message
+    | Decision
+    | Blocker
+    | OpenItem
+    | Run
+    | Artifact
+    | Note
+
+type CompactionEntry =
+    { EntryId: string
+      Kind: CompactionEntryKind
+      Text: string
+      MessageRefs: PtcsMessageRef list
+      RunRefs: RunId list
+      ArtifactRefs: string list
+      Tags: string list
+      CreatedUtc: DateTimeOffset option }
+
+type CompactionPolicy =
+    { MaxSummaryChars: int option
+      RecentEntryCount: int
+      MaxEntryTextChars: int option
+      PreserveKinds: Set<CompactionEntryKind> }
+
+type DroppedEntryReason =
+    | NotRecent
+    | Budget
+
+type DroppedEntry =
+    { EntryId: string
+      Reason: DroppedEntryReason }
+
+type CompactionResult =
+    { SummaryMarkdown: string
+      PreservedEntryIds: string list
+      DroppedEntries: DroppedEntry list
+      PreservedMessageRefs: PtcsMessageRef list
+      PreservedRunRefs: RunId list
+      PreservedArtifactRefs: string list
+      OverBudget: bool }
+```
+
+Retention rules:
+
+- `Decision`, `Blocker`, `OpenItem`, `Run`, and `Artifact` entries are retained by default.
+- Any entry carrying `PtcsMessageRef`, `RunId`, or artifact reference is retained even if its kind is `Note` or `Message`.
+- Recent non-critical entries are retained by `RecentEntryCount`.
+- Summary body text may be truncated per entry, but retained refs and ids must remain visible.
+- `MaxSummaryChars` is a soft budget for non-critical recent entries. Mandatory retained content may exceed the budget and sets `OverBudget = true`; it must not silently drop blockers, decisions, open items, message ids, run ids, or artifact refs.
+
 ## 12. Artifact manifest design
 
 ```fsharp
@@ -593,7 +653,7 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | --- | --- |
 | SD-TBD-001 | Resolved: HTTP control endpoint. Clustered profiles must use bind address + advertised LAN/routable URI; localhost is dev-only. |
 | SD-TBD-002 | Exact artifact root layout for multi-workspace use. |
-| SD-TBD-003 | Whether compaction uses selected engine or dedicated adapter. |
+| SD-TBD-003 | Resolved for MVP: rule-based local compaction in `codex.fs`; selected-engine or dedicated LLM compaction is a future adapter over the same contract. |
 | SD-TBD-004 | First supported PTCS package version and exact NuGet reference range. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
 | SD-TBD-006 | Resolved for MVP: OpenAPI JSON uses `Microsoft.AspNetCore.OpenApi`; Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUi` only as optional UI assets; XML docs are canonical for SDK docs; FSharp.Formatting/fsdocs is preferred for F# reference-site generation. |
