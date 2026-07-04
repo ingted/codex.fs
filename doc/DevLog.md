@@ -239,3 +239,11 @@
 - Model: `WorkerActor` is the common capability; `SessionActor` is a specialized WorkerActor / Foreman participant and may call runtime or spawn workers.
 - Delivery: actor delivery confirm and MessageFabric ack happen only after runtime ready-to-ack evidence and reply/result reference exist; production sharded durability still requires selected provider proof.
 - Traceability: updated WBS `ACTOR-001`, detail `doc/WBS.ACTOR-001.md`, Test `T-ACTOR-001`, SA actor path, SD §11.2, and KM.
+
+## 2026-07-05 04:22 +08:00 CLI-010 interactive participant CLI client
+
+- Scope: accepted `RFC-CLI-0002` as a contract/RFC slice; no interactive CLI implementation was claimed.
+- Boundary: `codex.fs.cli` is a terminal participant client. It sends user intent through host/PTCS APIs and never owns prompt assembly, headless invocation, chat truth or artifact/note persistence.
+- UX: first-use prompt targets Foreman by default; future interactive mode supports target switching across Foreman, session, exact participant/worker, public and group scopes, with visible sender/target/perspective state.
+- Invocation: CLI may collect engine/model/reasoning/invocation options, but runtime/actor validates policy and engine adapters render versioned argv.
+- Traceability: updated WBS `CLI-010`, detail `doc/WBS.CLI-010.md`, Test `T-CLI-010`, Requirement R-002, SA §3.6, SD §14.2, `RFC_Project_Planing.md` and KM.

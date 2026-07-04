@@ -1297,6 +1297,47 @@ codex.fs integration rule:
 - `codex.fs.web` should follow the PTCS Dynamic/WebSharper extension style, exposing a `useAIChat(...)`-like bundle for participant perspective, model/reasoning controls and artifact references.
 - Both clients send user intent through PTCS MessageFabric and/or host control APIs that delegate to runtime/actor services. Neither client owns a separate chat history.
 
+`RFC-CLI-0002` accepts the terminal-side participant contract:
+
+| CLI concept | Contract |
+| --- | --- |
+| sender identity | current baseline `user.codexfs.cli`; future explicit identity uses `--participant-id <user.*>` or a named local profile |
+| default target | Foreman `SessionActor`, entity id `foreman`, participant `<ptcs.sessionParticipantPrefix>.foreman` |
+| explicit session target | derives `<ptcs.sessionParticipantPrefix>.<sessionId>` |
+| exact worker/participant target | direct send to supplied participant id; no additional derivation |
+| public target | MessageFabric public channel; worker consumption is actor policy controlled |
+| group target | MessageFabric group id; membership is PTCS fabric state |
+| perspective | authorized read/render perspective only; it must not silently forge `agent.*` sender identity |
+
+Future interactive command shape:
+
+```text
+codex.fs.cli chat --host <advertiseUri>
+codex.fs.cli chat --host <advertiseUri> --target foreman
+codex.fs.cli chat --host <advertiseUri> --target agent.codexfs.worker.sess-001.plan
+codex.fs.cli chat --host <advertiseUri> --public
+codex.fs.cli chat --host <advertiseUri> --group codexfs.session.sess-001
+```
+
+Terminal meta commands are parsed by the CLI and converted to host/PTCS operations; they are not shell commands:
+
+```text
+/whoami
+/participants
+/target foreman
+/target agent.codexfs.worker.sess-001.plan
+/public
+/group codexfs.session.sess-001
+/model gpt-5-codex --reasoning high
+/engine agy
+/runs
+/artifacts <run-id>
+/notes <run-id>
+/exit
+```
+
+Invocation options collected by CLI are intent metadata. Runtime/actor owns validation against policy, engine adapter selection, versioned argv rendering, prompt assembly, local compact, transcript/note/artifact persistence and MessageFabric ack ordering.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
@@ -1341,3 +1382,4 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | SD-TBD-006 | Resolved for MVP: OpenAPI JSON uses `Microsoft.AspNetCore.OpenApi`; Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUi` only as optional UI assets; XML docs are canonical for SDK docs; FSharp.Formatting/fsdocs is preferred for F# reference-site generation. |
 | SD-TBD-007 | Planned by `RUNTIME-001`: exact migration from bounded host helper to reusable `codex.fs.runtime` modules. |
 | SD-TBD-008 | Resolved for RFC slice by `ACTOR-001`: `WorkerActor` / `SessionActor` protocol, sharding entity ids, delivery semantics and participant registration lifecycle. Implementation/verifier remains future work. |
+| SD-TBD-009 | Resolved for RFC slice by `CLI-010`: interactive CLI participant identity, Foreman default, target/perspective switching and invocation option handoff are defined. Interactive command implementation/verifier remains future work. |

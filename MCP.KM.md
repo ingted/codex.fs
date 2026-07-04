@@ -214,3 +214,11 @@
 - Default Foreman participant is `<ptcs.sessionParticipantPrefix>.foreman`, e.g. `agent.codexfs.foreman`; child workers must register as PTCS `agent` participants.
 - Actor shell uses PTCS ActorFabric and calls runtime; MessageFabric remains participant/direct/public/group chat truth.
 - Delivery confirm and MessageFabric ack occur after runtime ready-to-ack evidence and reply/result reference. Volatile provider proof must not be treated as production sharded durability.
+
+## 2026-07-05 CLI-010 Interactive Participant CLI Client
+
+- `codex.fs.cli` is a terminal participant client, not a prompt-loop or headless-engine owner. It sends user intent through host/PTCS APIs and renders MessageFabric replies/artifact references.
+- Current sender baseline is `user.codexfs.cli`; future explicit identity uses `--participant-id <user.*>` or a local profile. First-use target remains Foreman `<ptcs.sessionParticipantPrefix>.foreman`.
+- Target switching vocabulary covers Foreman, explicit session, exact participant/worker, public channel and MessageFabric group. Perspective switching is authorized read/render only and must not silently forge `agent.*` sender ids.
+- CLI may collect engine/model/reasoning/invocation options, but runtime/actor validates policy and engine adapters render versioned argv.
+- Future verifier `misc/verifyCliParticipantChat.fsx` must use installed `codex.fs.cli` / `codex.fs` against real host/PTCS fabric; fake mailbox smoke is not acceptance.

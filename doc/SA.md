@@ -120,6 +120,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `ACTOR-001` resolves the first actor RFC slice: Foreman is the default SessionActor participant, workers register as PTCS `agent` participants, and actor shells call runtime while MessageFabric remains the human/agent chat truth.
 
+`CLI-010` resolves the first interactive CLI RFC slice: `codex.fs.cli` is a terminal participant client with Foreman default target, explicit participant/worker/public/group switching, visible sender/target/perspective state and invocation-option handoff to runtime/actor. It does not own prompt assembly, headless process execution or chat history truth.
+
 ## 4. Runtime components
 
 | Component | Responsibility |

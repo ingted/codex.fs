@@ -165,6 +165,9 @@ standalone host tool 必須提供基本 operator usability route：
 - 送出 prompt。
 - 未指定 session 時預設把 prompt 送給 default Foreman/SessionWorker / 包工頭，不要求使用者先知道 session id。
 - 指定 session 時把 prompt 送給該 session 的 SessionWorker；只有指定 worker id 時改送指定 worker。
+- 支援 interactive terminal participant mode，能切換 Foreman、session、exact participant/worker、public channel 或 group target。
+- 支援顯示目前 sender/target/perspective；perspective switching 是 authorized read/render，不等於任意 impersonate `agent.*` participant。
+- 收集 engine/model/reasoning/invocation options 並交由 runtime/actor/engine adapter 驗證與執行，不在 CLI 內拼 prompt 或直接跑 headless engine。
 - wait/poll session reply。
 - 查詢 run artifacts。
 - drain pending inbox。

@@ -83,7 +83,7 @@ Status 值：
 | PRODUCT-001 | Product responsibility reset RFC and stock docs | UI-002;HOST-007;CLI-009 | 100 | Done | None | 2026-07-05 04:05 +08:00 | 2026-07-05 04:22 +08:00 | Requirement §2.1, SA §3.6, SD §2, §9, §11, §14.2 | T-PRODUCT-001 | TC-PRODUCT-001 product boundary doc traceability | [@PRODUCT-001](WBS.PRODUCT-001.md) |
 | RUNTIME-001 | Runtime prompt-loop package boundary RFC | PRODUCT-001 | 100 | Done | None | 2026-07-05 04:13 +08:00 | 2026-07-05 04:25 +08:00 | SD §2, §11.3, §16 | T-RUNTIME-001 | TC-RUNTIME-001 runtime RFC + pure prompt-loop verifier plan | [@RUNTIME-001](WBS.RUNTIME-001.md) |
 | ACTOR-001 | SessionWorker sharded actor model RFC | PRODUCT-001;RUNTIME-001;PTCS-003 | 100 | Done | None | 2026-07-05 04:16 +08:00 | 2026-07-05 04:34 +08:00 | SD §8, §11.2, §17 | T-ACTOR-001 | TC-ACTOR-001 actor protocol RFC + PTCS ActorFabric verifier plan | [@ACTOR-001](WBS.ACTOR-001.md) |
-| CLI-010 | Interactive participant CLI client RFC | PRODUCT-001;CLI-009 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §14, §14.2 | T-CLI-010 | TC-CLI-010 installed CLI participant switch/foreman loop plan | inline |
+| CLI-010 | Interactive participant CLI client RFC | PRODUCT-001;CLI-009 | 100 | Done | None | 2026-07-05 04:21 +08:00 | 2026-07-05 04:22 +08:00 | SD §14, §14.2 | T-CLI-010 | TC-CLI-010 interactive participant CLI RFC + installed verifier plan | [@CLI-010](WBS.CLI-010.md) |
 | WEB-001 | PTCS AI chat bundle RFC | PRODUCT-001;UI-002 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §14.1, §14.2 | T-WEB-001 | TC-WEB-001 PTCS WebSharper bundle real browser plan | inline |
 | PERSIST-001 | Transcript note/artifact store RFC | PRODUCT-001;OPS-002 | 0 | Planned | None | - | 2026-07-05 04:22 +08:00 | SD §12, §13, RFC-PRODUCT-0001 | T-PERSIST-001 | TC-PERSIST-001 transcript/note artifact policy plan | inline |
 
@@ -110,6 +110,7 @@ Status 值：
 | [@CLI-007](WBS.CLI-007.md) | `session send` defaults to the derived SessionWorker/foreman participant and only uses a specified worker when `--worker-id` is supplied. |
 | [@CLI-008](WBS.CLI-008.md) | CLI HTTP transport failures return readable non-zero errors instead of unhandled .NET stack traces. |
 | [@CLI-009](WBS.CLI-009.md) | First-use `session send` no longer requires a user-known session id; blank session routes to default `foreman`. |
+| [@CLI-010](WBS.CLI-010.md) | Interactive terminal participant client RFC defines Foreman default, target/perspective switching and invocation-option handoff without making CLI the prompt-loop owner. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
 | [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |
