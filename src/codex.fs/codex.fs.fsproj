@@ -9,6 +9,7 @@
     <Compile Include="Domain.fs" />
     <Compile Include="Artifacts.fs" />
     <Compile Include="FileArtifactStore.fs" />
+    <Compile Include="Redaction.fs" />
     <Compile Include="Library.fs" />
   </ItemGroup>
 

@@ -34,8 +34,8 @@ Status 值：
 | CF-002 | 實作 core domain model | CF-001 | 100 | Done | None | 2026-07-04 18:27 +08:00 | 2026-07-04 18:30 +08:00 | SD §3, §16.1 | T-CF-002 | TC-CF-002 `CodexFs.Domain` build/XML docs | inline |
 | CF-003 | 實作 artifact manifest model | CF-002 | 100 | Done | None | 2026-07-04 18:32 +08:00 | 2026-07-04 18:35 +08:00 | SD §12, §16.1 | T-CF-003 | TC-CF-003 `CodexFs.Artifacts` build/XML docs | inline |
 | CF-004 | 實作 file artifact store | CF-003 | 100 | Done | None | 2026-07-04 18:37 +08:00 | 2026-07-04 18:42 +08:00 | SD §12, §16.5 | T-CF-004 | TC-CF-004 temp FSI write/sha/no-overwrite | inline |
-| CF-005 | 實作 redaction model | CF-004 | 0 | Planned | None | 未動工 | 2026-07-04 18:42 +08:00 | SD §13 | T-CF-005 | TC-CF-005 redaction cases | inline |
-| EN-001 | 實作 engine adapter contract | CF-002 | 0 | Planned | CF-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §4, §16.2 | T-EN-001 | TC-EN-001 adapter contract compile | inline |
+| CF-005 | 實作 redaction model | CF-004 | 100 | Done | None | 2026-07-04 18:44 +08:00 | 2026-07-04 18:48 +08:00 | SD §13 | T-CF-005 | TC-CF-005 temp FSI token-like redaction | inline |
+| EN-001 | 實作 engine adapter contract | CF-002 | 0 | Planned | None | 未動工 | 2026-07-04 18:48 +08:00 | SD §4, §16.2 | T-EN-001 | TC-EN-001 adapter contract compile | inline |
 | EN-002 | 實作 process runner/guard contract | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §4, SA §9 | T-EN-002 | TC-EN-002 process timeout/kill fixture | inline |
 | CDX-001 | Codex CLI probe fixtures | EN-001 | 0 | Planned | EN-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex help/version fixture | inline |
 | CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 0 | Planned | CDX-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex argv render | inline |

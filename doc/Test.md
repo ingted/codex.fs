@@ -47,8 +47,8 @@ Status 值：
 | T-CF-002 | CF-002 | TC-CF-002 `CodexFs.Domain` build/XML docs | Unit | Real compiled core project | CF-001 | build succeeded with 0 warnings/errors; generated XML docs include `CodexFs.Domain` members | Pass | None | SD §3 |
 | T-CF-003 | CF-003 | TC-CF-003 `CodexFs.Artifacts` build/XML docs | Unit | Real artifact manifest implementation | CF-002 | build succeeded with 0 warnings/errors; generated XML docs include artifact members | Pass | None | SD §12 |
 | T-CF-004 | CF-004 | TC-CF-004 temp FSI write/sha/no-overwrite | Integration | Real file artifact store on temp workspace | CF-003 | temp artifact write succeeded; SHA-256 matched; overwrite rejected by `IOException` | Pass | None | SD §12 |
-| T-CF-005 | CF-005 | TC-CF-005 redaction cases | Unit/Ops | Real redaction module | CF-004 | token-like samples redacted, safe text unchanged | Planned | None | SD §13 |
-| T-EN-001 | EN-001 | TC-EN-001 adapter contract compile | Compile | Real package compile | CF-002 | adapter contract compiles and XML docs generated | Planned | CF-002 | SD §4 |
+| T-CF-005 | CF-005 | TC-CF-005 temp FSI token-like redaction | Unit/Ops | Real redaction module | CF-004 | fake token-like sample redacted; safe text unchanged; one hit recorded | Pass | None | SD §13 |
+| T-EN-001 | EN-001 | TC-EN-001 adapter contract compile | Compile | Real package compile | CF-002 | adapter contract compiles and XML docs generated | Planned | None | SD §4 |
 | T-EN-002 | EN-002 | TC-EN-002 process timeout/kill fixture | Unit/Ops | Controlled command fixture only; not production validation | EN-001 | timeout, cancellation, kill-after-grace evidence | Planned | EN-001 | SD §4, SA §9 |
 | T-CDX-001 | CDX-001 | TC-CDX-001 codex help/version fixture | Fixture | Captured fixture parser, not live CLI readiness | EN-001 | parsed surface/capabilities | Planned | EN-001 | SD §5 |
 | T-CDX-002 | CDX-002 | TC-CDX-002 codex argv render | Unit | Real FAkka.Argu DU/render function | CDX-001 | rendered argv + redacted display snapshots | Planned | CDX-001 | SD §5, §7 |
