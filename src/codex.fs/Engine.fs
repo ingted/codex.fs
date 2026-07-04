@@ -46,6 +46,91 @@ module Engine =
           /// Map process output artifacts into the normalized run result/artifact layout.
           MapArtifacts: EngineSurface -> RunRequest -> RunResult -> Task<unit> }
 
+    /// Codex CLI engine surfaces.
+    module Codex =
+
+        /// Codex CLI 0.142.x surfaces.
+        module V0_142 =
+
+            /// Probe helpers for the Codex CLI 0.142.x exec surface.
+            module Exec =
+
+                /// Stable surface id for Codex 0.142.x exec mode.
+                [<Literal>]
+                let SurfaceId = "codex-exec-0.142"
+
+                /// Normalize raw version text captured from `codex --version`.
+                let normalizeVersionText (versionText: string) =
+                    if isNull versionText then
+                        String.Empty
+                    else
+                        let trimmed = versionText.Trim()
+                        let prefix = "codex-cli "
+
+                        if trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) then
+                            trimmed.Substring(prefix.Length).Trim()
+                        else
+                            trimmed
+
+                /// Return true when the version belongs to the supported Codex 0.142.x family.
+                let isSupportedVersion (versionText: string) =
+                    match Version.TryParse(normalizeVersionText versionText) with
+                    | true, version -> version.Major = 0 && version.Minor = 142
+                    | false, _ -> false
+
+                /// Tokenize `codex exec --help` output for option discovery.
+                let helpTokens (helpText: string) =
+                    if String.IsNullOrWhiteSpace helpText then
+                        Set.empty
+                    else
+                        helpText.Split([| ' '; '\t'; '\r'; '\n'; ','; ':'; '('; ')' |], StringSplitOptions.RemoveEmptyEntries)
+                        |> Set.ofArray
+
+                /// Return true when the help text exposes an option token.
+                let hasOption optionName helpText =
+                    helpTokens helpText |> Set.contains optionName
+
+                /// Discover normalized engine capabilities from `codex exec --help` text.
+                let discoverCapabilities (helpText: string) =
+                    let tokens = helpTokens helpText
+                    let has optionName = tokens |> Set.contains optionName
+                    let contains (text: string) = helpText.Contains(text, StringComparison.OrdinalIgnoreCase)
+
+                    [ if contains "Usage: codex exec" then
+                          SingleTurnHeadless
+                      if has "resume" then
+                          Continuation
+                      if has "--json" then
+                          StructuredEventStream
+                      if has "--output-last-message" then
+                          FinalMessageFile
+                      if has "--add-dir" then
+                          WorkspaceDirectories
+                      if has "--sandbox" then
+                          SandboxMode
+                      if has "--model" then
+                          ModelSelection ]
+                    |> Set.ofList
+
+                /// Try to create a Codex 0.142.x exec surface from captured probe text.
+                let trySurface versionText helpText =
+                    let capabilities = discoverCapabilities helpText
+
+                    if isSupportedVersion versionText && capabilities.Contains SingleTurnHeadless then
+                        Some
+                            { Kind = Domain.EngineKind.Codex
+                              VersionText = normalizeVersionText versionText
+                              SurfaceId = SurfaceId
+                              Capabilities = capabilities }
+                    else
+                        None
+
+                /// Build a normalized engine probe from captured `codex --version` and `codex exec --help` output.
+                let probeFromText executablePath versionText helpText : EngineProbe =
+                    { ExecutablePath = executablePath
+                      VersionText = normalizeVersionText versionText
+                      Surfaces = trySurface versionText helpText |> Option.toList }
+
     /// Agy CLI engine surfaces.
     module Agy =
 
