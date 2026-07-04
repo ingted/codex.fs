@@ -128,3 +128,11 @@
 - Behavior: two session-worker participants join a PTCS MessageFabric group, alpha sends a group task, beta receives it and replies direct to alpha, and alpha acknowledges the reply cursor.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings / 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and output included `TC-E2E-003 multi-agent MessageFabric group passed`.
 - Traceability: WBS `E2E-003`, detail `doc/WBS.E2E-003.md`, and Test `T-E2E-003` updated to `Done` / `Pass`.
+
+## 2026-07-04 23:39 +08:00 PTCS-003 durable task handoff
+
+- Scope: added `CodexFs.Ptcs.DurableMessageFabricBinding` as a thin wrapper over PTCS `CommSpaDurableMessageFabric` and `DurableIngress`.
+- Behavior: package code can create a volatile durable PTCS admission profile, register participants through durable admission, submit an agent task with `SubmitAgentTaskDurableAsync`, query the accepted ticket, read the delivered worker inbox message, and ack through durable admission.
+- Boundary: volatile durable admission is real PTCS ticketed handoff but does not satisfy production sharded crash-durable provider proof; `OPS-002` now owns session artifact persistence and ack/recovery ordering.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings / 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and output included `TC-PTCS-003 durable handoff passed`.
+- Traceability: WBS `PTCS-003`, detail `doc/WBS.PTCS-003.md`, Test `T-PTCS-003`, SA `SA-TBD-004`, and SD §8 updated.

@@ -398,6 +398,63 @@ val drainInboxAsync :
 
 The wrapper is intentionally stateless. Cursor truth remains PTCS MessageFabric.
 
+Implemented durable handoff wrapper:
+
+```fsharp
+module CodexFs.Ptcs.DurableMessageFabricBinding
+
+type DurableFabric =
+    { Ingress: DurableIngress
+      Fabric: CommSpaDurableMessageFabric }
+
+type DurableProviderProof =
+    { Mode: DurableIngressMode
+      ProfileId: string
+      IsCrashDurable: bool
+      SupportsDeliveryRetry: bool
+      PendingCount: int
+      DeadLetterCount: int
+      ImplementationKind: string
+      MissingRequirements: string list
+      SatisfiesShardedDeliveryProvider: bool }
+
+type DurableAgentTask =
+    { AgentTaskId: string
+      ParentRequestId: string option
+      FromParticipantId: string
+      ToParticipantId: string
+      Intent: string
+      Body: string
+      ContentType: string option
+      Tags: string list
+      ReplyToParticipantId: string option
+      CorrelationId: string option
+      OperationId: string option
+      IdempotencyKey: string option
+      EntityId: string option
+      VaultProfileId: string option
+      ResultMaxBytes: int64 option
+      CreatedAtUtc: DateTimeOffset option
+      DeadlineAtUtc: DateTimeOffset option }
+
+val createVolatileDurableFabric : unit -> DurableFabric
+val createDurableFabric : CommHub -> DurableIngress -> DurableFabric
+val volatileProviderProofAsync : DurableFabric -> CancellationToken -> Task<DurableProviderProof>
+val registerParticipantAsync : DurableFabric -> SessionBinding -> ParticipantRegistration -> Task<MessageFabricDurableResult<RegisterParticipantReply>>
+val submitAgentTaskAsync : DurableFabric -> DurableAgentTask -> Task<MessageFabricAgentTaskAccepted>
+val pollInboxAsync : DurableFabric -> SessionBinding -> MessageFabricCursor -> Task<MessageFabricInboxBatch>
+val ackInboxAsync : DurableFabric -> SessionBinding -> MessageFabricCursor -> Task<MessageFabricDurableResult<MessageFabricAckResult>>
+val queryTicketAsync : DurableFabric -> string -> CancellationToken -> Task<DurableTaskStatus>
+```
+
+Rules:
+
+- `createVolatileDurableFabric` uses PTCS `CommSpaDurableIngress.createVolatile` and `CommSpaMessageFabric.createDurable`; this is real PTCS durable admission, not a fake mailbox。
+- Volatile provider proof must fail closed for production sharded delivery requirements. `DurableProviderProof.SatisfiesShardedDeliveryProvider = false` and `MissingRequirements` includes provider-specific sharding delivery runtime requirements。
+- `submitAgentTaskAsync` maps codex.fs task fields to PTCS `MessageFabricAgentTaskEnvelope` and calls `CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync`。
+- The returned `MessageFabricAgentTaskAccepted` is an admission/delivery ticket and target inbox message reference. It does not mean the worker has executed the task or persisted codex.fs artifacts。
+- Crash-durable restart/readback, task result vault retention, and ack-after-artifact/reply recovery ordering remain `OPS-002` / future selected provider profile scope。
+
 Actor operations map to PTCS:
 
 | codex.fs operation | PTCS API |
@@ -633,7 +690,7 @@ Host standalone tool contract:
   - `codex.fs.host start --setting <key=value> [--run-seconds <n>]` starts the real HTTP control endpoint through `HostControl.tryStartAsync`.
 - `--run-seconds` is for bounded automation and verification; omitting it runs until Ctrl+C.
 - Clustered/non-dev usage must set `control.bindAddress`, `control.port`, `control.advertiseUri`, and `control.allowLoopbackOnly=false` with a LAN/DNS-reachable advertised URI. Loopback remains dev-only.
-- The tool does not implement durable task handoff, process lease persistence, or ActorSystem initialization; those remain `PTCS-003` / `OPS-002`.
+- The tool does not wire durable task handoff into the host worker loop, does not implement process lease persistence, and does not initialize an ActorSystem; those remain `OPS-002` / future host-worker slices.
 
 ## 10. API documentation / SDK docs design
 
@@ -1025,7 +1082,7 @@ Rules:
 - Current real engine implementation is Agy `1.0.x --print`; Agy flags must render before `--print`, and the prompt text is the final positional argument.
 - Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON and manifest JSON.
 - Reply body contains a redacted/truncated summary plus artifact references; it must not contain the raw prompt transcript.
-- The in-process/package-owned profile only proves ack-after-artifact-and-reply ordering; durable crash recovery remains `PTCS-003` / `OPS-002`.
+- The in-process/package-owned profile only proves ack-after-artifact-and-reply ordering; durable crash recovery remains `OPS-002` / future selected provider profile scope.
 
 ## 15. Testing design preview
 

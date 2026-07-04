@@ -124,3 +124,10 @@
 - `recoverLeasedProcessAsync` kills only when pid/name/start time match the lease; it does not scan by process name.
 - The test fixture uses a real `powershell.exe Start-Sleep` process and verifies recovery terminates it.
 - Persisted lease storage and startup recovery sweep remain future host/session integration work.
+
+## 2026-07-04 PTCS-003 Durable Task Handoff
+
+- `CodexFs.Ptcs.DurableMessageFabricBinding` is the durable counterpart to `MessageFabricBinding`; it wraps PTCS `CommSpaDurableMessageFabric` and `DurableIngress` without creating a parallel mailbox.
+- `createVolatileDurableFabric` is real PTCS ticketed admission using `CommSpaMessageFabric.createDurable`, but provider proof must fail closed for production sharded crash-durable readiness.
+- `submitAgentTaskAsync` maps codex.fs task data to PTCS `MessageFabricAgentTaskEnvelope`; `MessageFabricAgentTaskAccepted` proves admission and inbox delivery, not worker execution or artifact persistence.
+- `OPS-002` is now unblocked and should implement the codex.fs session persistence boundary: persist selected inbox cursor/run request before engine execution, persist artifact/reply evidence before ack, then verify recovery/ack ordering.

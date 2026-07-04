@@ -45,7 +45,7 @@ Status 值：
 | AGY-003 | Agy artifact mapping | AGY-002 | 100 | Done | None | 2026-07-04 19:06 +08:00 | 2026-07-04 19:10 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy stdout/stderr/final artifact map | inline |
 | PTCS-001 | 定義 PTCS package/reference range | CF-001 | 100 | Done | None | 2026-07-04 20:33 +08:00 | 2026-07-04 20:44 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 `tests/codex.fs.Tests` PTCS restore/reference | inline |
 | PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 100 | Done | None | 2026-07-04 20:41 +08:00 | 2026-07-04 20:45 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 `tests/codex.fs.Tests` MessageFabric binding | [@PTCS-002](WBS.PTCS-002.md) |
-| PTCS-003 | 實作 durable task handoff | PTCS-002 | 0 | Blocked | SA-TBD-004 durable profile | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | inline |
+| PTCS-003 | 實作 durable task handoff | PTCS-002 | 100 | Done | None | 2026-07-04 23:35 +08:00 | 2026-07-04 23:39 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | [@PTCS-003](WBS.PTCS-003.md) |
 | SESS-001 | 實作 session state/effect model | CF-002 | 100 | Done | None | 2026-07-04 19:58 +08:00 | 2026-07-04 20:04 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
 | SESS-002 | 實作 prompt assembly | SESS-001 | 100 | Done | None | 2026-07-04 19:57 +08:00 | 2026-07-04 20:04 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 `tests/codex.fs.Tests` prompt batch assembly | inline |
 | SESS-003 | 實作 rule-based local compact | SESS-002 | 100 | Done | None | 2026-07-04 20:08 +08:00 | 2026-07-04 20:12 +08:00 | Requirement R-005, SD §11.1, §17 | T-SESS-003 | TC-SESS-003 `tests/codex.fs.Tests` compact preserves blockers | inline |
@@ -65,7 +65,7 @@ Status 值：
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-003 | 100 | Done | None | 2026-07-04 22:13 +08:00 | 2026-07-04 22:27 +08:00 | Requirement §10, SA §6.1, SD §14 | T-E2E-002 | TC-E2E-002 `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-002 | 100 | Done | None | 2026-07-04 23:28 +08:00 | 2026-07-04 23:38 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | [@E2E-003](WBS.E2E-003.md) |
 | OPS-001 | Process orphan recovery | EN-002;HOST-002 | 100 | Done | None | 2026-07-04 22:46 +08:00 | 2026-07-04 22:49 +08:00 | SA §9, SD §4 | T-OPS-001 | TC-OPS-001 orphan process recovery | [@OPS-001](WBS.OPS-001.md) |
-| OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Blocked | durable profile decision | 未動工 | 2026-07-04 17:53 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
+| OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Pending | None | 未動工 | 2026-07-04 23:39 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
 | UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 100 | Done | None | 2026-07-04 23:13 +08:00 | 2026-07-04 23:23 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | [@UI-001](WBS.UI-001.md) |
 
 ## 3. Roll-up / Detail Files
@@ -73,6 +73,7 @@ Status 值：
 | Detail | Purpose |
 | --- | --- |
 | [@PTCS-002](WBS.PTCS-002.md) | MessageFabric session binding is a high-risk integration slice; detail file tracks exact PTCS operations and acceptance gates. |
+| [@PTCS-003](WBS.PTCS-003.md) | Durable task handoff uses real PTCS `CommSpaDurableMessageFabric` ticketed admission; crash-durable recovery remains OPS-002/future provider profile scope. |
 | [@HOST-003](WBS.HOST-003.md) | Host control endpoint uses HTTP with bind/advertise config; localhost is dev-only. |
 | [@DOC-001](WBS.DOC-001.md) | API documentation toolchain selection affects NuGet SDK docs and Swagger generation. |
 | [@DOC-003](WBS.DOC-003.md) | OpenAPI JSON and Swagger UI verification uses the real host endpoint through advertised non-loopback URI. |

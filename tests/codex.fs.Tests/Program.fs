@@ -788,6 +788,90 @@ assertEqual "e2e003 alpha ack" "ok" e2e003Ack.Status
 
 printfn "TC-E2E-003 multi-agent MessageFabric group passed"
 
+let durableRunSuffix = Guid.NewGuid().ToString("N")
+let durable = DurableMessageFabricBinding.createVolatileDurableFabric ()
+let durableCaller = MessageFabricBinding.defaultBinding $"user.ptcs003.{durableRunSuffix}"
+let durableWorker = MessageFabricBinding.defaultBinding $"agent.ptcs003.{durableRunSuffix}"
+
+let durableProof = runTask (DurableMessageFabricBinding.volatileProviderProofAsync durable CancellationToken.None)
+assertEqual "durable proof mode" PulseTrade.Comm.Spa.DurableIngressMode.Volatile durableProof.Mode
+assertEqual "durable proof crash durable" false durableProof.IsCrashDurable
+assertEqual "durable proof retry" false durableProof.SupportsDeliveryRetry
+assertEqual "durable proof sharded satisfied" false durableProof.SatisfiesShardedDeliveryProvider
+assertTrue "durable proof provider missing" (durableProof.MissingRequirements |> List.contains "provider-specific-sharding-delivery-runtime")
+
+let durableCallerRegistration =
+    runTask
+        (DurableMessageFabricBinding.registerParticipantAsync
+            durable
+            durableCaller
+            { MessageFabricBinding.defaultRegistration with
+                Kind = Some "user"
+                Labels = Some [ "codex.fs"; "ptcs003"; "caller" ] })
+
+let durableWorkerRegistration =
+    runTask
+        (DurableMessageFabricBinding.registerParticipantAsync
+            durable
+            durableWorker
+            { MessageFabricBinding.defaultRegistration with
+                Labels = Some [ "codex.fs"; "ptcs003"; "session-worker" ] })
+
+assertEqual "durable caller registered" durableCaller.ParticipantId durableCallerRegistration.Value.Participant.ParticipantId
+assertEqual "durable worker registered" durableWorker.ParticipantId durableWorkerRegistration.Value.Participant.ParticipantId
+
+let durableTaskBody = "PTCS-003 durable task asks worker to append this prompt after current run"
+let durableTaskId = $"task.ptcs003.{durableRunSuffix}"
+
+let durableAccepted =
+    runTask
+        (DurableMessageFabricBinding.submitAgentTaskAsync
+            durable
+            { AgentTaskId = durableTaskId
+              ParentRequestId = None
+              FromParticipantId = durableCaller.ParticipantId
+              ToParticipantId = durableWorker.ParticipantId
+              Intent = "session-worker.prompt-handoff"
+              Body = durableTaskBody
+              ContentType = Some "text/markdown"
+              Tags = [ "codex.fs"; "ptcs003"; "durable-handoff" ]
+              ReplyToParticipantId = Some durableCaller.ParticipantId
+              CorrelationId = Some $"ptcs003-correlation-{durableRunSuffix}"
+              OperationId = Some $"ptcs003-operation-{durableRunSuffix}"
+              IdempotencyKey = Some $"ptcs003-idempotency-{durableRunSuffix}"
+              EntityId = Some durableWorker.ParticipantId
+              VaultProfileId = None
+              ResultMaxBytes = Some 65536L
+              CreatedAtUtc = None
+              DeadlineAtUtc = Some(DateTimeOffset.UtcNow.AddMinutes 5.0) })
+
+assertEqual "durable accepted request id" $"message-fabric:agent-task:{durableTaskId}" durableAccepted.Accepted.RequestId
+assertEqual "durable accepted ticket" (Some durableAccepted.Accepted.RequestId) durableAccepted.Accepted.TicketId
+assertContains "durable result handle" durableTaskId durableAccepted.ResultQueryHandle
+assertContains "durable envelope schema" "ptc.comm.spa.message-fabric.agent-task.v1" durableAccepted.Message.Body
+assertContains "durable envelope body" durableTaskBody durableAccepted.Message.Body
+
+let durableTicketStatus =
+    match durableAccepted.Accepted.TicketId with
+    | Some ticketId -> runTask (DurableMessageFabricBinding.queryTicketAsync durable ticketId CancellationToken.None)
+    | None -> failwith "expected PTCS durable agent task ticket"
+
+assertEqual "durable ticket status request" durableAccepted.Accepted.RequestId durableTicketStatus.RequestId
+assertEqual "durable ticket status kind" PulseTrade.Comm.Spa.DurableTaskStatusKind.Accepted durableTicketStatus.Status
+
+let durableInbox = runTask (DurableMessageFabricBinding.pollInboxAsync durable durableWorker None)
+assertTrue "durable inbox contains task" (durableInbox.Messages |> List.exists (fun message -> message.MessageId = durableAccepted.Message.MessageId))
+assertTrue "durable inbox body contains task" (durableInbox.Messages |> List.exists (fun message -> message.Body.Contains(durableTaskBody, StringComparison.Ordinal)))
+
+let durableRefs = MessageFabricBinding.batchToMessageRefs durableInbox
+assertTrue "durable ref direct target" (durableRefs |> List.exists (fun message -> message.ToParticipantId = Some durableWorker.ParticipantId))
+
+let durableAck = runTask (DurableMessageFabricBinding.ackInboxAsync durable durableWorker durableInbox.NextCursor)
+assertEqual "durable ack status" "ok" durableAck.Value.Status
+assertEqual "durable ack ticket completed" PulseTrade.Comm.Spa.DurableTaskStatusKind.Completed durableAck.DeliveryStatus.Status
+
+printfn "TC-PTCS-003 durable handoff passed"
+
 let startControlledSleepProcess () =
     let psi = ProcessStartInfo()
     psi.FileName <- "powershell.exe"

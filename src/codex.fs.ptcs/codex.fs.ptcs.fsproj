@@ -29,6 +29,7 @@
   <ItemGroup>
     <Compile Include="PtcsReference.fs" />
     <Compile Include="MessageFabricBinding.fs" />
+    <Compile Include="DurableMessageFabricBinding.fs" />
   </ItemGroup>
 
 </Project>

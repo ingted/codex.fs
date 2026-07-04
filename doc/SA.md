@@ -294,5 +294,5 @@ Config should be expressed as typed records and load from explicit file/env/prov
 | SA-TBD-001 | Resolved: HTTP control endpoint for MVP; MessageFabric stays communication fact source; loopback is dev-only, clustered runtime uses advertised LAN/routable URI. |
 | SA-TBD-002 | Artifact storage provider: file-only first or pluggable store first. |
 | SA-TBD-003 | Compactor engine: same selected CLI, separate cheap adapter, or pluggable function. |
-| SA-TBD-004 | Exact PTCS durable profile for first production demo. |
+| SA-TBD-004 | Resolved: first codex.fs durable handoff profile uses PTCS `CommSpaDurableMessageFabric` with volatile durable admission as the package-level ticketed boundary; production sharded crash-durable provider proof remains an OPS-002/future profile gate. |
 | SA-TBD-005 | Whether first host starts package-owned PTCS fabric or requires caller-owned attachment. |
