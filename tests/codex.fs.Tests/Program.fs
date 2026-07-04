@@ -1,6 +1,8 @@
 module CodexFs.Tests.Program
 
 open System
+open System.Threading
+open System.Threading.Tasks
 open CodexFs.Compaction
 open CodexFs.Domain
 open CodexFs.PromptAssembly
@@ -23,6 +25,9 @@ let assertBefore name (first: string) (second: string) (actual: string) =
     assertTrue $"{name}: first marker exists" (firstIndex >= 0)
     assertTrue $"{name}: second marker exists" (secondIndex >= 0)
     assertTrue $"{name}: marker order" (firstIndex < secondIndex)
+
+let runTask (task: Task<'T>) =
+    task.GetAwaiter().GetResult()
 
 let messageRef messageId cursor fromParticipantId toParticipantId groupId correlationId =
     { MessageId = messageId
@@ -191,3 +196,110 @@ assertContains "message fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" 
 assertContains "actor fabric options type" "PulseTrade.Comm.Spa.CommSpaActorFabricOptions" PtcsReference.actorFabricOptionsType.FullName
 
 printfn "TC-PTCS-001 PTCS restore/reference passed"
+
+let ptcsFabric = MessageFabricBinding.createLocalFabric ()
+let ptcsRunSuffix = Guid.NewGuid().ToString("N")
+let ptcsAgentId = $"agent.ptcs002.{ptcsRunSuffix}"
+let ptcsUserId = $"user.ptcs002.{ptcsRunSuffix}"
+let ptcsGroupId = $"group.ptcs002.{ptcsRunSuffix}"
+let agentBinding = MessageFabricBinding.defaultBinding ptcsAgentId
+let userBinding = MessageFabricBinding.defaultBinding ptcsUserId
+let groupBinding = { agentBinding with GroupId = Some ptcsGroupId; IncludeGroups = true }
+
+let agentRegistration =
+    runTask (MessageFabricBinding.registerParticipantAsync ptcsFabric agentBinding MessageFabricBinding.defaultRegistration)
+
+let userRegistration =
+    runTask
+        (MessageFabricBinding.registerParticipantAsync
+            ptcsFabric
+            userBinding
+            { MessageFabricBinding.defaultRegistration with
+                DisplayName = Some "PTCS002 User"
+                Kind = Some "user"
+                Labels = Some [ "codex.fs"; "test" ] })
+
+assertEqual "agent registered" ptcsAgentId agentRegistration.Participant.ParticipantId
+assertEqual "user registered" ptcsUserId userRegistration.Participant.ParticipantId
+
+let directEnvelope =
+    runTask
+        (MessageFabricBinding.sendAsync
+            ptcsFabric
+            { FromParticipantId = userBinding.ParticipantId
+              Scope = PulseTrade.Comm.Spa.MessageFabricScope.Direct agentBinding.ParticipantId
+              Body = "direct hello from ptcs002"
+              Tags = [ "ptcs002"; "direct" ]
+              CorrelationId = Some $"ptcs002-direct-1-{ptcsRunSuffix}"
+              CreatedAtUtc = None })
+
+assertEqual "direct body" "direct hello from ptcs002" directEnvelope.Body
+
+let directBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric agentBinding None)
+assertEqual "direct poll count" 1 directBatch.Messages.Length
+assertEqual "direct poll id" directEnvelope.MessageId directBatch.Messages[0].MessageId
+
+let directRefs = MessageFabricBinding.batchToMessageRefs directBatch
+assertEqual "direct ref id" directEnvelope.MessageId directRefs[0].MessageId
+assertEqual "direct ref cursor" (Some directEnvelope.MessageId) directRefs[0].Cursor
+assertEqual "direct ref to" (Some agentBinding.ParticipantId) directRefs[0].ToParticipantId
+
+let ackResult = runTask (MessageFabricBinding.ackInboxAsync ptcsFabric agentBinding directBatch.NextCursor)
+assertEqual "ack status" "ok" ackResult.Status
+assertEqual "ack cursor" (Some directEnvelope.MessageId) ackResult.Cursor
+
+let afterAckBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric agentBinding None)
+assertEqual "after ack empty" 0 afterAckBatch.Messages.Length
+
+let waitEnvelope =
+    runTask
+        (MessageFabricBinding.sendDirectReplyAsync
+            ptcsFabric
+            userBinding
+            agentBinding.ParticipantId
+            "wait-drain hello from ptcs002"
+            [ "ptcs002"; "wait" ]
+            (Some $"ptcs002-direct-2-{ptcsRunSuffix}"))
+
+let waitBatch =
+    runTask
+        (MessageFabricBinding.waitInboxAsync
+            ptcsFabric
+            agentBinding
+            None
+            (TimeSpan.FromSeconds 1.0)
+            (TimeSpan.FromMilliseconds 10.0)
+            (Some CancellationToken.None))
+
+assertEqual "wait count" 1 waitBatch.Messages.Length
+assertEqual "wait id" waitEnvelope.MessageId waitBatch.Messages[0].MessageId
+
+let drainedBatch = runTask (MessageFabricBinding.drainInboxAsync ptcsFabric agentBinding None)
+assertEqual "drain count" 1 drainedBatch.Messages.Length
+assertEqual "drain id" waitEnvelope.MessageId drainedBatch.Messages[0].MessageId
+
+let afterDrainBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric agentBinding None)
+assertEqual "after drain empty" 0 afterDrainBatch.Messages.Length
+
+let groupView =
+    runTask (MessageFabricBinding.tryUpsertConfiguredGroupAsync ptcsFabric groupBinding)
+    |> Option.defaultWith (fun () -> failwith "expected configured group")
+
+assertEqual "group id" ptcsGroupId groupView.GroupId
+assertTrue "group contains agent" (groupView.ParticipantIds |> List.contains agentBinding.ParticipantId)
+
+let groupEnvelope =
+    runTask
+        (MessageFabricBinding.sendAsync
+            ptcsFabric
+            { FromParticipantId = userBinding.ParticipantId
+              Scope = PulseTrade.Comm.Spa.MessageFabricScope.Group ptcsGroupId
+              Body = "group hello from ptcs002"
+              Tags = [ "ptcs002"; "group" ]
+              CorrelationId = Some $"ptcs002-group-1-{ptcsRunSuffix}"
+              CreatedAtUtc = None })
+
+let groupBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric groupBinding None)
+assertTrue "group poll contains message" (groupBatch.Messages |> List.exists (fun message -> message.MessageId = groupEnvelope.MessageId))
+
+printfn "TC-PTCS-002 MessageFabric binding passed"

@@ -23,3 +23,10 @@
 - Dependency alignment: updated core `FAkka.Argu` reference to exact `[10.1.301]` to align with PTCS beta71 dependency graph.
 - Tests: `dotnet restore .\codex.fs.slnx`, `dotnet build .\codex.fs.slnx --no-restore`, and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; test output included `TC-PTCS-001 PTCS restore/reference passed`.
 - Traceability: WBS `PTCS-001` and Test `T-PTCS-001` updated to `Done` / `Pass`; downstream blockers for `PTCS-002` and `HOST-001` cleared.
+
+## 2026-07-04 20:45 +08:00 PTCS-002 MessageFabric binding
+
+- Scope: implemented `CodexFs.Ptcs.MessageFabricBinding` as a thin wrapper over concrete PTCS `CommSpaMessageFabric`.
+- Behavior: covers participant registration, direct/group send, poll, bounded wait, ack, drain, group upsert, and conversion from PTCS envelopes/batches to core `PtcsMessageRef`.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings and 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-PTCS-002 MessageFabric binding passed`.
+- Traceability: WBS `PTCS-002`, detail `doc/WBS.PTCS-002.md`, and Test `T-PTCS-002` updated to `Done` / `Pass`; `HOST-002` blocker reduced to `HOST-001`.

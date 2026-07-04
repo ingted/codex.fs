@@ -326,6 +326,43 @@ Message operations map to PTCS:
 | drain for terminal attach | `DrainInboxAsync` |
 | durable agent task | `CommSpaDurableMessageFabric.SubmitAgentTaskDurableAsync` |
 
+Implemented MVP wrapper:
+
+```fsharp
+module CodexFs.Ptcs.MessageFabricBinding
+
+type SessionBinding =
+    { ParticipantId: string
+      ReplyParticipantId: string option
+      GroupId: string option
+      InboxLimit: int
+      IncludePublic: bool
+      IncludeGroups: bool }
+
+val registerParticipantAsync :
+    CommSpaMessageFabric -> SessionBinding -> ParticipantRegistration -> Task<RegisterParticipantReply>
+
+val sendAsync :
+    CommSpaMessageFabric -> OutboundMessage -> Task<MessageFabricEnvelope>
+
+val pollInboxAsync :
+    CommSpaMessageFabric -> SessionBinding -> MessageFabricCursor -> Task<MessageFabricInboxBatch>
+
+val waitInboxAsync :
+    CommSpaMessageFabric -> SessionBinding -> MessageFabricCursor -> TimeSpan -> TimeSpan -> CancellationToken option -> Task<MessageFabricInboxBatch>
+
+val tryUpsertConfiguredGroupAsync :
+    CommSpaMessageFabric -> SessionBinding -> Task<MessageFabricGroupView option>
+
+val ackInboxAsync :
+    CommSpaMessageFabric -> SessionBinding -> MessageFabricCursor -> Task<MessageFabricAckResult>
+
+val drainInboxAsync :
+    CommSpaMessageFabric -> SessionBinding -> MessageFabricCursor -> Task<MessageFabricInboxBatch>
+```
+
+The wrapper is intentionally stateless. Cursor truth remains PTCS MessageFabric.
+
 Actor operations map to PTCS:
 
 | codex.fs operation | PTCS API |
