@@ -46,11 +46,11 @@ Status 值：
 | PTCS-001 | 定義 PTCS package/reference range | CF-001 | 0 | Planned | SD-TBD-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 PTCS restore/reference | inline |
 | PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | [@PTCS-002](WBS.PTCS-002.md) |
 | PTCS-003 | 實作 durable task handoff | PTCS-002 | 0 | Blocked | SA-TBD-004 durable profile | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | inline |
-| SESS-001 | 實作 session state/effect model | CF-002 | 0 | Planned | None | 未動工 | 2026-07-04 18:56 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
-| SESS-002 | 實作 prompt assembly | SESS-001 | 0 | Planned | SESS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 prompt batch assembly | inline |
+| SESS-001 | 實作 session state/effect model | CF-002 | 100 | Done | None | 2026-07-04 19:58 +08:00 | 2026-07-04 20:04 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
+| SESS-002 | 實作 prompt assembly | SESS-001 | 0 | Planned | None | 未動工 | 2026-07-04 20:04 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 prompt batch assembly | inline |
 | SESS-003 | 實作 rule-based local compact | SESS-002 | 0 | Planned | SD-TBD-003 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement R-005, SD §17 | T-SESS-003 | TC-SESS-003 compact preserves blockers | inline |
 | HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
-| HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 0 | Planned | HOST-001/PTCS-002/SESS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host boot/health | inline |
+| HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 0 | Planned | HOST-001/PTCS-002 | 未動工 | 2026-07-04 20:04 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host boot/health | inline |
 | HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:10 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |

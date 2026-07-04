@@ -32,6 +32,7 @@
     <Compile Include="Redaction.fs" />
     <Compile Include="Engine.fs" />
     <Compile Include="ProcessRunner.fs" />
+    <Compile Include="Session.fs" />
     <Compile Include="Library.fs" />
   </ItemGroup>
 
