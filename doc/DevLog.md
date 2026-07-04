@@ -72,3 +72,11 @@
 - Behavior: CLI sends prompt to host advertised URI; host registers sender/session participants and appends a direct PTCS MessageFabric message to the derived session participant inbox.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-CLI-002 CLI send through MessageFabric passed`.
 - Traceability: WBS `CLI-002` and Test `T-CLI-002` updated to `Done` / `Pass`; blockers for `CLI-003` and `E2E-002` cleared.
+
+## 2026-07-04 22:09 +08:00 CLI-003 attach/drain/status
+
+- Scope: added host session inbox status/attach/drain endpoints and CLI dispatch/client calls for `session status|attach|drain`.
+- Behavior: status/attach read the derived session participant inbox through real PTCS MessageFabric without ack; drain returns the transcript and acknowledges the inbox cursor. Host/CLI paths use the advertised non-loopback URI.
+- SD correction: clarified that `HostRuntime` local/in-process wording does not mean a `127.0.0.1` ActorSystem contract; future PTCS ActorFabric/sharded cluster binding must advertise LAN/DNS-reachable addresses.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` printed `TC-CLI-003 attach/drain/status passed`.
+- Traceability: WBS `CLI-003`, detail `doc/WBS.CLI-003.md`, and Test `T-CLI-003` updated to `Done` / `Pass`.

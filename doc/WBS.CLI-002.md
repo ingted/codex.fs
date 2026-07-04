@@ -27,7 +27,7 @@ Test：`T-CLI-002`
 - `dotnet restore .\codex.fs.slnx` passed.
 - `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings and 0 errors.
 - `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and printed `TC-CLI-002 CLI send through MessageFabric passed`.
-- `TC-CLI-002` dynamically selected a non-loopback advertised host URI, posted CLI send through `CodexFs.Cli.CliHttp`, and polled real PTCS MessageFabric inbox for the derived session participant.
+- `TC-CLI-002` dynamically selected a non-loopback advertised host URI, posted CLI send through `CodexFs.Cli.CliHttp`, and verified the host status endpoint read the prompt from the real PTCS MessageFabric inbox for the derived session participant.
 
 ## Blockers
 
@@ -35,5 +35,4 @@ Test：`T-CLI-002`
 
 ## Deferred
 
-- `CLI-003`: attach/drain/status transcript behavior.
 - `E2E-002`: engine execution and reply path after message intake.

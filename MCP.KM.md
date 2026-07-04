@@ -71,4 +71,11 @@
 - Host route `POST /api/codexfs/session/{sessionId}/messages` accepts `SessionSendRequest` and writes to real PTCS MessageFabric.
 - Session participant id is derived as `<ptcs.sessionParticipantPrefix>.<sessionId>`.
 - CLI send uses `CodexFs.Cli.CliHttp.sendSessionMessageAsync` and the host advertised URI; it never writes MessageFabric directly.
-- `TC-CLI-002` polls the real PTCS inbox for the derived session participant after HTTP 202.
+- `TC-CLI-002` verifies delivery by reading the derived session participant inbox through the host status endpoint after HTTP 202.
+
+## 2026-07-04 CLI-003 Session Inbox Read Commands
+
+- Host routes `GET /api/codexfs/session/{sessionId}/status`, `POST /attach`, and `POST /drain` are host control-plane wrappers over real PTCS MessageFabric.
+- `status` and `attach` return transcript JSON without acknowledging messages; `drain` acknowledges through `MessageFabricBinding.drainInboxAsync`.
+- CLI `session status|attach|drain` uses `CodexFs.Cli.CliHttp` and the host advertised URI, not direct MessageFabric access.
+- `SessionInboxResponse.Transcript` is early terminal output only; durable run artifacts and engine replies are still `E2E-002`.

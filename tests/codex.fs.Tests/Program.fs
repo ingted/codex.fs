@@ -404,7 +404,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliSendResponseText =
+let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliSendResponseText, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -429,31 +429,30 @@ let hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cli
                       SessionId = cli002SessionId
                       Prompt = cli002Prompt })
 
-        let cli002SessionParticipantId = CodexFs.Host.HostControl.sessionParticipantId hostControlServer.Runtime.Config cli002SessionId
-        let cli002Binding = MessageFabricBinding.defaultBinding cli002SessionParticipantId
+        let cli002Target: CodexFs.Cli.Cli.SessionTargetOptions =
+            { Host = hostControlServer.Contract.AdvertiseUri
+              SessionId = cli002SessionId }
 
-        let cli002Fabric =
-            hostControlServer.Runtime.MessageFabric |> Option.defaultWith (fun () -> failwith "expected host MessageFabric")
-
-        let cli002Batch = runTask (MessageFabricBinding.pollInboxAsync cli002Fabric cli002Binding None)
-        let cli002Refs = MessageFabricBinding.batchToMessageRefs cli002Batch
+        let cliStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None cli002Target)
+        let cliAttachResult = runTask (CodexFs.Cli.CliHttp.attachSessionAsync client CancellationToken.None cli002Target)
+        let cliDrainResult = runTask (CodexFs.Cli.CliHttp.drainSessionAsync client CancellationToken.None cli002Target)
+        let cliAfterDrainStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None cli002Target)
 
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
         assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
         assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
         assertEqual "cli send status" 202 cliSendResult.StatusCode
         assertTrue "cli send success" cliSendResult.IsSuccess
-        assertTrue
-            "cli send message in inbox"
-            (cli002Batch.Messages
-             |> List.exists (fun message ->
-                 message.FromParticipantId = "user.codexfs.cli"
-                 && message.Body = cli002Prompt))
-        assertTrue
-            "cli send message ref to participant"
-            (cli002Refs |> List.exists (fun messageRef -> messageRef.ToParticipantId = Some cli002SessionParticipantId))
+        assertEqual "cli status status" 200 cliStatusResult.StatusCode
+        assertTrue "cli status success" cliStatusResult.IsSuccess
+        assertEqual "cli attach status" 200 cliAttachResult.StatusCode
+        assertTrue "cli attach success" cliAttachResult.IsSuccess
+        assertEqual "cli drain status" 200 cliDrainResult.StatusCode
+        assertTrue "cli drain success" cliDrainResult.IsSuccess
+        assertEqual "cli after drain status" 200 cliAfterDrainStatusResult.StatusCode
+        assertTrue "cli after drain success" cliAfterDrainStatusResult.IsSuccess
 
-        body, openApiBody, swaggerBody, cliSendResult.Body
+        body, openApiBody, swaggerBody, cliSendResult.Body, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -487,6 +486,13 @@ hostOpenApiJson.Dispose()
 
 printfn "TC-DOC-003 OpenAPI available passed"
 
+let assertInboxJson (name: string) (expectedStatus: string) (minCount: int) (body: string) =
+    use document = JsonDocument.Parse(body)
+    let root = document.RootElement
+    assertEqual $"{name} status" expectedStatus (root.GetProperty("status").GetString())
+    assertTrue $"{name} pending count" (root.GetProperty("pendingCount").GetInt32() >= minCount)
+    assertContains $"{name} transcript" "CLI-002 prompt through host and PTCS MessageFabric" (root.GetProperty("transcript").GetString())
+
 let cliSendJson = JsonDocument.Parse(cliSendResponseText)
 let cliSendRoot = cliSendJson.RootElement
 
@@ -495,7 +501,21 @@ assertEqual "cli send response sender" "user.codexfs.cli" (cliSendRoot.GetProper
 assertTrue "cli send response message id" (not (String.IsNullOrWhiteSpace(cliSendRoot.GetProperty("messageId").GetString())))
 cliSendJson.Dispose()
 
+assertInboxJson "cli status" "ok" 1 cliStatusText
+
 printfn "TC-CLI-002 CLI send through MessageFabric passed"
+
+assertInboxJson "cli attach" "ok" 1 cliAttachText
+assertInboxJson "cli drain" "drained" 1 cliDrainText
+
+let cliAfterDrainJson = JsonDocument.Parse(cliAfterDrainStatusText)
+let cliAfterDrainRoot = cliAfterDrainJson.RootElement
+
+assertEqual "cli after drain response status" "ok" (cliAfterDrainRoot.GetProperty("status").GetString())
+assertEqual "cli after drain pending" 0 (cliAfterDrainRoot.GetProperty("pendingCount").GetInt32())
+cliAfterDrainJson.Dispose()
+
+printfn "TC-CLI-003 attach/drain/status passed"
 
 let cliHelp = CodexFs.Cli.Cli.helpText ()
 

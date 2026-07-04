@@ -13,8 +13,8 @@ module Program =
             printfn "%s" (Cli.helpText ())
             0
         else
-            match Cli.tryParseSessionSend argv with
-            | Ok(Some sendOptions) ->
+            match Cli.tryParseSessionSend argv, Cli.tryParseSessionRead argv with
+            | Ok(Some sendOptions), _ ->
                 use handler = new HttpClientHandler(UseProxy = false)
                 use client = new HttpClient(handler, true)
                 let result = CliHttp.sendSessionMessageAsync client CancellationToken.None sendOptions |> fun task -> task.GetAwaiter().GetResult()
@@ -25,9 +25,27 @@ module Program =
                 else
                     eprintfn "%s" result.Body
                     1
-            | Ok None ->
+            | Ok None, Ok(Some readCommand) ->
+                use handler = new HttpClientHandler(UseProxy = false)
+                use client = new HttpClient(handler, true)
+
+                let result =
+                    match readCommand with
+                    | Cli.SessionStatus options -> CliHttp.getSessionStatusAsync client CancellationToken.None options
+                    | Cli.SessionAttach options -> CliHttp.attachSessionAsync client CancellationToken.None options
+                    | Cli.SessionDrain options -> CliHttp.drainSessionAsync client CancellationToken.None options
+                    |> fun task -> task.GetAwaiter().GetResult()
+
+                if result.IsSuccess then
+                    printfn "%s" result.Body
+                    0
+                else
+                    eprintfn "%s" result.Body
+                    1
+            | Ok None, Ok None ->
                 printfn "Command parsed. Runtime execution is implemented by later WBS items."
                 0
-            | Error message ->
+            | Error message, _
+            | _, Error message ->
                 eprintfn "%s" message
                 2

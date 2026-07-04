@@ -513,11 +513,13 @@ val stop : HostRuntime -> HostRuntime
 
 Rules:
 
-- `startInProcessMessageFabric` initializes a real PTCS `CommSpaMessageFabric` through `codex.fs.ptcs`; it is not an alternate mailbox and does not create an ActorSystem。
+- `startInProcessMessageFabric` initializes a real PTCS `CommSpaMessageFabric` through `codex.fs.ptcs`; it is not an alternate mailbox and the current minimal slice does not create an ActorSystem。
 - `health` and `healthSummary` expose non-secret operational metadata and redacted config diagnostics only。
 - executable override values are omitted from health; only engine override keys are shown。
 - HTTP listener, endpoint DTOs and Swagger exposure remain `HOST-003` / `DOC-003` scope。
-- PTCS ActorSystem / sharded cluster setup is outside this in-process MessageFabric slice; production `CommSpaActorFabric` must bind/advertise a LAN or otherwise routable address, not `127.0.0.1`。
+- `local` / `in-process` means node-local object ownership only; it must not imply a `127.0.0.1` ActorSystem contract。
+- PTCS ActorSystem / sharded cluster setup is outside this in-process MessageFabric slice; when `HostRuntime` wires `CommSpaActorFabric`, Akka remoting/sharding bind and canonical advertise host must come from the cluster profile and be reachable by peer nodes, such as LAN IP or DNS, not `127.0.0.1` / `localhost`。
+- `127.0.0.1` is allowed only for explicitly selected single-node development profiles where no cross-node actor/session communication is expected。
 
 Host control endpoint decision:
 
@@ -582,7 +584,8 @@ Rules:
 - `HostControlContract.HealthUri` is built from `control.advertiseUri`; CLI/Web/admin callers must use the advertised URI, not the bind URI when these differ.
 - Non-loopback clustered profiles are validated by `HostConfig`; `control.allowLoopbackOnly = false` rejects loopback bind/advertise config before HTTP start.
 - The health endpoint returns non-secret operational metadata only. It reports executable override keys but never executable override values.
-- Starting the HTTP control endpoint may initialize the in-process PTCS MessageFabric via `HostRuntime`; it still does not create an ActorSystem and does not become a MessageFabric transport.
+- Starting the HTTP control endpoint may initialize the in-process PTCS MessageFabric via `HostRuntime`; this HTTP slice still does not create an ActorSystem and does not become a MessageFabric transport.
+- Future ActorSystem initialization belongs to the PTCS ActorFabric/session-worker slice and must use the same non-loopback cluster profile rules as above.
 - Endpoint definitions include success/failure examples and typed response metadata (`Produces<HostControlHealthResponse>`) so `DOC-003` can add generated OpenAPI JSON and Swagger UI without hand-written YAML.
 
 ## 10. API documentation / SDK docs design
@@ -889,7 +892,51 @@ Rules:
 - Host derives session participant id as `<ptcs.sessionParticipantPrefix>.<sessionId>`.
 - Host registers sender/session participants in PTCS and sends a direct MessageFabric message to the session participant.
 - CLI sends to the host advertised URI; CLI does not write MessageFabric or artifacts directly.
-- `CLI-002` validates send-to-inbox only. Full attach/drain/status transcript behavior remains `CLI-003`.
+- `CLI-002` validates send-to-inbox through the host status path. Full attach/drain/status transcript behavior belongs to `CLI-003`.
+
+Implemented session inbox read path:
+
+```fsharp
+module HostControl
+
+type SessionInboxMessageResponse =
+    { MessageId: string
+      Cursor: string
+      FromParticipantId: string
+      Body: string
+      CorrelationId: string
+      Tags: string list }
+
+type SessionInboxResponse =
+    { Status: string
+      SessionId: string
+      SessionParticipantId: string
+      PendingCount: int
+      NextCursor: string
+      Messages: SessionInboxMessageResponse list
+      Transcript: string }
+
+val sessionStatusUri : HostControlContract -> string -> string
+val sessionAttachUri : HostControlContract -> string -> string
+val sessionDrainUri : HostControlContract -> string -> string
+val sessionStatusAsync : HostRuntime -> string -> Task<IResult>
+val sessionAttachAsync : HostRuntime -> string -> Task<IResult>
+val sessionDrainAsync : HostRuntime -> string -> Task<IResult>
+
+module CodexFs.Cli.CliHttp
+
+val getSessionStatusAsync : HttpClient -> CancellationToken -> Cli.SessionTargetOptions -> Task<CliHttpResult>
+val attachSessionAsync : HttpClient -> CancellationToken -> Cli.SessionTargetOptions -> Task<CliHttpResult>
+val drainSessionAsync : HttpClient -> CancellationToken -> Cli.SessionTargetOptions -> Task<CliHttpResult>
+```
+
+Rules:
+
+- `GET /api/codexfs/session/{sessionId}/status` polls current inbox without acknowledging messages.
+- `POST /api/codexfs/session/{sessionId}/attach` performs a bounded wait and returns transcript JSON without acknowledging messages.
+- `POST /api/codexfs/session/{sessionId}/drain` returns current messages and acknowledges the returned cursor.
+- CLI read commands use the host advertised URI and never bypass host-owned MessageFabric binding.
+- `Transcript` is terminal-oriented output for early CLI usability; durable artifacts and engine replies remain E2E scope.
 
 ## 15. Testing design preview
 

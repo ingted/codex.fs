@@ -25,6 +25,34 @@ module CliHttp =
         let escapedSessionId = Uri.EscapeDataString sessionId
         $"{baseUri}/api/codexfs/session/{escapedSessionId}/messages"
 
+    /// Build the host endpoint URI for `session status`.
+    let sessionStatusUri (hostUri: string) (sessionId: string) =
+        let baseUri = hostUri.TrimEnd('/')
+        let escapedSessionId = Uri.EscapeDataString sessionId
+        $"{baseUri}/api/codexfs/session/{escapedSessionId}/status"
+
+    /// Build the host endpoint URI for `session attach`.
+    let sessionAttachUri (hostUri: string) (sessionId: string) =
+        let baseUri = hostUri.TrimEnd('/')
+        let escapedSessionId = Uri.EscapeDataString sessionId
+        $"{baseUri}/api/codexfs/session/{escapedSessionId}/attach"
+
+    /// Build the host endpoint URI for `session drain`.
+    let sessionDrainUri (hostUri: string) (sessionId: string) =
+        let baseUri = hostUri.TrimEnd('/')
+        let escapedSessionId = Uri.EscapeDataString sessionId
+        $"{baseUri}/api/codexfs/session/{escapedSessionId}/drain"
+
+    let responseTextAsync (response: HttpResponseMessage) (cancellationToken: CancellationToken) =
+        task {
+            let! body = response.Content.ReadAsStringAsync(cancellationToken)
+
+            return
+                { StatusCode = int response.StatusCode
+                  IsSuccess = response.IsSuccessStatusCode
+                  Body = body }
+        }
+
     /// Send one prompt through the host control endpoint into PTCS MessageFabric.
     let sendSessionMessageAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionSendOptions) =
         task {
@@ -36,10 +64,26 @@ module CliHttp =
 
             use content = JsonContent.Create request
             let! response = client.PostAsync(sessionSendUri options.Host options.SessionId, content, cancellationToken)
-            let! body = response.Content.ReadAsStringAsync(cancellationToken)
+            return! responseTextAsync response cancellationToken
+        }
 
-            return
-                { StatusCode = int response.StatusCode
-                  IsSuccess = response.IsSuccessStatusCode
-                  Body = body }
+    /// Get current session inbox status through the host control endpoint.
+    let getSessionStatusAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
+        task {
+            let! response = client.GetAsync(sessionStatusUri options.Host options.SessionId, cancellationToken)
+            return! responseTextAsync response cancellationToken
+        }
+
+    /// Bounded attach to session inbox through the host control endpoint.
+    let attachSessionAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
+        task {
+            let! response = client.PostAsync(sessionAttachUri options.Host options.SessionId, null, cancellationToken)
+            return! responseTextAsync response cancellationToken
+        }
+
+    /// Drain current session inbox through the host control endpoint.
+    let drainSessionAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
+        task {
+            let! response = client.PostAsync(sessionDrainUri options.Host options.SessionId, null, cancellationToken)
+            return! responseTextAsync response cancellationToken
         }

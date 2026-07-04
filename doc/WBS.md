@@ -57,7 +57,7 @@ Status 值：
 | DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 100 | Done | None | 2026-07-04 21:36 +08:00 | 2026-07-04 21:39 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | [@DOC-003](WBS.DOC-003.md) |
 | CLI-001 | 實作 CLI command DU/help | HOST-003 | 100 | Done | None | 2026-07-04 21:44 +08:00 | 2026-07-04 21:48 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | [@CLI-001](WBS.CLI-001.md) |
 | CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 100 | Done | None | 2026-07-04 21:51 +08:00 | 2026-07-04 21:56 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | [@CLI-002](WBS.CLI-002.md) |
-| CLI-003 | CLI attach/drain/status | CLI-002 | 0 | Planned | None | 未動工 | 2026-07-04 21:56 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | inline |
+| CLI-003 | CLI attach/drain/status | CLI-002 | 100 | Done | None | 2026-07-04 22:00 +08:00 | 2026-07-04 22:09 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | [@CLI-003](WBS.CLI-003.md) |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | dotnet tool package | REL-001;HOST-001 | 0 | Planned | None | 未動工 | 2026-07-04 21:03 +08:00 | Requirement R-001, SD §2 | T-REL-002 | TC-REL-002 tool install/run help | inline |
 | E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 100 | Done | None | 2026-07-04 19:41 +08:00 | 2026-07-04 19:47 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 installed codex/agy probe real path | inline |
@@ -77,6 +77,7 @@ Status 值：
 | [@DOC-003](WBS.DOC-003.md) | OpenAPI JSON and Swagger UI verification uses the real host endpoint through advertised non-loopback URI. |
 | [@CLI-001](WBS.CLI-001.md) | Terminal client command surface is a compiled FAkka.Argu parser; real host execution is deferred to CLI-002/CLI-003. |
 | [@CLI-002](WBS.CLI-002.md) | CLI session send uses real host HTTP endpoint and PTCS MessageFabric; attach/drain/status remains CLI-003. |
+| [@CLI-003](WBS.CLI-003.md) | CLI status/attach/drain read the real session inbox through host control endpoints and drain acknowledges the cursor. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 
 ## 4. Update Rule
