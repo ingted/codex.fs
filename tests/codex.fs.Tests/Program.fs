@@ -1,6 +1,7 @@
 module CodexFs.Tests.Program
 
 open System
+open System.Collections.Generic
 open System.Diagnostics
 open System.Net
 open System.Net.Http
@@ -400,6 +401,7 @@ let hostControlServer =
 assertEqual "host control bind address" (hostControlAddress.ToString()) hostControlServer.Contract.BindAddress
 assertEqual "host control advertise uri" hostControlAdvertiseUri hostControlServer.Contract.AdvertiseUri
 assertContains "host control health route" CodexFs.Host.HostControl.Routes.Health hostControlServer.Contract.HealthUri
+assertEqual "host control chat uri" $"{hostControlAdvertiseUri}/chat" hostControlServer.Contract.ChatUri
 assertEqual "host control openapi uri" $"{hostControlAdvertiseUri}/openapi/v1.json" hostControlServer.Contract.OpenApiJsonUri
 assertEqual "host control swagger ui uri" $"{hostControlAdvertiseUri}/docs/index.html" hostControlServer.Contract.SwaggerUiUri
 assertEqual "host control generate openapi" true hostControlServer.Contract.GenerateOpenApi
@@ -416,7 +418,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliWorkerSendResponseText, cliWorkerInboxBody, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
+let hostControlRootPageText, hostControlChatPageText, hostControlChatPostText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliWorkerSendResponseText, cliWorkerInboxBody, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText, chatStatusText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -424,6 +426,8 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
 
         let rootResponse = runTask (client.GetAsync(hostControlServer.Contract.AdvertiseUri + "/"))
         let rootBody = runTask (rootResponse.Content.ReadAsStringAsync())
+        let chatResponse = runTask (client.GetAsync(hostControlServer.Contract.ChatUri))
+        let chatBody = runTask (chatResponse.Content.ReadAsStringAsync())
         let response = runTask (client.GetAsync(hostControlServer.Contract.HealthUri))
         let body = runTask (response.Content.ReadAsStringAsync())
         let openApiResponse = runTask (client.GetAsync(hostControlServer.Contract.OpenApiJsonUri))
@@ -442,6 +446,17 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
         let cli002Prompt = "CLI-002 prompt through host and PTCS MessageFabric"
         let cli002WorkerId = $"agent.codexfs.worker.{cli002RunSuffix}"
         let cli002WorkerPrompt = "CLI-002 prompt through explicit worker override"
+        let chatSessionId = $"chat.{cli002RunSuffix}"
+        let chatPrompt = "CHAT-001 prompt through web chat"
+
+        use chatForm =
+            new FormUrlEncodedContent(
+                [| KeyValuePair<string, string>("sessionId", chatSessionId)
+                   KeyValuePair<string, string>("workerId", "")
+                   KeyValuePair<string, string>("prompt", chatPrompt) |])
+
+        let chatPostResponse = runTask (client.PostAsync(hostControlServer.Contract.ChatUri, chatForm))
+        let chatPostBody = runTask (chatPostResponse.Content.ReadAsStringAsync())
 
         let cliSendResult =
             runTask
@@ -480,8 +495,15 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
         let cliAttachResult = runTask (CodexFs.Cli.CliHttp.attachSessionAsync client CancellationToken.None cli002Target)
         let cliDrainResult = runTask (CodexFs.Cli.CliHttp.drainSessionAsync client CancellationToken.None cli002Target)
         let cliAfterDrainStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None cli002Target)
+        let chatTarget: CodexFs.Cli.Cli.SessionTargetOptions =
+            { Host = hostControlServer.Contract.AdvertiseUri
+              SessionId = chatSessionId }
+
+        let chatStatusResult = runTask (CodexFs.Cli.CliHttp.getSessionStatusAsync client CancellationToken.None chatTarget)
 
         assertEqual "host root http status" HttpStatusCode.OK rootResponse.StatusCode
+        assertEqual "host chat http status" HttpStatusCode.OK chatResponse.StatusCode
+        assertEqual "host chat post http status" HttpStatusCode.OK chatPostResponse.StatusCode
         assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
         assertEqual "host openapi http status" HttpStatusCode.OK openApiResponse.StatusCode
         assertEqual "host swagger ui http status" HttpStatusCode.OK swaggerResponse.StatusCode
@@ -499,8 +521,10 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
         assertTrue "cli drain success" cliDrainResult.IsSuccess
         assertEqual "cli after drain status" 200 cliAfterDrainStatusResult.StatusCode
         assertTrue "cli after drain success" cliAfterDrainStatusResult.IsSuccess
+        assertEqual "chat status status" 200 chatStatusResult.StatusCode
+        assertTrue "chat status success" chatStatusResult.IsSuccess
 
-        rootBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliWorkerSendResult.Body, cliWorkerInboxBody, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
+        rootBody, chatBody, chatPostBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliWorkerSendResult.Body, cliWorkerInboxBody, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body, chatStatusResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -512,6 +536,7 @@ let hostControlRoot = hostControlJson.RootElement
 
 assertEqual "host control response status" "running" (hostControlRoot.GetProperty("status").GetString())
 assertEqual "host control response advertise uri" hostControlAdvertiseUri (hostControlRoot.GetProperty("advertiseUri").GetString())
+assertEqual "host control response chat uri" hostControlServer.Contract.ChatUri (hostControlRoot.GetProperty("chatUri").GetString())
 assertEqual "host control response health uri" hostControlServer.Contract.HealthUri (hostControlRoot.GetProperty("healthUri").GetString())
 assertEqual "host control response bind address" (hostControlAddress.ToString()) (hostControlRoot.GetProperty("bindAddress").GetString())
 assertEqual "host control response port" hostControlPort (hostControlRoot.GetProperty("port").GetInt32())
@@ -523,16 +548,26 @@ hostControlJson.Dispose()
 printfn "TC-HOST-003 endpoint contract passed"
 
 assertContains "host root title" "codex.fs host" hostControlRootPageText
+assertContains "host root chat link" hostControlServer.Contract.ChatUri hostControlRootPageText
 assertContains "host root health link" hostControlServer.Contract.HealthUri hostControlRootPageText
 assertContains "host root openapi link" hostControlServer.Contract.OpenApiJsonUri hostControlRootPageText
 assertContains "host root swagger link" hostControlServer.Contract.SwaggerUiUri hostControlRootPageText
 assertTrue "host root no raw token" (not (hostControlRootPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+
+assertContains "host chat title" "codex.fs chat" hostControlChatPageText
+assertContains "host chat form action" "action=\"/chat\"" hostControlChatPageText
+assertContains "host chat prompt field" "name=\"prompt\"" hostControlChatPageText
+assertTrue "host chat no raw token" (not (hostControlChatPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+assertContains "host chat accepted" "Accepted" hostControlChatPostText
+assertContains "host chat default target" "agent.codexfs.chat." hostControlChatPostText
+assertTrue "host chat post no raw token" (not (hostControlChatPostText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 
 let cliHostStatusJson = JsonDocument.Parse(cliHostStatusText)
 let cliHostStatusRoot = cliHostStatusJson.RootElement
 
 assertEqual "cli host status response status" "running" (cliHostStatusRoot.GetProperty("status").GetString())
 assertEqual "cli host status response advertise" hostControlAdvertiseUri (cliHostStatusRoot.GetProperty("advertiseUri").GetString())
+assertEqual "cli host status response chat" hostControlServer.Contract.ChatUri (cliHostStatusRoot.GetProperty("chatUri").GetString())
 assertEqual "cli host status response health" hostControlServer.Contract.HealthUri (cliHostStatusRoot.GetProperty("healthUri").GetString())
 assertTrue "cli host status response fabric" (cliHostStatusRoot.GetProperty("hasMessageFabric").GetBoolean())
 assertTrue "cli host status no raw token" (not (cliHostStatusText.Contains(fakeGithubToken, StringComparison.Ordinal)))
@@ -541,9 +576,11 @@ cliHostStatusJson.Dispose()
 let hostOpenApiJson = JsonDocument.Parse(hostControlOpenApiText)
 let hostOpenApiRoot = hostOpenApiJson.RootElement
 let mutable hostHealthPath = Unchecked.defaultof<JsonElement>
+let mutable hostChatPath = Unchecked.defaultof<JsonElement>
 
 assertTrue "host openapi version" (hostOpenApiRoot.GetProperty("openapi").GetString().StartsWith("3.", StringComparison.Ordinal))
 assertTrue "host openapi has health path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.Health, &hostHealthPath))
+assertTrue "host openapi has chat path" (hostOpenApiRoot.GetProperty("paths").TryGetProperty(CodexFs.Host.HostControl.Routes.Chat, &hostChatPath))
 assertTrue "host swagger ui html" (hostControlSwaggerText.Contains("SwaggerUIBundle", StringComparison.Ordinal) || hostControlSwaggerText.Contains("swagger-ui", StringComparison.OrdinalIgnoreCase))
 assertTrue "host swagger ui no raw token" (not (hostControlSwaggerText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 hostOpenApiJson.Dispose()
@@ -575,6 +612,7 @@ assertContains "cli worker inbox body" "CLI-002 prompt through explicit worker o
 cliWorkerSendJson.Dispose()
 
 assertInboxJson "cli status" "ok" 1 cliStatusText
+assertContains "chat status transcript" "CHAT-001 prompt through web chat" chatStatusText
 
 printfn "TC-CLI-002 CLI send through MessageFabric passed"
 
@@ -625,6 +663,23 @@ match CodexFs.Cli.Cli.tryParseHostStatus [| "host"; "status"; "--host"; "http://
 | Ok(Some options) -> assertEqual "cli host status parse host" "http://192.168.10.20:8788" options.Host
 | Ok None -> failwith "Assertion failed: cli host status parse returned None"
 | Error message -> failwith $"Assertion failed: cli host status parse failed: {message}"
+
+let closedPort = reserveTcpPort ()
+let refusedHandler = new HttpClientHandler(UseProxy = false)
+let refusedClient = new HttpClient(refusedHandler, true)
+refusedClient.Timeout <- TimeSpan.FromSeconds 2.0
+
+let refusedHostResult =
+    runTask
+        (CodexFs.Cli.CliHttp.getHostStatusAsync
+            refusedClient
+            CancellationToken.None
+            { Host = $"http://127.0.0.1:{closedPort}" })
+
+assertEqual "cli refused host status code" 0 refusedHostResult.StatusCode
+assertTrue "cli refused host not success" (not refusedHostResult.IsSuccess)
+assertContains "cli refused host readable error" "could not reach host endpoint" refusedHostResult.Body
+assertContains "cli refused host pid guidance" "Do not use the process PID as the port." refusedHostResult.Body
 
 let resolvedDirectPrompt =
     CodexFs.Cli.Cli.tryResolvePromptText (fun path -> failwith $"unexpected prompt file read: {path}") "direct prompt text"

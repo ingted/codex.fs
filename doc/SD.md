@@ -636,6 +636,7 @@ module HostControl
 
 module Routes =
     val Root : string // "/"
+    val Chat : string // "/chat"
     val Health : string // "/api/codexfs/host/health"
 
 type HostControlContract =
@@ -644,6 +645,7 @@ type HostControlContract =
       Port: int
       BindUri: string
       AdvertiseUri: string
+      ChatUri: string
       HealthUri: string
       OpenApiJsonUri: string
       SwaggerUiUri: string
@@ -661,6 +663,7 @@ type HostControlHealthResponse =
       BindAddress: string
       Port: int
       AdvertiseUri: string
+      ChatUri: string
       HealthUri: string
       AllowLoopbackOnly: bool
       PtcsFabricMode: string
@@ -676,14 +679,18 @@ type HostControlHealthResponse =
 
 val buildContract : HostConfig -> HostControlContract
 val healthResponse : HostControlContract -> HostRuntime -> HostControlHealthResponse
+val chatPostAsync : HostRuntime -> HostControlContract -> HttpRequest -> Task<IResult>
 val tryStartAsync : DateTimeOffset -> CancellationToken -> HostRuntime -> Task<Result<HostControlServer, HostConfigIssue list>>
 val stopAsync : CancellationToken -> HostControlServer -> Task<HostRuntime>
 ```
 
 Rules:
 
-- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /` plus `GET /api/codexfs/host/health`.
-- `GET /` is the operator landing page. It must return HTTP 200 HTML and link to health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled.
+- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /`, `GET/POST /chat`, plus `GET /api/codexfs/host/health`.
+- `GET /` is the operator landing page. It must return HTTP 200 HTML and link to chat, health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled.
+- `GET /chat` is the standalone host operator PoC form. `POST /chat` accepts `application/x-www-form-urlencoded` fields `sessionId`, `workerId`, and `prompt`, then sends through the same `acceptSessionMessageAsync` path used by `POST /api/codexfs/session/{sessionId}/messages`.
+- `/chat` defaults to the derived SessionWorker / 包工頭 target and treats nonblank `workerId` as an explicit worker participant override.
+- `/chat` is not the production PTCS participant-perspective Web UI and must not create a separate durable chat store; production PTCS Web still uses caller-owned PTCS MessageFabric from the PTCS Host process.
 - `HostControlContract.HealthUri` is built from `control.advertiseUri`; CLI/Web/admin callers must use the advertised URI, not the bind URI when these differ.
 - Non-loopback clustered profiles are validated by `HostConfig`; `control.allowLoopbackOnly = false` rejects loopback bind/advertise config before HTTP start.
 - The health endpoint returns non-secret operational metadata only. It reports executable override keys but never executable override values.
@@ -1031,6 +1038,7 @@ type CliHttpResult =
       IsSuccess: bool
       Body: string }
 
+val transportFailure : string -> exn -> CliHttpResult
 val sessionSendUri : string -> string -> string
 val sendSessionMessageAsync : HttpClient -> CancellationToken -> Cli.SessionSendOptions -> Task<CliHttpResult>
 ```
@@ -1043,6 +1051,8 @@ Rules:
 - When `WorkerId` is supplied, host treats it as the exact target worker participant id and sends the direct MessageFabric message there instead; `SessionParticipantId` remains the foreman identity for the session.
 - Host registers sender/session participants in PTCS and registers the override worker participant when one is supplied.
 - CLI sends to the host advertised URI; CLI does not write MessageFabric or artifacts directly.
+- CLI HTTP helpers catch `HttpRequestException`, `TaskCanceledException`, and invalid URI operation errors. They return `CliHttpResult` with `StatusCode = 0`, `IsSuccess = false`, and readable guidance instead of throwing an unhandled stack trace.
+- CLI error text must remind operators to use `control.advertiseUri` and not the `codex.fs.host` process id as the HTTP port.
 - `CLI-002` validates send-to-inbox through the host status path. Full attach/drain/status transcript behavior belongs to `CLI-003`.
 
 Implemented session inbox read path:
@@ -1135,6 +1145,8 @@ Rules:
 ## 14.1 PTCS Web chat profile integration
 
 Existing PTCS Web chat is implemented by `G:\PulseTrade.fs\Libs\PulseTrade.Comm\src\PulseTrade.Comm.Spa.Host` over the PTCS package in `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`.
+
+Standalone `codex.fs.host` may expose `/chat` as an operator PoC form per `RFC-HOST-0001`. That route sends through the host's current PTCS MessageFabric and is useful for early CLI/Web usability checks, but it does not replace the production PTCS participant-perspective Web UI and must not become a parallel durable chat store.
 
 Current deployment profile rules:
 

@@ -187,3 +187,13 @@
 - API: `SessionSendRequest` now includes `WorkerId`; `SessionSendResponse` now includes `TargetParticipantId`.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed after restore; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and covered default foreman target plus explicit worker inbox delivery through real PTCS MessageFabric.
 - Traceability: added `RFC-CLI-0001`, WBS `CLI-006` / `CLI-007`, Test `T-CLI-006` / `T-CLI-007`, and updated Requirement/SD/README/DEVOP/KM.
+
+## 2026-07-05 02:48 +08:00 HOST-006/CLI-008 standalone chat and CLI transport errors
+
+- Scope: fixed user-reported CLI crash on refused host endpoint and added standalone host `/chat` operator PoC form.
+- Root cause: the user command used `14724`, which was the prior host process PID rather than the HTTP port, but CLI still failed incorrectly by surfacing an unhandled `HttpRequestException` stack trace. Standalone host also had no `/chat` route; it only exposed root/docs/API.
+- Behavior: `CodexFs.Cli.CliHttp` now returns readable non-success `CliHttpResult` for connection failures; `/chat` GET returns a form and POST sends through the same `acceptSessionMessageAsync` MessageFabric path used by CLI.
+- Boundary: `/chat` is an operator PoC over standalone host MessageFabric, not the production PTCS participant-perspective Web UI. PTCS Web integration still requires caller-owned PTCS MessageFabric from the PTCS Host process.
+- Packaging: package family bumped to `0.1.0-alpha.5`.
+- Tests: `dotnet build .\codex.fs.slnx` passed with 0 warnings/errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and covered `/chat`, OpenAPI `/chat`, health `chatUri`, default chat target, and readable refused-host CLI error.
+- Traceability: added `RFC-HOST-0001`, WBS `HOST-006` / `CLI-008`, Test `T-HOST-006` / `T-CLI-008`, and updated Requirement/SD/README/DEVOP/KM.

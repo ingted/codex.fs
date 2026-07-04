@@ -2,7 +2,7 @@
 
 `codex.fs` 是 F#/.NET 的輕量 CLI engine contract package，用來把 PTCS/agent host 的工作請求轉成版本化的 headless Codex/Agy CLI 執行邊界。
 
-目前狀態：`0.1.0-alpha.4`，仍是早期 alpha。此 package 目前提供：
+目前狀態：`0.1.0-alpha.5`，仍是早期 alpha。此 package 目前提供：
 
 - core domain model；
 - artifact manifest 與 file artifact store primitives；
@@ -12,7 +12,7 @@
 - Agy CLI `1.0.x` probe、Argu render、artifact mapping；
 - PTCS MessageFabric binding package；
 - minimal host runtime / HTTP control endpoint / E2E single-cycle runner；
-- host operator landing page、OpenAPI JSON 與 Swagger UI；
+- host operator landing page、`/chat` PoC form、OpenAPI JSON 與 Swagger UI；
 - `codex.fs.cli` dotnet tool package，安裝後命令為 `codex.fs.cli`；
 - `codex.fs.tool` short alias dotnet tool package，安裝後命令為 `codex.fs`；
 - `codex.fs.host` command via the `codex.fs.host.tool` dotnet tool wrapper。
@@ -35,9 +35,9 @@ dotnet pack .\src\codex.fs.host\codex.fs.host.fsproj --no-restore -o .\.codex.fs
 dotnet pack .\src\codex.fs.cli\codex.fs.cli.fsproj --no-restore -o .\.codex.fs\packs
 dotnet pack .\src\codex.fs.tool\codex.fs.tool.fsproj --no-restore -o .\.codex.fs\packs
 dotnet pack .\src\codex.fs.host.tool\codex.fs.host.tool.fsproj --no-restore -o .\.codex.fs\packs
-dotnet tool install codex.fs.cli --tool-path .\.codex.fs\tool --add-source .\.codex.fs\packs --version 0.1.0-alpha.4
-dotnet tool install codex.fs.tool --tool-path .\.codex.fs\tool --add-source .\.codex.fs\packs --version 0.1.0-alpha.4
-dotnet tool install codex.fs.host.tool --tool-path .\.codex.fs\host-tool --add-source .\.codex.fs\packs --version 0.1.0-alpha.4
+dotnet tool install codex.fs.cli --tool-path .\.codex.fs\tool --add-source .\.codex.fs\packs --version 0.1.0-alpha.5
+dotnet tool install codex.fs.tool --tool-path .\.codex.fs\tool --add-source .\.codex.fs\packs --version 0.1.0-alpha.5
+dotnet tool install codex.fs.host.tool --tool-path .\.codex.fs\host-tool --add-source .\.codex.fs\packs --version 0.1.0-alpha.5
 .\.codex.fs\tool\codex.fs.cli.exe --help
 .\.codex.fs\tool\codex.fs.exe --help
 .\.codex.fs\host-tool\codex.fs.host.exe --help
@@ -53,9 +53,9 @@ If alpha.3 or earlier was installed, uninstall `codex.fs.cli` first because alph
 dotnet tool uninstall --global codex.fs.cli
 dotnet tool uninstall --global codex.fs.tool
 dotnet tool uninstall --global codex.fs.host.tool
-dotnet tool install --global codex.fs.cli --add-source G:\codex.fs\bin\cli-command-packs-20260705020253-alpha4 --version 0.1.0-alpha.4
-dotnet tool install --global codex.fs.tool --add-source G:\codex.fs\bin\cli-command-packs-20260705020253-alpha4 --version 0.1.0-alpha.4
-dotnet tool install --global codex.fs.host.tool --add-source G:\codex.fs\bin\cli-command-packs-20260705020253-alpha4 --version 0.1.0-alpha.4
+dotnet tool install --global codex.fs.cli --add-source G:\codex.fs\bin\cli-chat-fix-packs-20260705023728-alpha5 --version 0.1.0-alpha.5
+dotnet tool install --global codex.fs.tool --add-source G:\codex.fs\bin\cli-chat-fix-packs-20260705023728-alpha5 --version 0.1.0-alpha.5
+dotnet tool install --global codex.fs.host.tool --add-source G:\codex.fs\bin\cli-chat-fix-packs-20260705023728-alpha5 --version 0.1.0-alpha.5
 
 C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe start `
   --setting control.bindAddress=10.28.112.93 `
@@ -71,6 +71,7 @@ C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe start `
 Expected operator/API docs URLs:
 
 - `http://10.28.112.93:10481/`
+- `http://10.28.112.93:10481/chat`
 - `http://10.28.112.93:10481/api/codexfs/host/health`
 - `http://10.28.112.93:10481/openapi/v1.json`
 - `http://10.28.112.93:10481/docs/index.html`
@@ -86,6 +87,8 @@ codex.fs.host --help
 ```
 
 `session send` default target is the session worker / foreman participant derived as `<ptcs.sessionParticipantPrefix>.<sessionId>`. Use `--worker-id <participantId>` only when the prompt should go directly to a specific worker participant.
+
+`/chat` is an operator PoC form over the standalone host's current MessageFabric. It sends to the same default session worker / foreman target as CLI and supports an optional worker override. It is not the production PTCS Web participant-perspective UI; production PTCS Web integration still requires caller-owned PTCS MessageFabric from the PTCS Host process.
 
 ## PTCS Web profile note
 

@@ -25,6 +25,10 @@ module HostControl =
         [<Literal>]
         let Root = "/"
 
+        /// Human-facing PoC chat page for sending prompts into a session worker inbox.
+        [<Literal>]
+        let Chat = "/chat"
+
         /// Health endpoint used by CLI/Web/admin callers to inspect non-secret host status.
         [<Literal>]
         let Health = "/api/codexfs/host/health"
@@ -59,6 +63,10 @@ module HostControl =
         /// Endpoint name for `GET /`.
         [<Literal>]
         let Root = "CodexFsHostRoot"
+
+        /// Endpoint name for `GET /chat`.
+        [<Literal>]
+        let Chat = "CodexFsHostChat"
 
         /// Endpoint name for `GET /api/codexfs/host/health`.
         [<Literal>]
@@ -116,6 +124,8 @@ module HostControl =
           BindUri: string
           /// URI published to CLI clients and other nodes.
           AdvertiseUri: string
+          /// Human-facing PoC chat page URI.
+          ChatUri: string
           /// Full advertised health URI.
           HealthUri: string
           /// True only for explicit single-node development loopback profiles.
@@ -160,6 +170,8 @@ module HostControl =
           Port: int
           /// Advertised base URI used by CLI clients and other nodes.
           AdvertiseUri: string
+          /// Human-facing PoC chat page URI.
+          ChatUri: string
           /// Advertised health endpoint URI.
           HealthUri: string
           /// True when loopback-only control addresses are explicitly allowed.
@@ -318,6 +330,11 @@ module HostControl =
           Description = "A human-facing landing page with links to health, OpenAPI JSON, and Swagger UI when available."
           Body = """<html><body><h1>codex.fs host</h1></body></html>""" }
 
+    let chatSuccessExample =
+        { Name = "operator-chat"
+          Description = "A human-facing form that sends one prompt to the default session worker / foreman, with optional worker override."
+          Body = """<html><body><form method="post" action="/chat"><textarea name="prompt"></textarea></form></body></html>""" }
+
     /// Endpoint definitions that act as the canonical code-side docs metadata for the HTTP control plane.
     let endpointDefinitions =
         [ { Method = "GET"
@@ -326,6 +343,12 @@ module HostControl =
             Summary = "Return a human-facing codex.fs host landing page."
             SuccessExample = rootSuccessExample
             FailureExample = healthFailureExample }
+          { Method = "GET"
+            Route = Routes.Chat
+            Name = EndpointNames.Chat
+            Summary = "Return a human-facing PoC chat page for sending prompts to a session worker."
+            SuccessExample = chatSuccessExample
+            FailureExample = sessionSendFailureExample }
           { Method = "GET"
             Route = Routes.Health
             Name = EndpointNames.Health
@@ -408,6 +431,7 @@ module HostControl =
           Port = port
           BindUri = bindUri
           AdvertiseUri = advertiseUri
+          ChatUri = combineAdvertisedRoute advertiseUri Routes.Chat
           HealthUri = combineAdvertisedRoute advertiseUri Routes.Health
           AllowLoopbackOnly = control.AllowLoopbackOnly
           Endpoints = endpointDefinitions
@@ -429,6 +453,7 @@ module HostControl =
           BindAddress = contract.BindAddress
           Port = contract.Port
           AdvertiseUri = contract.AdvertiseUri
+          ChatUri = contract.ChatUri
           HealthUri = contract.HealthUri
           AllowLoopbackOnly = health.ControlAllowLoopbackOnly
           PtcsFabricMode = health.PtcsFabricMode
@@ -493,7 +518,8 @@ module HostControl =
 
     let rootPageHtml (contract: HostControlContract) =
         let docsItems =
-            [ yield $"<li><a href=\"{htmlEncode contract.HealthUri}\">Host health JSON</a></li>"
+            [ yield $"<li><a href=\"{htmlEncode contract.ChatUri}\">Chat PoC</a></li>"
+              yield $"<li><a href=\"{htmlEncode contract.HealthUri}\">Host health JSON</a></li>"
               if contract.GenerateOpenApi then
                   yield $"<li><a href=\"{htmlEncode contract.OpenApiJsonUri}\">OpenAPI JSON</a></li>"
               if contract.GenerateOpenApi && contract.ExposeSwaggerUi then
@@ -525,6 +551,61 @@ module HostControl =
   <p><code>codex.fs host status --host {htmlEncode contract.AdvertiseUri}</code></p>
 </body>
 </html>"""
+
+    let formValue (form: IFormCollection) key =
+        if form.ContainsKey key then
+            form[key].ToString()
+        else
+            String.Empty
+
+    let chatPageHtml (contract: HostControlContract) sessionId workerId prompt resultHtml =
+        let resultSection =
+            match resultHtml with
+            | Some value -> value
+            | None -> String.Empty
+
+        [ "<!doctype html>"
+          "<html lang=\"en\">"
+          "<head>"
+          "  <meta charset=\"utf-8\">"
+          "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+          "  <title>codex.fs chat</title>"
+          "  <style>"
+          "    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 24px; line-height: 1.5; }"
+          "    label { display: block; font-weight: 600; margin: 16px 0 6px; }"
+          "    input, textarea { box-sizing: border-box; width: 100%; font: inherit; padding: 9px 10px; border: 1px solid #b8b8b8; border-radius: 6px; }"
+          "    textarea { min-height: 180px; resize: vertical; }"
+          "    button { margin-top: 16px; padding: 9px 14px; border: 1px solid #1f5f8b; border-radius: 6px; background: #1f6f9f; color: white; font: inherit; cursor: pointer; }"
+          "    code { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; }"
+          "    .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }"
+          "    .result { margin: 18px 0; padding: 12px 14px; border-radius: 6px; border: 1px solid #b8b8b8; background: #fafafa; }"
+          "    .ok { border-color: #7fbf7f; background: #f3fbf3; }"
+          "    .error { border-color: #d58a8a; background: #fff6f6; }"
+          "    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }"
+          "  </style>"
+          "</head>"
+          "<body>"
+          "  <h1>codex.fs chat</h1>"
+          $"  <p>Host: <code>{htmlEncode contract.AdvertiseUri}</code></p>"
+          resultSection
+          $"  <form method=\"post\" action=\"{htmlEncode Routes.Chat}\">"
+          "    <div class=\"grid\">"
+          "      <div>"
+          "        <label for=\"sessionId\">Session</label>"
+          $"        <input id=\"sessionId\" name=\"sessionId\" value=\"{htmlEncode sessionId}\" autocomplete=\"off\" required>"
+          "      </div>"
+          "      <div>"
+          "        <label for=\"workerId\">Worker override</label>"
+          $"        <input id=\"workerId\" name=\"workerId\" value=\"{htmlEncode workerId}\" autocomplete=\"off\" placeholder=\"blank = session worker / foreman\">"
+          "      </div>"
+          "    </div>"
+          "    <label for=\"prompt\">Prompt</label>"
+          $"    <textarea id=\"prompt\" name=\"prompt\" required>{htmlEncode prompt}</textarea>"
+          "    <button type=\"submit\">Send</button>"
+          "  </form>"
+          "</body>"
+          "</html>" ]
+        |> String.concat Environment.NewLine
 
     let endpointDefinition name =
         endpointDefinitions
@@ -573,17 +654,20 @@ module HostControl =
           Messages = responseMessages
           Transcript = transcript }
 
-    /// Append one CLI-submitted prompt into the PTCS inbox for the default session worker or selected worker.
-    let sendSessionMessageAsync (runtime: HostRuntime.HostRuntime) sessionId (request: SessionSendRequest) =
+    let errorOutcome statusCode code message =
+        Error(statusCode, { Code = code; Message = message })
+
+    /// Accept one prompt into the PTCS inbox for the default session worker or selected worker.
+    let acceptSessionMessageAsync (runtime: HostRuntime.HostRuntime) sessionId (request: SessionSendRequest) =
         task {
             match runtime.MessageFabric with
             | None ->
-                return errorResult StatusCodes.Status503ServiceUnavailable "message-fabric-unavailable" "Host MessageFabric is not initialized."
+                return errorOutcome StatusCodes.Status503ServiceUnavailable "message-fabric-unavailable" "Host MessageFabric is not initialized."
             | Some fabric ->
                 if String.IsNullOrWhiteSpace sessionId then
-                    return errorResult StatusCodes.Status400BadRequest "invalid-session-message" "Session id must not be blank."
+                    return errorOutcome StatusCodes.Status400BadRequest "invalid-session-message" "Session id must not be blank."
                 elif isNull (box request) || String.IsNullOrWhiteSpace request.Prompt then
-                    return errorResult StatusCodes.Status400BadRequest "invalid-session-message" "Prompt must not be blank."
+                    return errorOutcome StatusCodes.Status400BadRequest "invalid-session-message" "Prompt must not be blank."
                 else
                     let sessionParticipantId = sessionParticipantId runtime.Config sessionId
                     let targetParticipantId =
@@ -651,7 +735,46 @@ module HostControl =
                           CorrelationId = correlationId |> Option.defaultValue String.Empty
                           Tags = tags }
 
-                    return Results.Json(response, statusCode = Nullable<int>(StatusCodes.Status202Accepted))
+                    return Ok response
+        }
+
+    /// Append one CLI-submitted prompt into the PTCS inbox for the default session worker or selected worker.
+    let sendSessionMessageAsync (runtime: HostRuntime.HostRuntime) sessionId (request: SessionSendRequest) =
+        task {
+            let! result = acceptSessionMessageAsync runtime sessionId request
+
+            match result with
+            | Ok response -> return Results.Json(response, statusCode = Nullable<int>(StatusCodes.Status202Accepted))
+            | Error(statusCode, error) -> return Results.Json(error, statusCode = Nullable<int>(statusCode))
+        }
+
+    /// Handle the server-rendered chat form by sending one prompt through MessageFabric.
+    let chatPostAsync (runtime: HostRuntime.HostRuntime) (contract: HostControlContract) (request: HttpRequest) =
+        task {
+            let! form = request.ReadFormAsync()
+            let sessionId = formValue form "sessionId"
+            let workerId = formValue form "workerId"
+            let prompt = formValue form "prompt"
+
+            let sendRequest =
+                { Prompt = prompt
+                  FromParticipantId = "user.codexfs.chat"
+                  WorkerId = workerId
+                  Tags = [ "codex.fs"; "web"; "chat"; "session-send" ]
+                  CorrelationId = String.Empty }
+
+            let! result = acceptSessionMessageAsync runtime sessionId sendRequest
+
+            let resultHtml =
+                match result with
+                | Ok response ->
+                    Some
+                        $"""<section class="result ok"><h2>Accepted</h2><p>targetParticipantId: <code>{htmlEncode response.TargetParticipantId}</code></p><p>messageId: <code>{htmlEncode response.MessageId}</code></p></section>"""
+                | Error(_, error) ->
+                    Some
+                        $"""<section class="result error"><h2>{htmlEncode error.Code}</h2><p>{htmlEncode error.Message}</p></section>"""
+
+            return Results.Content(chatPageHtml contract sessionId workerId prompt resultHtml, "text/html; charset=utf-8")
         }
 
     /// Poll the current session inbox without acknowledging messages.
@@ -716,6 +839,24 @@ module HostControl =
             Func<IResult>(fun () -> Results.Content(rootPageHtml contract, "text/html; charset=utf-8"))
 
         (application.MapGet(Routes.Root, rootHandler) |> withEndpointDoc EndpointNames.Root)
+            .Produces(StatusCodes.Status200OK, contentType = "text/html")
+        |> ignore
+
+        let chatGetHandler =
+            Func<IResult>(fun () -> Results.Content(chatPageHtml contract String.Empty String.Empty String.Empty None, "text/html; charset=utf-8"))
+
+        (application.MapGet(Routes.Chat, chatGetHandler) |> withEndpointDoc EndpointNames.Chat)
+            .Produces(StatusCodes.Status200OK, contentType = "text/html")
+        |> ignore
+
+        let chatPostHandler =
+            Func<HttpRequest, Task<IResult>>(fun request -> chatPostAsync runtime contract request)
+
+        application.MapPost(Routes.Chat, chatPostHandler)
+            .WithName(EndpointNames.Chat + "Post")
+            .WithTags("Host Control")
+            .WithSummary("Send one prompt from the PoC chat page to a session worker.")
+            .WithDescription("Accepts application/x-www-form-urlencoded fields sessionId, workerId, and prompt, then renders an HTML result.")
             .Produces(StatusCodes.Status200OK, contentType = "text/html")
         |> ignore
 

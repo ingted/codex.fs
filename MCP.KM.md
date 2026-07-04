@@ -176,3 +176,11 @@
 - `session send` default target is the derived session worker / foreman participant `<ptcs.sessionParticipantPrefix>.<sessionId>`.
 - `session send --worker-id <participantId>` overrides the direct target and treats the supplied value as the exact PTCS worker participant id.
 - `SessionSendResponse.TargetParticipantId` exposes the effective target for verifiers and operator evidence.
+
+## 2026-07-05 HOST-006/CLI-008 Standalone Chat PoC And CLI Transport Errors
+
+- `codex.fs.host` alpha.5 exposes `/chat` as a standalone operator PoC form. It is for early usability against the host's current MessageFabric, not the production PTCS participant-perspective Web UI.
+- `POST /chat` accepts `sessionId`, `workerId`, and `prompt`; blank `workerId` targets the derived SessionWorker / foreman participant, matching CLI default routing.
+- Production PTCS Web integration remains caller-owned PTCS MessageFabric via PTCS Host or peer cluster node; do not treat standalone package-owned `/chat` as canonical shared UI truth.
+- `CodexFs.Cli.CliHttp` catches HTTP transport failures and returns `CliHttpResult` with `StatusCode = 0` and readable guidance. CLI should not print raw `.NET HttpRequestException` stack traces for connection refused endpoints.
+- Operator guidance must distinguish process PID from HTTP port; e.g. previous PID `14724` was not the host port, while the advertised URI was `http://10.28.112.93:10481`.

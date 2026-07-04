@@ -19,6 +19,17 @@ module CliHttp =
           /// Response body text.
           Body: string }
 
+    let transportFailure uri (ex: exn) =
+        let message =
+            [ $"codex.fs could not reach host endpoint: {uri}"
+              ex.Message
+              "Check that codex.fs.host is running and --host uses the advertised host URI, for example http://10.28.112.93:10481. Do not use the process PID as the port." ]
+            |> String.concat Environment.NewLine
+
+        { StatusCode = 0
+          IsSuccess = false
+          Body = message }
+
     /// Build the host endpoint URI for `session send`.
     let sessionSendUri (hostUri: string) (sessionId: string) =
         let baseUri = hostUri.TrimEnd('/')
@@ -58,6 +69,40 @@ module CliHttp =
                   Body = body }
         }
 
+    let getAsync (client: HttpClient) (cancellationToken: CancellationToken) (uri: string) =
+        task {
+            try
+                let! response = client.GetAsync(uri, cancellationToken)
+                return! responseTextAsync response cancellationToken
+            with
+            | :? HttpRequestException as ex -> return transportFailure uri ex
+            | :? TaskCanceledException as ex -> return transportFailure uri ex
+            | :? InvalidOperationException as ex -> return transportFailure uri ex
+        }
+
+    let postJsonAsync (client: HttpClient) (cancellationToken: CancellationToken) (uri: string) request =
+        task {
+            try
+                use content = JsonContent.Create request
+                let! response = client.PostAsync(uri, content, cancellationToken)
+                return! responseTextAsync response cancellationToken
+            with
+            | :? HttpRequestException as ex -> return transportFailure uri ex
+            | :? TaskCanceledException as ex -> return transportFailure uri ex
+            | :? InvalidOperationException as ex -> return transportFailure uri ex
+        }
+
+    let postEmptyAsync (client: HttpClient) (cancellationToken: CancellationToken) (uri: string) =
+        task {
+            try
+                let! response = client.PostAsync(uri, Unchecked.defaultof<HttpContent>, cancellationToken)
+                return! responseTextAsync response cancellationToken
+            with
+            | :? HttpRequestException as ex -> return transportFailure uri ex
+            | :? TaskCanceledException as ex -> return transportFailure uri ex
+            | :? InvalidOperationException as ex -> return transportFailure uri ex
+        }
+
     /// Send one prompt through the host control endpoint into PTCS MessageFabric.
     let sendSessionMessageAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionSendOptions) =
         task {
@@ -68,35 +113,21 @@ module CliHttp =
                   Tags = [ "codex.fs"; "cli"; "session-send" ]
                   CorrelationId = String.Empty }
 
-            use content = JsonContent.Create request
-            let! response = client.PostAsync(sessionSendUri options.Host options.SessionId, content, cancellationToken)
-            return! responseTextAsync response cancellationToken
+            return! postJsonAsync client cancellationToken (sessionSendUri options.Host options.SessionId) request
         }
 
     /// Get current session inbox status through the host control endpoint.
     let getSessionStatusAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
-        task {
-            let! response = client.GetAsync(sessionStatusUri options.Host options.SessionId, cancellationToken)
-            return! responseTextAsync response cancellationToken
-        }
+        getAsync client cancellationToken (sessionStatusUri options.Host options.SessionId)
 
     /// Get host health/status through the host control endpoint.
     let getHostStatusAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.HostStatusOptions) =
-        task {
-            let! response = client.GetAsync(hostStatusUri options.Host, cancellationToken)
-            return! responseTextAsync response cancellationToken
-        }
+        getAsync client cancellationToken (hostStatusUri options.Host)
 
     /// Bounded attach to session inbox through the host control endpoint.
     let attachSessionAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
-        task {
-            let! response = client.PostAsync(sessionAttachUri options.Host options.SessionId, null, cancellationToken)
-            return! responseTextAsync response cancellationToken
-        }
+        postEmptyAsync client cancellationToken (sessionAttachUri options.Host options.SessionId)
 
     /// Drain current session inbox through the host control endpoint.
     let drainSessionAsync (client: HttpClient) (cancellationToken: CancellationToken) (options: Cli.SessionTargetOptions) =
-        task {
-            let! response = client.PostAsync(sessionDrainUri options.Host options.SessionId, null, cancellationToken)
-            return! responseTextAsync response cancellationToken
-        }
+        postEmptyAsync client cancellationToken (sessionDrainUri options.Host options.SessionId)

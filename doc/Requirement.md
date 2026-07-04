@@ -135,6 +135,15 @@ host 必須能接入 PTCS：
 - `CommHub` + `CommSpaMessageFabric`；
 - optional `DurableIngress` / durable MessageFabric。
 
+standalone host tool 必須提供基本 operator usability route：
+
+- `/` landing page；
+- `/chat` PoC form，能送 prompt 到 default SessionWorker / 包工頭，並可選填 worker override；
+- `/api/codexfs/host/health`；
+- `/openapi/v1.json` 與 `/docs/index.html` when API docs enabled。
+
+`/chat` 是 package-owned standalone host 的操作 PoC，不是 production PTCS participant-perspective Web UI。production PTCS Web 仍應使用既有 PTCS Host chat 與 caller-owned PTCS MessageFabric。
+
 ### R-002 CLI client
 
 `codex.fs.cli` package 安裝後提供 `codex.fs.cli` command，`codex.fs.tool` package 提供相同 CLI surface 的 `codex.fs` short alias。兩者必須能在 terminal 中：
@@ -146,6 +155,7 @@ host 必須能接入 PTCS：
 - 查詢 run artifacts。
 - drain pending inbox。
 - 執行 minimal admin operation，例如 list sessions、cancel run、engine probe。
+- host 不可連線或使用者誤把 process PID 當 port 時，回 readable non-zero error，不得吐出 unhandled .NET stack trace。
 
 CLI client 不得繞過 PTCS MessageFabric 建立平行 chat store。
 
