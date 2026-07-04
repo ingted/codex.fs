@@ -5,6 +5,7 @@
     <Project Path="src/codex.fs.host/codex.fs.host.fsproj" />
     <Project Path="src/codex.fs.host.tool/codex.fs.host.tool.fsproj" />
     <Project Path="src/codex.fs.ptcs/codex.fs.ptcs.fsproj" />
+    <Project Path="src/codex.fs.tool/codex.fs.tool.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/codex.fs.Tests/codex.fs.Tests.fsproj" />

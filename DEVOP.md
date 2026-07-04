@@ -1,6 +1,6 @@
 # DEVOP - codex.fs Host / Tool Deployment
 
-版本：`0.1.0-alpha.3`
+版本：`0.1.0-alpha.4`
 狀態：Active
 最後更新：2026-07-05
 
@@ -23,11 +23,12 @@ Cluster/production-like profiles must use LAN/DNS-reachable bind/advertise setti
 dotnet restore .\codex.fs.slnx
 dotnet build .\codex.fs.slnx --no-restore
 
-$packOut = "G:\codex.fs\bin\cli-command-packs-20260705012257-alpha3"
+$packOut = "G:\codex.fs\bin\cli-command-packs-20260705020253-alpha4"
 dotnet pack .\src\codex.fs\codex.fs.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.ptcs\codex.fs.ptcs.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.host\codex.fs.host.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.cli\codex.fs.cli.fsproj --no-restore -o $packOut
+dotnet pack .\src\codex.fs.tool\codex.fs.tool.fsproj --no-restore -o $packOut
 dotnet pack .\src\codex.fs.host.tool\codex.fs.host.tool.fsproj --no-restore -o $packOut
 ```
 
@@ -36,10 +37,12 @@ Do not keep a long-running `dotnet run` host alive while rebuilding the solution
 ## 3. Global Tool Install
 
 ```powershell
-$packOut = "G:\codex.fs\bin\cli-command-packs-20260705012257-alpha3"
-dotnet tool install --global codex.fs.cli --add-source $packOut --version 0.1.0-alpha.3
-dotnet tool install --global codex.fs.host.tool --add-source $packOut --version 0.1.0-alpha.3
+$packOut = "G:\codex.fs\bin\cli-command-packs-20260705020253-alpha4"
+dotnet tool install --global codex.fs.cli --add-source $packOut --version 0.1.0-alpha.4
+dotnet tool install --global codex.fs.tool --add-source $packOut --version 0.1.0-alpha.4
+dotnet tool install --global codex.fs.host.tool --add-source $packOut --version 0.1.0-alpha.4
 
+C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe --help
 C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help
 C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help
 ```
@@ -47,12 +50,14 @@ C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help
 Expected files:
 
 - `C:\Users\Administrator\.dotnet\tools\codex.fs.exe`
+- `C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe`
 - `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe`
 
 If a previous version is installed, uninstall only these package IDs before reinstalling:
 
 ```powershell
 dotnet tool uninstall --global codex.fs.cli
+dotnet tool uninstall --global codex.fs.tool
 dotnet tool uninstall --global codex.fs.host.tool
 ```
 
@@ -82,6 +87,7 @@ Invoke-WebRequest -Uri "http://10.28.112.93:10481/api/codexfs/host/health" -UseB
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/openapi/v1.json" -UseBasicParsing
 Invoke-WebRequest -Uri "http://10.28.112.93:10481/docs/index.html" -UseBasicParsing
 C:\Users\Administrator\.dotnet\tools\codex.fs.exe host status --host http://10.28.112.93:10481
+C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe host status --host http://10.28.112.93:10481
 ```
 
 Browser gate:
@@ -93,10 +99,9 @@ Browser gate:
 
 Current evidence:
 
-- `G:\codex.fs\.codex.fs\host-run\20260705012257-alpha3\stdout.log`
-- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\summary.json`
-- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\root.png`
-- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\docs.png`
+- `G:\codex.fs\.codex.fs\host-run\20260705020253-alpha4\stdout.log`
+- `G:\codex.fs\.codex.fs\host-usability-playwright-20260705020253-alpha4\summary.json`
+- Browser plugin was unavailable in this run due missing sandbox metadata; `summary.json` records HTTP/DOM evidence that root/docs/OpenAPI return 200, root contains both `codex.fs.cli` and `codex.fs` commands, docs contains Swagger UI, and OpenAPI contains session message paths.
 
 ## 6. Documentation Outputs
 

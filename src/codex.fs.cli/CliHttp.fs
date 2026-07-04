@@ -7,7 +7,7 @@ open System.Threading
 open System.Threading.Tasks
 open CodexFs.Host
 
-/// HTTP client helpers used by the `codex.fs` terminal command.
+/// HTTP client helpers used by the `codex.fs.cli` terminal command and `codex.fs` alias.
 module CliHttp =
 
     /// Raw HTTP result returned by a CLI command client.
@@ -64,6 +64,7 @@ module CliHttp =
             let request: HostControl.SessionSendRequest =
                 { Prompt = options.Prompt
                   FromParticipantId = "user.codexfs.cli"
+                  WorkerId = options.WorkerId |> Option.defaultValue String.Empty
                   Tags = [ "codex.fs"; "cli"; "session-send" ]
                   CorrelationId = String.Empty }
 

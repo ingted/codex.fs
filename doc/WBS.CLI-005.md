@@ -29,3 +29,7 @@ SD：`SD §14`
 ## Boundary
 
 No typo alias is added for `condex.fs`. The canonical command is `codex.fs`.
+
+## Superseded
+
+CLI-006 supersedes the alpha.3 command-name decision. Current contract restores explicit `codex.fs.cli` as the canonical PoC command and keeps `codex.fs` as a short alias from package `codex.fs.tool`.

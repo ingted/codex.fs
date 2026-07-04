@@ -47,7 +47,7 @@ Test：`T-REL-004`
 
 ## Superseded Command Note
 
-`CLI-005` supersedes the alpha.2 CLI command name. Package id remains `codex.fs.cli`, but alpha.3 installs command `codex.fs`; use `doc/WBS.CLI-005.md` for current tool command evidence.
+`CLI-005` superseded the alpha.2 CLI command name. `CLI-006` supersedes alpha.3 again: current alpha.4 contract installs canonical command `codex.fs.cli` from package `codex.fs.cli` and short alias `codex.fs` from package `codex.fs.tool`; use `doc/WBS.CLI-006.md` for current tool command evidence.
 
 ## Blockers
 

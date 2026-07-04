@@ -217,6 +217,8 @@ module HostControl =
           Prompt: string
           /// Participant id representing the CLI/user sender; defaults are applied by CLI callers.
           FromParticipantId: string
+          /// Optional target worker participant id. Blank means the derived session worker/foreman.
+          WorkerId: string
           /// Non-secret tags to attach to the PTCS message.
           Tags: string list
           /// Optional idempotency/correlation id; use blank when absent.
@@ -230,6 +232,8 @@ module HostControl =
           SessionId: string
           /// PTCS participant id derived for the session.
           SessionParticipantId: string
+          /// PTCS participant id that received the direct message.
+          TargetParticipantId: string
           /// Participant id used as the message sender.
           FromParticipantId: string
           /// PTCS message id returned by MessageFabric.
@@ -287,9 +291,9 @@ module HostControl =
 
     let sessionSendSuccessExample =
         { Name = "message-accepted"
-          Description = "A CLI prompt was accepted into the PTCS inbox owned by one session participant."
+          Description = "A CLI prompt was accepted into the default session worker PTCS inbox."
           Body =
-            """{"status":"accepted","sessionId":"sess-001","sessionParticipantId":"agent.codexfs.sess-001","fromParticipantId":"user.codexfs.cli","messageId":"msg-001","cursor":"msg-001","correlationId":"cli-001","tags":["codex.fs","cli","session-send"]}""" }
+            """{"status":"accepted","sessionId":"sess-001","sessionParticipantId":"agent.codexfs.sess-001","targetParticipantId":"agent.codexfs.sess-001","fromParticipantId":"user.codexfs.cli","messageId":"msg-001","cursor":"msg-001","correlationId":"cli-001","tags":["codex.fs","cli","session-send"]}""" }
 
     let sessionSendFailureExample =
         { Name = "blank-prompt"
@@ -517,6 +521,7 @@ module HostControl =
     {docsItems}
   </ul>
   <h2>CLI</h2>
+  <p><code>codex.fs.cli host status --host {htmlEncode contract.AdvertiseUri}</code></p>
   <p><code>codex.fs host status --host {htmlEncode contract.AdvertiseUri}</code></p>
 </body>
 </html>"""
@@ -568,7 +573,7 @@ module HostControl =
           Messages = responseMessages
           Transcript = transcript }
 
-    /// Append one CLI-submitted prompt into the PTCS inbox for the selected session participant.
+    /// Append one CLI-submitted prompt into the PTCS inbox for the default session worker or selected worker.
     let sendSessionMessageAsync (runtime: HostRuntime.HostRuntime) sessionId (request: SessionSendRequest) =
         task {
             match runtime.MessageFabric with
@@ -581,11 +586,17 @@ module HostControl =
                     return errorResult StatusCodes.Status400BadRequest "invalid-session-message" "Prompt must not be blank."
                 else
                     let sessionParticipantId = sessionParticipantId runtime.Config sessionId
+                    let targetParticipantId =
+                        request.WorkerId
+                        |> optionalNonBlank
+                        |> Option.defaultValue sessionParticipantId
+
                     let fromParticipantId =
                         if String.IsNullOrWhiteSpace request.FromParticipantId then defaultSenderParticipantId else request.FromParticipantId
 
                     let tags = normalizeTags request.Tags
                     let sessionBinding = MessageFabricBinding.defaultBinding sessionParticipantId
+                    let targetBinding = MessageFabricBinding.defaultBinding targetParticipantId
                     let senderBinding = MessageFabricBinding.defaultBinding fromParticipantId
 
                     let! _ =
@@ -595,7 +606,18 @@ module HostControl =
                             { MessageFabricBinding.defaultRegistration with
                                 DisplayName = Some sessionParticipantId
                                 Kind = Some "agent"
-                                Labels = Some [ "codex.fs"; "session"; "cli-target" ] }
+                                Labels = Some [ "codex.fs"; "session"; "foreman"; "cli-target" ] }
+
+                    if targetParticipantId <> sessionParticipantId then
+                        let! _ =
+                            MessageFabricBinding.registerParticipantAsync
+                                fabric
+                                targetBinding
+                                { MessageFabricBinding.defaultRegistration with
+                                    DisplayName = Some targetParticipantId
+                                    Kind = Some "agent"
+                                    Labels = Some [ "codex.fs"; "worker"; "cli-target" ] }
+                        ()
 
                     let! _ =
                         MessageFabricBinding.registerParticipantAsync
@@ -612,7 +634,7 @@ module HostControl =
                         MessageFabricBinding.sendAsync
                             fabric
                             { FromParticipantId = fromParticipantId
-                              Scope = MessageFabricScope.Direct sessionParticipantId
+                              Scope = MessageFabricScope.Direct targetParticipantId
                               Body = request.Prompt
                               Tags = tags
                               CorrelationId = correlationId
@@ -622,6 +644,7 @@ module HostControl =
                         { Status = "accepted"
                           SessionId = sessionId
                           SessionParticipantId = sessionParticipantId
+                          TargetParticipantId = targetParticipantId
                           FromParticipantId = fromParticipantId
                           MessageId = envelope.MessageId
                           Cursor = envelope.MessageId

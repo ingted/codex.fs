@@ -166,3 +166,13 @@
 - Standalone `codex.fs.host` uses package-owned in-process MessageFabric. It is valid for CLI/API/docs verification but does not make workers appear in an already running PTCS Web process.
 - Current PTCS Host profile facts: `http://127.0.0.1:82/chat` is the local PTCS.Login chat path; `https://my-ai.co.in:81/chat` is the public GitHub OAuth path and may redirect to GitHub by design.
 - Browser evidence for local82 login/send is under `G:\codex.fs\.codex.fs\ptcs-web-inspect-20260705012257-local82-send`.
+
+## 2026-07-05 CLI-006/CLI-007 Explicit CLI Alias And Worker Routing
+
+- CLI-005 alpha.3 command-name decision is superseded. Current alpha.4 contract:
+  - package `codex.fs.cli` installs explicit PoC command `codex.fs.cli`;
+  - package `codex.fs.tool` installs short alias command `codex.fs`;
+  - both commands run through `CodexFs.Cli.ProgramCore.run`.
+- `session send` default target is the derived session worker / foreman participant `<ptcs.sessionParticipantPrefix>.<sessionId>`.
+- `session send --worker-id <participantId>` overrides the direct target and treats the supplied value as the exact PTCS worker participant id.
+- `SessionSendResponse.TargetParticipantId` exposes the effective target for verifiers and operator evidence.

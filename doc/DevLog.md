@@ -178,3 +178,12 @@
 - Handoff evidence: `codex.fs --help`, `codex.fs host status --host http://10.28.112.93:10481`, HTTP checks for `/`, health, OpenAPI and docs returned 200; Playwright evidence is `G:\codex.fs\.codex.fs\host-usability-playwright-20260705012257-alpha3\summary.json`.
 - Boundary: standalone `codex.fs.host` remains valid for CLI/API/docs verification but does not make codex.fs workers visible in an already running PTCS Web host. Production PTCS Web integration must share PTCS fabric via caller-owned MessageFabric/ActorFabric.
 - Traceability: added `RFC-UI-0002`, WBS `HOST-005`, `CLI-005`, `UI-002`, Test `T-HOST-005`, `T-CLI-005`, `T-UI-002`, and updated SD/Requirement/README/DEVOP/KM.
+
+## 2026-07-05 02:05 +08:00 CLI-006/CLI-007 explicit CLI alias and worker routing
+
+- Scope: restored explicit `codex.fs.cli` executable as the primary PoC CLI and added `codex.fs.tool` short alias package for `codex.fs`.
+- Behavior: both executables share `CodexFs.Cli.ProgramCore.run`; canonical help uses `USAGE: codex.fs.cli`, alias help uses `USAGE: codex.fs`.
+- Routing: `session send` defaults to the derived SessionWorker / foreman participant `<ptcs.sessionParticipantPrefix>.<sessionId>`; `--worker-id <participantId>` overrides the direct target.
+- API: `SessionSendRequest` now includes `WorkerId`; `SessionSendResponse` now includes `TargetParticipantId`.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed after restore; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and covered default foreman target plus explicit worker inbox delivery through real PTCS MessageFabric.
+- Traceability: added `RFC-CLI-0001`, WBS `CLI-006` / `CLI-007`, Test `T-CLI-006` / `T-CLI-007`, and updated Requirement/SD/README/DEVOP/KM.

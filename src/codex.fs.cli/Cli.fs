@@ -3,8 +3,14 @@ namespace CodexFs.Cli
 open System
 open Argu
 
-/// Compiled FAkka.Argu command surface for the `codex.fs` terminal command.
+/// Compiled FAkka.Argu command surface for the `codex.fs.cli` terminal command and `codex.fs` alias.
 module Cli =
+
+    /// Canonical explicit CLI command name installed by package `codex.fs.cli`.
+    let CanonicalProgramName = "codex.fs.cli"
+
+    /// Short convenience command name installed by package `codex.fs.tool`.
+    let ShortProgramName = "codex.fs"
 
     /// Common host endpoint option shared by control commands.
     type HostOption =
@@ -32,6 +38,8 @@ module Cli =
         | Prompt of textOrFile: string
         /// Advertised codex.fs.host control URI.
         | Host of uri: string
+        /// Optional target worker participant id; default is the session worker/foreman.
+        | Worker_Id of workerId: string
 
         interface IArgParserTemplate with
             member this.Usage =
@@ -39,6 +47,7 @@ module Cli =
                 | Session _ -> "Existing session id."
                 | Prompt _ -> "Prompt text or @file reference."
                 | Host _ -> "Advertised codex.fs.host control URI."
+                | Worker_Id _ -> "Optional target worker participant id; default is the session worker/foreman."
 
     /// Arguments for `session attach` and `session drain`.
     type SessionTargetArgument =
@@ -148,7 +157,7 @@ module Cli =
                 match this with
                 | Probe _ -> "Probe an installed engine executable."
 
-    /// Top-level `codex.fs` command groups.
+    /// Top-level CLI command groups.
     [<CliPrefix(CliPrefix.None)>]
     type CliArgument =
         /// Session commands.
@@ -168,31 +177,48 @@ module Cli =
                 | Host _ -> "Host commands."
                 | Engine _ -> "Engine commands."
 
-    /// Create the compiled CLI parser.
+    /// Create the compiled CLI parser for the selected command name.
+    let argumentParserFor programName =
+        ArgumentParser.Create<CliArgument>(programName = programName)
+
+    /// Create the compiled CLI parser for the canonical explicit command.
     let argumentParser () =
-        ArgumentParser.Create<CliArgument>(programName = "codex.fs")
+        argumentParserFor CanonicalProgramName
 
     /// Usage examples shown after the generated Argu help text.
+    let examplesFor programName =
+        [ $"{programName} host status --host http://192.168.10.20:8788"
+          $"{programName} session create --engine agy --host http://192.168.10.20:8788"
+          $"{programName} session send --session sess-001 --prompt @prompt.md --host http://192.168.10.20:8788"
+          $"{programName} session send --session sess-001 --worker-id agent.codexfs.worker-001 --prompt @prompt.md --host http://192.168.10.20:8788"
+          $"{programName} session status --session sess-001 --host http://192.168.10.20:8788"
+          $"{programName} run status --run run-001 --host http://192.168.10.20:8788"
+          $"{programName} engine probe --engine agy --executable agy" ]
+
+    /// Usage examples shown after the generated Argu help text for the canonical explicit command.
     let examples =
-        [ "codex.fs host status --host http://192.168.10.20:8788"
-          "codex.fs session create --engine agy --host http://192.168.10.20:8788"
-          "codex.fs session send --session sess-001 --prompt @prompt.md --host http://192.168.10.20:8788"
-          "codex.fs session status --session sess-001 --host http://192.168.10.20:8788"
-          "codex.fs run status --run run-001 --host http://192.168.10.20:8788"
-          "codex.fs engine probe --engine agy --executable agy" ]
+        examplesFor CanonicalProgramName
 
     /// Render generated help plus stable examples.
+    let helpTextFor programName =
+        let parser = argumentParserFor programName
+        parser.PrintUsage() + Environment.NewLine + "Examples:" + Environment.NewLine + String.concat Environment.NewLine (examplesFor programName)
+
+    /// Render generated help for the canonical explicit command.
     let helpText () =
-        let parser = argumentParser ()
-        parser.PrintUsage() + Environment.NewLine + "Examples:" + Environment.NewLine + String.concat Environment.NewLine examples
+        helpTextFor CanonicalProgramName
 
     /// Parse argv with Argu and return a non-throwing result for tests and program entrypoint.
-    let tryParse argv =
+    let tryParseFor programName argv =
         try
-            argumentParser().ParseCommandLine(argv) |> ignore
+            argumentParserFor programName |> fun parser -> parser.ParseCommandLine(argv) |> ignore
             Ok()
         with :? ArguParseException as ex ->
             Error ex.Message
+
+    /// Parse argv with the canonical explicit command name.
+    let tryParse argv =
+        tryParseFor CanonicalProgramName argv
 
     /// Parsed options for `session send`.
     type SessionSendOptions =
@@ -200,6 +226,8 @@ module Cli =
           Host: string
           /// Target session id.
           SessionId: string
+          /// Optional target worker participant id.
+          WorkerId: string option
           /// Prompt text or @file reference.
           Prompt: string }
 
@@ -230,9 +258,9 @@ module Cli =
         | _ -> Error $"Missing required {name}."
 
     /// Try to extract `session send` options from argv. Other valid commands return `Ok None`.
-    let tryParseSessionSend argv =
+    let tryParseSessionSendFor programName argv =
         try
-            let parsed = argumentParser().ParseCommandLine(argv)
+            let parsed = argumentParserFor programName |> fun parser -> parser.ParseCommandLine(argv)
 
             match parsed.TryGetResult CliArgument.Session with
             | Some sessionCommands ->
@@ -242,7 +270,11 @@ module Cli =
                           requireArg "--session" (sendArgs.TryGetResult SessionSendArgument.Session),
                           requireArg "--prompt" (sendArgs.TryGetResult SessionSendArgument.Prompt) with
                     | Ok host, Ok sessionId, Ok prompt ->
-                        Ok(Some { Host = host; SessionId = sessionId; Prompt = prompt })
+                        let workerId =
+                            sendArgs.TryGetResult SessionSendArgument.Worker_Id
+                            |> Option.bind (fun value -> if String.IsNullOrWhiteSpace value then None else Some value)
+
+                        Ok(Some { Host = host; SessionId = sessionId; WorkerId = workerId; Prompt = prompt })
                     | Error message, _, _
                     | _, Error message, _
                     | _, _, Error message -> Error message
@@ -250,6 +282,10 @@ module Cli =
             | None -> Ok None
         with :? ArguParseException as ex ->
             Error ex.Message
+
+    /// Try to extract `session send` options using the canonical explicit command name.
+    let tryParseSessionSend argv =
+        tryParseSessionSendFor CanonicalProgramName argv
 
     let sessionTargetOptions (targetArgs: ParseResults<SessionTargetArgument>) =
         match requireArg "--host" (targetArgs.TryGetResult SessionTargetArgument.Host),
@@ -259,9 +295,9 @@ module Cli =
         | _, Error message -> Error message
 
     /// Try to extract session status/attach/drain options from argv. Other valid commands return `Ok None`.
-    let tryParseSessionRead argv =
+    let tryParseSessionReadFor programName argv =
         try
-            let parsed = argumentParser().ParseCommandLine(argv)
+            let parsed = argumentParserFor programName |> fun parser -> parser.ParseCommandLine(argv)
 
             match parsed.TryGetResult CliArgument.Session with
             | Some sessionCommands ->
@@ -279,10 +315,14 @@ module Cli =
         with :? ArguParseException as ex ->
             Error ex.Message
 
+    /// Try to extract session read options using the canonical explicit command name.
+    let tryParseSessionRead argv =
+        tryParseSessionReadFor CanonicalProgramName argv
+
     /// Try to extract `host status` options from argv. Other valid commands return `Ok None`.
-    let tryParseHostStatus argv =
+    let tryParseHostStatusFor programName argv =
         try
-            let parsed = argumentParser().ParseCommandLine(argv)
+            let parsed = argumentParserFor programName |> fun parser -> parser.ParseCommandLine(argv)
 
             match parsed.TryGetResult CliArgument.Host with
             | Some hostCommands ->
@@ -294,6 +334,10 @@ module Cli =
             | None -> Ok None
         with :? ArguParseException as ex ->
             Error ex.Message
+
+    /// Try to extract `host status` options using the canonical explicit command name.
+    let tryParseHostStatus argv =
+        tryParseHostStatusFor CanonicalProgramName argv
 
     /// Resolve prompt input. A leading `@` means the rest of the value is a file path read by the caller.
     let tryResolvePromptText (readAllText: string -> string) (value: string) =

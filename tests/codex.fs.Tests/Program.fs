@@ -416,7 +416,7 @@ assertTrue
 
 let mutable stoppedControlRuntime = None
 
-let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
+let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, hostControlSwaggerText, cliHostStatusText, cliSendResponseText, cliWorkerSendResponseText, cliWorkerInboxBody, cliStatusText, cliAttachText, cliDrainText, cliAfterDrainStatusText =
     try
         use handler = new HttpClientHandler(UseProxy = false)
         use client = new HttpClient(handler, true)
@@ -440,6 +440,8 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
         let cli002RunSuffix = Guid.NewGuid().ToString("N")
         let cli002SessionId = $"cli002.{cli002RunSuffix}"
         let cli002Prompt = "CLI-002 prompt through host and PTCS MessageFabric"
+        let cli002WorkerId = $"agent.codexfs.worker.{cli002RunSuffix}"
+        let cli002WorkerPrompt = "CLI-002 prompt through explicit worker override"
 
         let cliSendResult =
             runTask
@@ -448,7 +450,27 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
                     CancellationToken.None
                     { Host = hostControlServer.Contract.AdvertiseUri
                       SessionId = cli002SessionId
+                      WorkerId = None
                       Prompt = cli002Prompt })
+
+        let cliWorkerSendResult =
+            runTask
+                (CodexFs.Cli.CliHttp.sendSessionMessageAsync
+                    client
+                    CancellationToken.None
+                    { Host = hostControlServer.Contract.AdvertiseUri
+                      SessionId = cli002SessionId
+                      WorkerId = Some cli002WorkerId
+                      Prompt = cli002WorkerPrompt })
+
+        let cliWorkerInboxBody =
+            match hostControlServer.Runtime.MessageFabric with
+            | None -> failwith "Assertion failed: host control runtime MessageFabric missing"
+            | Some fabric ->
+                let workerBinding = MessageFabricBinding.defaultBinding cli002WorkerId
+                let workerBatch = runTask (MessageFabricBinding.pollInboxAsync fabric workerBinding None)
+                assertTrue "cli worker override inbox received" (workerBatch.Messages |> List.exists (fun message -> message.Body = cli002WorkerPrompt))
+                workerBatch.Messages |> List.map _.Body |> String.concat Environment.NewLine
 
         let cli002Target: CodexFs.Cli.Cli.SessionTargetOptions =
             { Host = hostControlServer.Contract.AdvertiseUri
@@ -467,6 +489,8 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
         assertTrue "cli host status success" cliHostStatusResult.IsSuccess
         assertEqual "cli send status" 202 cliSendResult.StatusCode
         assertTrue "cli send success" cliSendResult.IsSuccess
+        assertEqual "cli worker send status" 202 cliWorkerSendResult.StatusCode
+        assertTrue "cli worker send success" cliWorkerSendResult.IsSuccess
         assertEqual "cli status status" 200 cliStatusResult.StatusCode
         assertTrue "cli status success" cliStatusResult.IsSuccess
         assertEqual "cli attach status" 200 cliAttachResult.StatusCode
@@ -476,7 +500,7 @@ let hostControlRootPageText, hostControlResponseText, hostControlOpenApiText, ho
         assertEqual "cli after drain status" 200 cliAfterDrainStatusResult.StatusCode
         assertTrue "cli after drain success" cliAfterDrainStatusResult.IsSuccess
 
-        rootBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
+        rootBody, body, openApiBody, swaggerBody, cliHostStatusResult.Body, cliSendResult.Body, cliWorkerSendResult.Body, cliWorkerInboxBody, cliStatusResult.Body, cliAttachResult.Body, cliDrainResult.Body, cliAfterDrainStatusResult.Body
     finally
         stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
 
@@ -537,9 +561,18 @@ let cliSendJson = JsonDocument.Parse(cliSendResponseText)
 let cliSendRoot = cliSendJson.RootElement
 
 assertEqual "cli send response status" "accepted" (cliSendRoot.GetProperty("status").GetString())
+assertEqual "cli send response default target" (cliSendRoot.GetProperty("sessionParticipantId").GetString()) (cliSendRoot.GetProperty("targetParticipantId").GetString())
 assertEqual "cli send response sender" "user.codexfs.cli" (cliSendRoot.GetProperty("fromParticipantId").GetString())
 assertTrue "cli send response message id" (not (String.IsNullOrWhiteSpace(cliSendRoot.GetProperty("messageId").GetString())))
 cliSendJson.Dispose()
+
+let cliWorkerSendJson = JsonDocument.Parse(cliWorkerSendResponseText)
+let cliWorkerSendRoot = cliWorkerSendJson.RootElement
+
+assertEqual "cli worker send response status" "accepted" (cliWorkerSendRoot.GetProperty("status").GetString())
+assertTrue "cli worker target differs from session worker" (cliWorkerSendRoot.GetProperty("targetParticipantId").GetString() <> cliWorkerSendRoot.GetProperty("sessionParticipantId").GetString())
+assertContains "cli worker inbox body" "CLI-002 prompt through explicit worker override" cliWorkerInboxBody
+cliWorkerSendJson.Dispose()
 
 assertInboxJson "cli status" "ok" 1 cliStatusText
 
@@ -558,6 +591,7 @@ cliAfterDrainJson.Dispose()
 printfn "TC-CLI-003 attach/drain/status passed"
 
 let cliHelp = CodexFs.Cli.Cli.helpText ()
+let cliShortHelp = CodexFs.Cli.Cli.helpTextFor CodexFs.Cli.Cli.ShortProgramName
 
 assertTrue "cli program empty help" (CodexFs.Cli.Program.isRootHelp [||])
 assertTrue "cli program long help" (CodexFs.Cli.Program.isRootHelp [| "--help" |])
@@ -569,13 +603,17 @@ assertContains "cli help run" "run <options>" cliHelp
 assertContains "cli help host" "host <options>" cliHelp
 assertContains "cli help engine" "engine <options>" cliHelp
 assertContains "cli examples header" "Examples:" cliHelp
-assertContains "cli program name" "USAGE: codex.fs" cliHelp
-assertContains "cli host example" "codex.fs host status --host http://192.168.10.20:8788" cliHelp
-assertContains "cli send example" "codex.fs session send --session sess-001 --prompt @prompt.md" cliHelp
+assertContains "cli program name" "USAGE: codex.fs.cli" cliHelp
+assertContains "cli host example" "codex.fs.cli host status --host http://192.168.10.20:8788" cliHelp
+assertContains "cli send example" "codex.fs.cli session send --session sess-001 --prompt @prompt.md" cliHelp
+assertContains "cli worker option" "--worker-id" cliHelp
+assertContains "cli short program name" "USAGE: codex.fs" cliShortHelp
+assertContains "cli short host example" "codex.fs host status --host http://192.168.10.20:8788" cliShortHelp
 
 assertParseOk "cli host status" [| "host"; "status"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session create" [| "session"; "create"; "--engine"; "agy"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session send" [| "session"; "send"; "--session"; "sess-001"; "--prompt"; "@prompt.md"; "--host"; "http://192.168.10.20:8788" |]
+assertParseOk "cli session send worker override" [| "session"; "send"; "--session"; "sess-001"; "--worker-id"; "agent.codexfs.worker.1"; "--prompt"; "@prompt.md"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session attach" [| "session"; "attach"; "--session"; "sess-001"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli session drain" [| "session"; "drain"; "--session"; "sess-001"; "--host"; "http://192.168.10.20:8788" |]
 assertParseOk "cli run status" [| "run"; "status"; "--run"; "run-001"; "--host"; "http://192.168.10.20:8788" |]

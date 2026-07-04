@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>codex.fs.host.tool</PackageId>
-    <Version>0.1.0-alpha.3</Version>
+    <Version>0.1.0-alpha.4</Version>
     <Authors>ingted</Authors>
     <Company>ingted</Company>
     <Description>Standalone dotnet tool wrapper for codex.fs.host.</Description>

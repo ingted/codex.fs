@@ -31,6 +31,8 @@ src/
     codex.fs.host.tool.fsproj
   codex.fs.cli/
     codex.fs.cli.fsproj
+  codex.fs.tool/
+    codex.fs.tool.fsproj
   codex.fs.engine.codex/
     codex.fs.engine.codex.fsproj
   codex.fs.engine.agy/
@@ -52,7 +54,8 @@ Package IDs:
 | `codex.fs` | `CodexFs` | Core engine/artifact/compaction contracts。 |
 | `codex.fs.host` | `CodexFs.Host` | Referenceable host runtime/control library package。 |
 | `codex.fs.host.tool` | `CodexFs.HostTool` | Thin dotnet tool wrapper; command name `codex.fs.host`。 |
-| `codex.fs.cli` | `CodexFs.Cli` | Terminal client dotnet tool package；installed command name is `codex.fs`。 |
+| `codex.fs.cli` | `CodexFs.Cli` | Terminal client dotnet tool package；installed command name is `codex.fs.cli`。 |
+| `codex.fs.tool` | `CodexFs.Tool` | Short alias dotnet tool package；installed command name is `codex.fs`，delegates to the same CLI command surface。 |
 | `codex.fs.engine.codex` | `CodexFs.Engine.Codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | `CodexFs.Engine.Agy` | Agy CLI adapter。 |
 | `codex.fs.ptcs` | `CodexFs.Ptcs` | Thin integration over PTCS ActorFabric/MessageFabric。 |
@@ -699,7 +702,7 @@ Host standalone tool contract:
 - `--run-seconds` is for bounded automation and verification; omitting it runs until Ctrl+C.
 - Clustered/non-dev usage must set `control.bindAddress`, `control.port`, `control.advertiseUri`, and `control.allowLoopbackOnly=false` with a LAN/DNS-reachable advertised URI. Loopback remains dev-only.
 - Handoff to a user must run from an installed global tool or an isolated tool path. Do not leave a long-running `dotnet run` process over `bin/Debug` as the handed-off host because it can lock build outputs.
-- Global tool handoff must verify `C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help`, `codex.fs --help`, and `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help` before claiming CLI/tool availability.
+- Global tool handoff must verify `C:\Users\Administrator\.dotnet\tools\codex.fs.cli.exe --help`, `C:\Users\Administrator\.dotnet\tools\codex.fs.exe --help`, `codex.fs.cli --help`, `codex.fs --help`, and `C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe --help` before claiming CLI/tool availability.
 - The tool does not wire durable task handoff into the host worker loop, does not implement process lease persistence, and does not initialize an ActorSystem; those remain `OPS-002` / future host-worker slices.
 
 ## 10. API documentation / SDK docs design
@@ -910,11 +913,15 @@ Raw CLI stdout/stderr policy is configurable:
 
 ## 14. CLI client design
 
-`codex.fs.cli` is the package id; the installed terminal command is `codex.fs`.
+`codex.fs.cli` is the canonical CLI package id and installs the explicit terminal command `codex.fs.cli`. `codex.fs.tool` installs the short alias command `codex.fs`; both commands use the same parser and HTTP client.
 
 ```text
+codex.fs.cli session create --engine codex|agy --host <advertiseUri>
+codex.fs.cli session send --session <id> --prompt <text-or-file> --host <advertiseUri>
+codex.fs.cli session send --session <id> --worker-id <participantId> --prompt <text-or-file> --host <advertiseUri>
 codex.fs session create --engine codex|agy --host <advertiseUri>
 codex.fs session send --session <id> --prompt <text-or-file> --host <advertiseUri>
+codex.fs session send --session <id> --worker-id <participantId> --prompt <text-or-file> --host <advertiseUri>
 codex.fs session send --session <id> --prompt @prompt.md --host <advertiseUri>
 codex.fs session attach --session <id> --host <advertiseUri>
 codex.fs session drain --session <id> --host <advertiseUri>
@@ -947,9 +954,12 @@ type CliArgument =
     | Engine of ParseResults<EngineCommand>
 
 val argumentParser : unit -> ArgumentParser<CliArgument>
+val argumentParserFor : string -> ArgumentParser<CliArgument>
 val examples : string list
 val helpText : unit -> string
+val helpTextFor : string -> string
 val tryParse : string array -> Result<unit, string>
+val tryParseFor : string -> string array -> Result<unit, string>
 val tryParseHostStatus : string array -> Result<HostStatusOptions option, string>
 val tryResolvePromptText : (string -> string) -> string -> Result<string, string>
 ```
@@ -958,6 +968,7 @@ Command groups:
 
 - `session create --engine <codex|agy> --host <advertiseUri>`.
 - `session send --session <id> --prompt <text-or-file> --host <advertiseUri>`.
+- `session send --session <id> --worker-id <participantId> --prompt <text-or-file> --host <advertiseUri>`.
 - `session attach --session <id> --host <advertiseUri>`.
 - `session drain --session <id> --host <advertiseUri>`.
 - `run status --run <id> --host <advertiseUri>`.
@@ -995,6 +1006,7 @@ module HostControl
 type SessionSendRequest =
     { Prompt: string
       FromParticipantId: string
+      WorkerId: string
       Tags: string list
       CorrelationId: string }
 
@@ -1002,6 +1014,7 @@ type SessionSendResponse =
     { Status: string
       SessionId: string
       SessionParticipantId: string
+      TargetParticipantId: string
       FromParticipantId: string
       MessageId: string
       Cursor: string
@@ -1026,7 +1039,9 @@ Rules:
 
 - Route: `POST /api/codexfs/session/{sessionId}/messages`.
 - Host derives session participant id as `<ptcs.sessionParticipantPrefix>.<sessionId>`.
-- Host registers sender/session participants in PTCS and sends a direct MessageFabric message to the session participant.
+- Default target is the derived session worker / 包工頭 participant. `WorkerId` blank/null means the host sends a direct MessageFabric message to `SessionParticipantId`.
+- When `WorkerId` is supplied, host treats it as the exact target worker participant id and sends the direct MessageFabric message there instead; `SessionParticipantId` remains the foreman identity for the session.
+- Host registers sender/session participants in PTCS and registers the override worker participant when one is supplied.
 - CLI sends to the host advertised URI; CLI does not write MessageFabric or artifacts directly.
 - `CLI-002` validates send-to-inbox through the host status path. Full attach/drain/status transcript behavior belongs to `CLI-003`.
 
@@ -1162,7 +1177,7 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 6. PTCS MessageFabric session binding。
 7. Minimal `codex.fs.host` with PTCS local fabric。
 8. API documentation baseline: XML docs, OpenAPI/Swagger profile for HTTP host surface, and generated SDK docs pipeline。
-9. `codex.fs.cli` terminal client package / `codex.fs` installed command。
+9. `codex.fs.cli` terminal client package / `codex.fs.tool` short alias package。
 10. Durable agent task handoff via `CommSpaDurableMessageFabric`。
 11. Compaction。
 12. PTCS Web UI extension/RFC and local82 profile verifier。

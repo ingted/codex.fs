@@ -63,6 +63,8 @@ Status 值：
 | CLI-003 | CLI attach/drain/status | CLI-002 | 100 | Done | None | 2026-07-04 22:00 +08:00 | 2026-07-04 22:09 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | [@CLI-003](WBS.CLI-003.md) |
 | CLI-004 | CLI terminal self-use hardening | CLI-003;HOST-003 | 100 | Done | None | 2026-07-05 00:10 +08:00 | 2026-07-05 00:16 +08:00 | SD §14 | T-CLI-004 | TC-CLI-004 real terminal walkthrough | [@CLI-004](WBS.CLI-004.md) |
 | CLI-005 | Installed command name usability correction | CLI-004;REL-004 | 100 | Done | None | 2026-07-05 01:22 +08:00 | 2026-07-05 01:22 +08:00 | SD §14 | T-CLI-005 | TC-CLI-005 global tool command `codex.fs` help/status | [@CLI-005](WBS.CLI-005.md) |
+| CLI-006 | Explicit CLI command plus short alias | CLI-005;REL-004 | 100 | Done | None | 2026-07-05 02:02 +08:00 | 2026-07-05 02:02 +08:00 | SD §14 | T-CLI-006 | TC-CLI-006 global `codex.fs.cli` and `codex.fs` commands | [@CLI-006](WBS.CLI-006.md) |
+| CLI-007 | Session worker default target and worker override | CLI-002;CLI-006 | 100 | Done | None | 2026-07-05 02:05 +08:00 | 2026-07-05 02:05 +08:00 | Requirement §6.1, SD §14 | T-CLI-007 | TC-CLI-007 session send default foreman and `--worker-id` override | [@CLI-007](WBS.CLI-007.md) |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | codex.fs.cli dotnet tool package | REL-001;HOST-001;CLI-003 | 100 | Done | None | 2026-07-04 22:35 +08:00 | 2026-07-04 22:41 +08:00 | Requirement R-001, SD §2, §14 | T-REL-002 | TC-REL-002 tool install/run help | [@REL-002](WBS.REL-002.md) |
 | REL-003 | codex.fs.host standalone tool entrypoint | REL-002;HOST-003;E2E-002 | 100 | Done | None | 2026-07-04 22:55 +08:00 | 2026-07-04 23:06 +08:00 | Requirement R-001, SD §2, §9 | T-REL-003 | TC-REL-003 host tool start/status | [@REL-003](WBS.REL-003.md) |
@@ -91,7 +93,9 @@ Status 值：
 | [@CLI-002](WBS.CLI-002.md) | CLI session send uses real host HTTP endpoint and PTCS MessageFabric; attach/drain/status remains CLI-003. |
 | [@CLI-003](WBS.CLI-003.md) | CLI status/attach/drain read the real session inbox through host control endpoints and drain acknowledges the cursor. |
 | [@CLI-004](WBS.CLI-004.md) | Terminal self-use verifies compiled CLI against a LAN-advertised host and hardens `host status` plus `@file` prompt input. |
-| [@CLI-005](WBS.CLI-005.md) | Package id remains `codex.fs.cli`, but installed user-facing command is `codex.fs` and must be verified through the real global tool path. |
+| [@CLI-005](WBS.CLI-005.md) | Historical alpha.3 command-name correction; superseded by CLI-006 which restores explicit `codex.fs.cli` and keeps `codex.fs` as an alias. |
+| [@CLI-006](WBS.CLI-006.md) | `codex.fs.cli` is the canonical PoC command and `codex.fs` is a short alias package over the same command surface. |
+| [@CLI-007](WBS.CLI-007.md) | `session send` defaults to the derived SessionWorker/foreman participant and only uses a specified worker when `--worker-id` is supplied. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
 | [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |

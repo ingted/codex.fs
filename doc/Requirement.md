@@ -35,13 +35,15 @@ PTCS 已定義：
 - compaction policy；
 - PTCS MessageFabric/ActorFabric integration；
 - `codex.fs.host` production boundary；
-- `codex.fs.cli` terminal client package；installed command is `codex.fs`。
+- `codex.fs.cli` terminal client package；installed command is `codex.fs.cli`。
+- `codex.fs.tool` short alias tool package；installed command is `codex.fs`。
 
 核心原則：
 
 - `codex.fs` 是 library/contract/policy vocabulary。
 - `codex.fs.host` 是 PTCS fabric consumer，可作 NuGet package，也可作 dotnet tool。
-- `codex.fs.cli` 是 terminal-facing client package；安裝後命令為 `codex.fs`，在 PTCS Web UI 完善前與 `codex.fs.host` / PTCS MessageFabric 互動。
+- `codex.fs.cli` 是 terminal-facing client package；安裝後命令為 `codex.fs.cli`，在 PTCS Web UI 完善前與 `codex.fs.host` / PTCS MessageFabric 互動。
+- `codex.fs.tool` 只提供 short alias command `codex.fs`，不得分叉另一套 CLI 行為。
 - CLI engine 可替換，初期支援 Codex CLI 與 Agy CLI。
 - Production workflow 必須透過 PTCS `MessageFabric`、`ActorFabric`、必要時 `DurableIngress` / task result vault，不直接建立另一套 message bus 或 cluster fabric。
 
@@ -86,9 +88,9 @@ PTCS 已定義：
 
 ### 6.1 Terminal-driven session
 
-1. 使用者透過 `codex.fs` 建立或 attach session。
+1. 使用者透過 `codex.fs.cli` 或 `codex.fs` 建立或 attach session。
 2. CLI client 將 prompt 送入 `codex.fs.host`。
-3. host 透過 `CommSpaMessageFabric.SendAsync` 或 durable agent-task handoff 將 prompt 送到 session participant。
+3. host 透過 `CommSpaMessageFabric.SendAsync` 或 durable agent-task handoff 將 prompt 送到 session worker / 包工頭 participant；只有 CLI 明確指定 worker id 時才送到指定 worker participant。
 4. session worker poll/wait inbox，組合 history 與 pending messages。
 5. session worker 選擇 engine adapter，建立 run request。
 6. `codex.fs.host` 執行 headless CLI。
@@ -135,10 +137,11 @@ host 必須能接入 PTCS：
 
 ### R-002 CLI client
 
-`codex.fs.cli` package 安裝後提供 `codex.fs` command，必須能在 terminal 中：
+`codex.fs.cli` package 安裝後提供 `codex.fs.cli` command，`codex.fs.tool` package 提供相同 CLI surface 的 `codex.fs` short alias。兩者必須能在 terminal 中：
 
 - 建立/attach session。
 - 送出 prompt。
+- 預設把 prompt 送給該 session 的 SessionWorker / 包工頭；只有指定 worker id 時改送指定 worker。
 - wait/poll session reply。
 - 查詢 run artifacts。
 - drain pending inbox。
@@ -232,7 +235,8 @@ host 必須支援 local compaction policy：
 | --- | --- |
 | `codex.fs` | Core engine contracts、domain models、policy vocabulary。 |
 | `codex.fs.host` | PTCS fabric consumer host package 與 dotnet tool。 |
-| `codex.fs.cli` | Terminal client dotnet tool package；installed command `codex.fs`。 |
+| `codex.fs.cli` | Terminal client dotnet tool package；installed command `codex.fs.cli`。 |
+| `codex.fs.tool` | Short alias dotnet tool package；installed command `codex.fs`。 |
 | `codex.fs.engine.codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | Agy CLI adapter。 |
 

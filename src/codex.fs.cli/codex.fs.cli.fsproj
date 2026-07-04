@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>codex.fs.cli</PackageId>
-    <Version>0.1.0-alpha.3</Version>
+    <Version>0.1.0-alpha.4</Version>
     <Authors>ingted</Authors>
     <Company>ingted</Company>
     <Description>Terminal client command surface for codex.fs host/session control.</Description>
@@ -17,7 +17,7 @@
     <PackageProjectUrl>https://github.com/ingted/codex.fs</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>codex.fs</ToolCommandName>
+    <ToolCommandName>codex.fs.cli</ToolCommandName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +35,7 @@
   <ItemGroup>
     <Compile Include="Cli.fs" />
     <Compile Include="CliHttp.fs" />
+    <Compile Include="ProgramCore.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
