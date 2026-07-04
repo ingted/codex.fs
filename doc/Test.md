@@ -46,8 +46,8 @@ Status 值：
 | T-CF-001 | CF-001 | TC-CF-001 `dotnet restore/build .\codex.fs.slnx` | Compile | `dotnet restore/build` on real solution | Project scaffold exists | restore succeeded; build succeeded with 0 warnings and 0 errors | Pass | None | SD §2 |
 | T-CF-002 | CF-002 | TC-CF-002 `CodexFs.Domain` build/XML docs | Unit | Real compiled core project | CF-001 | build succeeded with 0 warnings/errors; generated XML docs include `CodexFs.Domain` members | Pass | None | SD §3 |
 | T-CF-003 | CF-003 | TC-CF-003 `CodexFs.Artifacts` build/XML docs | Unit | Real artifact manifest implementation | CF-002 | build succeeded with 0 warnings/errors; generated XML docs include artifact members | Pass | None | SD §12 |
-| T-CF-004 | CF-004 | TC-CF-004 / planned `misc/verifyArtifactStore.fsx` | Integration | Real file artifact store on temp workspace | CF-003 | manifest files, sha256, append-only behavior | Planned | None | SD §12 |
-| T-CF-005 | CF-005 | TC-CF-005 redaction cases | Unit/Ops | Real redaction module | CF-004 | token-like samples redacted, safe text unchanged | Planned | CF-004 | SD §13 |
+| T-CF-004 | CF-004 | TC-CF-004 temp FSI write/sha/no-overwrite | Integration | Real file artifact store on temp workspace | CF-003 | temp artifact write succeeded; SHA-256 matched; overwrite rejected by `IOException` | Pass | None | SD §12 |
+| T-CF-005 | CF-005 | TC-CF-005 redaction cases | Unit/Ops | Real redaction module | CF-004 | token-like samples redacted, safe text unchanged | Planned | None | SD §13 |
 | T-EN-001 | EN-001 | TC-EN-001 adapter contract compile | Compile | Real package compile | CF-002 | adapter contract compiles and XML docs generated | Planned | CF-002 | SD §4 |
 | T-EN-002 | EN-002 | TC-EN-002 process timeout/kill fixture | Unit/Ops | Controlled command fixture only; not production validation | EN-001 | timeout, cancellation, kill-after-grace evidence | Planned | EN-001 | SD §4, SA §9 |
 | T-CDX-001 | CDX-001 | TC-CDX-001 codex help/version fixture | Fixture | Captured fixture parser, not live CLI readiness | EN-001 | parsed surface/capabilities | Planned | EN-001 | SD §5 |
