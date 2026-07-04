@@ -40,8 +40,8 @@ Status 值：
 | CDX-001 | Codex CLI probe fixtures | EN-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:56 +08:00 | SD §5, §15 | T-CDX-001 | TC-CDX-001 codex help/version fixture | inline |
 | CDX-002 | Codex `0.142.x` Argu DU/render | CDX-001 | 0 | Planned | CDX-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §7, §16.3 | T-CDX-002 | TC-CDX-002 codex argv render | inline |
 | CDX-003 | Codex artifact mapping | CDX-002 | 0 | Planned | CDX-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §5, §12 | T-CDX-003 | TC-CDX-003 codex output map | inline |
-| AGY-001 | Agy CLI probe fixtures | EN-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:56 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy help/version fixture | inline |
-| AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 0 | Planned | AGY-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy argv render | inline |
+| AGY-001 | Agy CLI probe fixtures | EN-001 | 100 | Done | None | 2026-07-04 18:58 +08:00 | 2026-07-04 18:59 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy 1.0.16 help/version fixture | inline |
+| AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 0 | Planned | None | 未動工 | 2026-07-04 18:59 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy argv render | inline |
 | AGY-003 | Agy artifact mapping | AGY-002 | 0 | Planned | AGY-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy output map | inline |
 | PTCS-001 | 定義 PTCS package/reference range | CF-001 | 0 | Planned | SD-TBD-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 PTCS restore/reference | inline |
 | PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | [@PTCS-002](WBS.PTCS-002.md) |

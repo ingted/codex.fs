@@ -1,5 +1,6 @@
 namespace CodexFs
 
+open System
 open System.Threading
 open System.Threading.Tasks
 open CodexFs.Domain
@@ -41,3 +42,81 @@ module Engine =
           Render: EngineSurface -> RunRequest -> RenderedCommand
           /// Map process output artifacts into the normalized run result/artifact layout.
           MapArtifacts: EngineSurface -> RunRequest -> RunResult -> Task<unit> }
+
+    /// Agy CLI engine surfaces.
+    module Agy =
+
+        /// Agy CLI 1.0.x surfaces.
+        module V1_0 =
+
+            /// Probe helpers for the Agy CLI 1.0.x print/prompt surface.
+            module Print =
+
+                /// Stable surface id for Agy 1.0.x print mode.
+                [<Literal>]
+                let SurfaceId = "agy-print-1.0"
+
+                /// Normalize raw version text captured from `agy --version`.
+                let normalizeVersionText (versionText: string) =
+                    if isNull versionText then
+                        String.Empty
+                    else
+                        versionText.Trim()
+
+                /// Return true when the version belongs to the supported Agy 1.0.x family.
+                let isSupportedVersion (versionText: string) =
+                    match Version.TryParse(normalizeVersionText versionText) with
+                    | true, version -> version.Major = 1 && version.Minor = 0
+                    | false, _ -> false
+
+                /// Tokenize `agy --help` output for option discovery.
+                let helpTokens (helpText: string) =
+                    if String.IsNullOrWhiteSpace helpText then
+                        Set.empty
+                    else
+                        helpText.Split([| ' '; '\t'; '\r'; '\n' |], StringSplitOptions.RemoveEmptyEntries)
+                        |> Set.ofArray
+
+                /// Return true when the help text exposes an option token.
+                let hasOption optionName helpText =
+                    helpTokens helpText |> Set.contains optionName
+
+                /// Discover normalized engine capabilities from `agy --help` text.
+                let discoverCapabilities helpText =
+                    let tokens = helpTokens helpText
+                    let has optionName = tokens |> Set.contains optionName
+
+                    [ if has "--print" || has "--prompt" then
+                          SingleTurnHeadless
+                      if has "--continue" || has "--conversation" then
+                          Continuation
+                      if has "--add-dir" then
+                          WorkspaceDirectories
+                      if has "--sandbox" then
+                          SandboxMode
+                      if has "--model" then
+                          ModelSelection
+                      if has "--print-timeout" then
+                          Timeout
+                      if has "--log-file" then
+                          LogFile ]
+                    |> Set.ofList
+
+                /// Try to create an Agy 1.0.x print surface from captured probe text.
+                let trySurface versionText helpText =
+                    let capabilities = discoverCapabilities helpText
+
+                    if isSupportedVersion versionText && capabilities.Contains SingleTurnHeadless then
+                        Some
+                            { Kind = Agy
+                              VersionText = normalizeVersionText versionText
+                              SurfaceId = SurfaceId
+                              Capabilities = capabilities }
+                    else
+                        None
+
+                /// Build a normalized engine probe from captured `agy --version` and `agy --help` output.
+                let probeFromText executablePath versionText helpText : EngineProbe =
+                    { ExecutablePath = executablePath
+                      VersionText = normalizeVersionText versionText
+                      Surfaces = trySurface versionText helpText |> Option.toList }
