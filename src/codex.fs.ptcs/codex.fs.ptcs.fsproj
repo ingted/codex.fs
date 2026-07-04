@@ -3,12 +3,12 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageId>codex.fs</PackageId>
+    <PackageId>codex.fs.ptcs</PackageId>
     <Version>0.1.0-alpha.1</Version>
     <Authors>ingted</Authors>
     <Company>ingted</Company>
-    <Description>F# lightweight contracts and helpers for version-aware headless Codex/Agy CLI execution.</Description>
-    <PackageTags>fsharp;codex;agy;agents;ptcs;akka</PackageTags>
+    <Description>Thin PTCS integration boundary for codex.fs.</Description>
+    <PackageTags>fsharp;codex;agents;ptcs;messagefabric;actorfabric</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/ingted/codex.fs</RepositoryUrl>
@@ -18,7 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FAkka.Argu" Version="[10.1.301]" />
+    <ProjectReference Include="..\codex.fs\codex.fs.fsproj" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta71]" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,16 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Domain.fs" />
-    <Compile Include="PromptAssembly.fs" />
-    <Compile Include="Compaction.fs" />
-    <Compile Include="Artifacts.fs" />
-    <Compile Include="FileArtifactStore.fs" />
-    <Compile Include="Redaction.fs" />
-    <Compile Include="Engine.fs" />
-    <Compile Include="ProcessRunner.fs" />
-    <Compile Include="Session.fs" />
-    <Compile Include="Library.fs" />
+    <Compile Include="PtcsReference.fs" />
   </ItemGroup>
 
 </Project>

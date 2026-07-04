@@ -306,6 +306,15 @@ type PtcsSessionBinding =
 
 Implementation should use concrete PTCS types in the PTCS package, while core stays independent.
 
+Package/reference decision:
+
+- First supported PTCS package: `PulseTrade.Comm.Spa [0.2.5-beta71]`.
+- `codex.fs` core remains independent from PTCS runtime packages.
+- `codex.fs.ptcs` is the thin integration package that references `PulseTrade.Comm.Spa [0.2.5-beta71]` and exposes compile-time boundary constants/types.
+- `FAkka.Argu` is aligned to exact `[10.1.301]` in `codex.fs` because PTCS beta71 depends on `FAkka.Argu 10.1.301`.
+- Evidence sources: `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\PulseTrade.Comm.Spa.fsproj` declares `0.2.5-beta71`; `G:\PulseTrade.fs\Libs\PulseTrade.Comm\src\PulseTrade.Comm.Spa.Host\PulseTrade.Comm.Spa.Host.fsproj` consumes exact `[0.2.5-beta71]`; PTC verification docs record beta71 as the current Host/GW/RN aligned package baseline.
+- No `nuget.config` is required. Restore must resolve from configured NuGet sources/global cache/library-packs.
+
 Message operations map to PTCS:
 
 | codex.fs operation | PTCS API |
@@ -654,6 +663,6 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | SD-TBD-001 | Resolved: HTTP control endpoint. Clustered profiles must use bind address + advertised LAN/routable URI; localhost is dev-only. |
 | SD-TBD-002 | Exact artifact root layout for multi-workspace use. |
 | SD-TBD-003 | Resolved for MVP: rule-based local compaction in `codex.fs`; selected-engine or dedicated LLM compaction is a future adapter over the same contract. |
-| SD-TBD-004 | First supported PTCS package version and exact NuGet reference range. |
+| SD-TBD-004 | Resolved: first supported PTCS package is `PulseTrade.Comm.Spa [0.2.5-beta71]`; `codex.fs.ptcs` owns the exact reference while `codex.fs` core remains PTCS-independent. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
 | SD-TBD-006 | Resolved for MVP: OpenAPI JSON uses `Microsoft.AspNetCore.OpenApi`; Swagger UI uses `Swashbuckle.AspNetCore.SwaggerUi` only as optional UI assets; XML docs are canonical for SDK docs; FSharp.Formatting/fsdocs is preferred for F# reference-site generation. |

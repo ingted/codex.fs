@@ -4,6 +4,7 @@ open System
 open CodexFs.Compaction
 open CodexFs.Domain
 open CodexFs.PromptAssembly
+open CodexFs.Ptcs
 
 let assertTrue name condition =
     if not condition then
@@ -181,3 +182,12 @@ assertEqual "preserved artifact" "artifacts/run-compact-1/final.md" compactResul
 assertEqual "over budget" false compactResult.OverBudget
 
 printfn "TC-SESS-003 compact preserves blockers passed"
+
+assertEqual "ptcs package id" "PulseTrade.Comm.Spa" PtcsReference.pulseTradeCommSpaPackageId
+assertEqual "ptcs version" "0.2.5-beta71" PtcsReference.pulseTradeCommSpaVersion
+assertEqual "ptcs exact range" "[0.2.5-beta71]" PtcsReference.pulseTradeCommSpaVersionRange
+assertEqual "ptcs aligned argu range" "[10.1.301]" PtcsReference.fAkkaArguVersionRange
+assertContains "message fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" PtcsReference.messageFabricType.FullName
+assertContains "actor fabric options type" "PulseTrade.Comm.Spa.CommSpaActorFabricOptions" PtcsReference.actorFabricOptionsType.FullName
+
+printfn "TC-PTCS-001 PTCS restore/reference passed"

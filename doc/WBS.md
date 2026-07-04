@@ -43,13 +43,13 @@ Status 值：
 | AGY-001 | Agy CLI probe fixtures | EN-001 | 100 | Done | None | 2026-07-04 18:58 +08:00 | 2026-07-04 18:59 +08:00 | SD §6, §15 | T-AGY-001 | TC-AGY-001 agy 1.0.16 help/version fixture | inline |
 | AGY-002 | Agy `1.0.x` Argu DU/render | AGY-001 | 100 | Done | None | 2026-07-04 19:00 +08:00 | 2026-07-04 19:05 +08:00 | SD §6, §7, §16.4 | T-AGY-002 | TC-AGY-002 agy Argu parse/render | inline |
 | AGY-003 | Agy artifact mapping | AGY-002 | 100 | Done | None | 2026-07-04 19:06 +08:00 | 2026-07-04 19:10 +08:00 | SD §6, §12 | T-AGY-003 | TC-AGY-003 agy stdout/stderr/final artifact map | inline |
-| PTCS-001 | 定義 PTCS package/reference range | CF-001 | 0 | Planned | SD-TBD-004 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 PTCS restore/reference | inline |
-| PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | [@PTCS-002](WBS.PTCS-002.md) |
+| PTCS-001 | 定義 PTCS package/reference range | CF-001 | 100 | Done | None | 2026-07-04 20:33 +08:00 | 2026-07-04 20:44 +08:00 | SD §8, §17 | T-PTCS-001 | TC-PTCS-001 `tests/codex.fs.Tests` PTCS restore/reference | inline |
+| PTCS-002 | 實作 MessageFabric session binding | PTCS-001 | 0 | Planned | None | 未動工 | 2026-07-04 20:44 +08:00 | SD §8, §16.6 | T-PTCS-002 | TC-PTCS-002 / planned `misc/verifyPtcsMessageFabric.fsx` | [@PTCS-002](WBS.PTCS-002.md) |
 | PTCS-003 | 實作 durable task handoff | PTCS-002 | 0 | Blocked | SA-TBD-004 durable profile | 未動工 | 2026-07-04 17:53 +08:00 | SD §8, §16.10 | T-PTCS-003 | TC-PTCS-003 durable handoff | inline |
 | SESS-001 | 實作 session state/effect model | CF-002 | 100 | Done | None | 2026-07-04 19:58 +08:00 | 2026-07-04 20:04 +08:00 | SD §11 | T-SESS-001 | TC-SESS-001 pure decide transitions | inline |
 | SESS-002 | 實作 prompt assembly | SESS-001 | 100 | Done | None | 2026-07-04 19:57 +08:00 | 2026-07-04 20:04 +08:00 | SA §6, SD §11 | T-SESS-002 | TC-SESS-002 `tests/codex.fs.Tests` prompt batch assembly | inline |
 | SESS-003 | 實作 rule-based local compact | SESS-002 | 100 | Done | None | 2026-07-04 20:08 +08:00 | 2026-07-04 20:12 +08:00 | Requirement R-005, SD §11.1, §17 | T-SESS-003 | TC-SESS-003 `tests/codex.fs.Tests` compact preserves blockers | inline |
-| HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 0 | Planned | PTCS-001 | 未動工 | 2026-07-04 17:53 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
+| HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 0 | Planned | None | 未動工 | 2026-07-04 20:44 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
 | HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 0 | Planned | HOST-001/PTCS-002 | 未動工 | 2026-07-04 20:04 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host boot/health | inline |
 | HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Planned | HOST-002 | 未動工 | 2026-07-04 18:10 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
