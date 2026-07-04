@@ -173,19 +173,36 @@ if cycleResult.ConsumedMessageCount < 1 then
 if String.IsNullOrWhiteSpace cycleResult.ArtifactManifestPath then
     failwith "Expected artifact manifest path."
 
+if String.IsNullOrWhiteSpace cycleResult.PersistenceBoundaryPath then
+    failwith "Expected session persistence boundary path."
+
 if String.IsNullOrWhiteSpace cycleResult.FinalMessagePath then
     failwith "Expected final message artifact path."
 
 let manifestPath = Path.Combine(absoluteArtifactRoot, cycleResult.ArtifactManifestPath)
+let boundaryPath = Path.Combine(absoluteArtifactRoot, cycleResult.PersistenceBoundaryPath)
 let finalPath = Path.Combine(absoluteArtifactRoot, cycleResult.FinalMessagePath)
 
 if not (File.Exists manifestPath) then
     failwith $"Manifest not found: {manifestPath}"
 
+if not (File.Exists boundaryPath) then
+    failwith $"Session persistence boundary not found: {boundaryPath}"
+
 if not (File.Exists finalPath) then
     failwith $"Final message not found: {finalPath}"
 
+let boundaryText = File.ReadAllText(boundaryPath, UTF8Encoding(false, true))
 let finalText = File.ReadAllText(finalPath, UTF8Encoding(false, true))
+
+if not (boundaryText.Contains("ready-to-ack", StringComparison.Ordinal)) then
+    failwith "Session persistence boundary did not record ready-to-ack phase."
+
+if not (boundaryText.Contains(cycleResult.ReplyMessageId, StringComparison.Ordinal)) then
+    failwith "Session persistence boundary did not record reply message id."
+
+if not (boundaryText.Contains(cycleResult.AckCursor, StringComparison.Ordinal)) then
+    failwith "Session persistence boundary did not record selected ack cursor."
 
 if not (finalText.Contains(verifierToken, StringComparison.Ordinal)) then
     failwith $"Final message did not contain verifier token. finalPath={finalPath}"
@@ -219,9 +236,11 @@ if stopped.MessageFabric.IsSome then
     failwith "Expected HostRuntime.stop to clear MessageFabric."
 
 printfn "TC-E2E-002 message to engine reply passed"
+printfn "TC-OPS-002 recovery/ack ordering passed"
 printfn "sessionId=%s" sessionId
 printfn "sessionParticipantId=%s" sessionParticipantId
 printfn "replyMessageId=%s" cycleResult.ReplyMessageId
 printfn "artifactRoot=%s" absoluteArtifactRoot
 printfn "manifest=%s" manifestPath
+printfn "boundary=%s" boundaryPath
 printfn "final=%s" finalPath

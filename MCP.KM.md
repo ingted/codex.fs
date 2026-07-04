@@ -131,3 +131,11 @@
 - `createVolatileDurableFabric` is real PTCS ticketed admission using `CommSpaMessageFabric.createDurable`, but provider proof must fail closed for production sharded crash-durable readiness.
 - `submitAgentTaskAsync` maps codex.fs task data to PTCS `MessageFabricAgentTaskEnvelope`; `MessageFabricAgentTaskAccepted` proves admission and inbox delivery, not worker execution or artifact persistence.
 - `OPS-002` is now unblocked and should implement the codex.fs session persistence boundary: persist selected inbox cursor/run request before engine execution, persist artifact/reply evidence before ack, then verify recovery/ack ordering.
+
+## 2026-07-04 OPS-002 Session Persistence Boundary
+
+- `ArtifactKind.SessionBoundaryJson` is the ready-to-ack persistence artifact for bounded session cycles.
+- `SessionEngineCycle.runSingleCycleAsync` writes `session-boundary.json` after PTCS reply delivery and before `MessageFabricBinding.ackInboxAsync`.
+- `SingleCycleResult.PersistenceBoundaryPath` is the verifier/API handle for that boundary artifact.
+- `misc/verifyMessageToEngineReply.fsx` now validates the boundary file, reply message id, selected ack cursor and empty inbox after ack on the real PTCS + Agy path.
+- This is bounded single-cycle ordering evidence, not crash restart rehydration or sharded provider replay.

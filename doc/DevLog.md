@@ -136,3 +136,12 @@
 - Boundary: volatile durable admission is real PTCS ticketed handoff but does not satisfy production sharded crash-durable provider proof; `OPS-002` now owns session artifact persistence and ack/recovery ordering.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed with 0 warnings / 0 errors; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and output included `TC-PTCS-003 durable handoff passed`.
 - Traceability: WBS `PTCS-003`, detail `doc/WBS.PTCS-003.md`, Test `T-PTCS-003`, SA `SA-TBD-004`, and SD §8 updated.
+
+## 2026-07-04 23:46 +08:00 OPS-002 session persistence boundary
+
+- Scope: added `ArtifactKind.SessionBoundaryJson` and `SingleCycleResult.PersistenceBoundaryPath`.
+- Behavior: `SessionEngineCycle.runSingleCycleAsync` now sends the PTCS reply, writes `session-boundary.json` with `ready-to-ack` phase, reply message id and selected ack cursor, then acknowledges the session inbox cursor.
+- Boundary: this proves bounded single-cycle ack-after-artifact-and-reply-boundary ordering; crash restart rehydration and sharded provider replay remain future worker-loop/provider scope.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyMessageToEngineReply.fsx` passed; verifier output included `TC-OPS-002 recovery/ack ordering passed`.
+- Evidence: generated boundary artifact `G:\codex.fs\src\codex.fs\.codex.fs\e2e002-artifacts\sessions\e2e002-default\runs\run-20260704154722249-1de4b023\session-boundary.json`.
+- Traceability: WBS `OPS-002`, detail `doc/WBS.OPS-002.md`, Test `T-OPS-002`, and SD §11 updated.

@@ -26,6 +26,8 @@ module Artifacts =
         | FinalMarkdown
         /// Normalized run result JSON.
         | ResultJson
+        /// Session persistence boundary written after reply evidence and before inbox ack.
+        | SessionBoundaryJson
         /// Compacted history markdown.
         | CompactionMarkdown
 

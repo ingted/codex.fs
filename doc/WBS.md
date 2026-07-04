@@ -65,7 +65,7 @@ Status 值：
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-003 | 100 | Done | None | 2026-07-04 22:13 +08:00 | 2026-07-04 22:27 +08:00 | Requirement §10, SA §6.1, SD §14 | T-E2E-002 | TC-E2E-002 `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-002 | 100 | Done | None | 2026-07-04 23:28 +08:00 | 2026-07-04 23:38 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | [@E2E-003](WBS.E2E-003.md) |
 | OPS-001 | Process orphan recovery | EN-002;HOST-002 | 100 | Done | None | 2026-07-04 22:46 +08:00 | 2026-07-04 22:49 +08:00 | SA §9, SD §4 | T-OPS-001 | TC-OPS-001 orphan process recovery | [@OPS-001](WBS.OPS-001.md) |
-| OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 0 | Pending | None | 未動工 | 2026-07-04 23:39 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 recovery/ack ordering | inline |
+| OPS-002 | Session persistence boundary | PTCS-003;SESS-001 | 100 | Done | None | 2026-07-04 23:44 +08:00 | 2026-07-04 23:46 +08:00 | SA §9, SD §11 | T-OPS-002 | TC-OPS-002 `misc/verifyMessageToEngineReply.fsx` boundary gate | [@OPS-002](WBS.OPS-002.md) |
 | UI-001 | PTCS Web UI extension/RFC | E2E-002;DOC-003 | 100 | Done | None | 2026-07-04 23:13 +08:00 | 2026-07-04 23:23 +08:00 | Requirement §4, SD §16.12 | T-UI-001 | TC-UI-001 PTCS UI extension RFC/verifier | [@UI-001](WBS.UI-001.md) |
 
 ## 3. Roll-up / Detail Files
@@ -85,6 +85,7 @@ Status 值：
 | [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |
 | [@E2E-003](WBS.E2E-003.md) | Non-durable multi-agent collaboration uses real PTCS MessageFabric group/direct messages; durable hardening remains PTCS-003/OPS-002. |
 | [@OPS-001](WBS.OPS-001.md) | Process orphan recovery kills only a pid/name/start-time matched codex.fs-owned lease. |
+| [@OPS-002](WBS.OPS-002.md) | Session single-cycle runner writes a ready-to-ack persistence boundary after reply evidence and before MessageFabric ack. |
 | [@UI-001](WBS.UI-001.md) | PTCS Web UI extension RFC defines codex.fs as a PTCS extension consumer over MessageFabric, not a new UI fabric. |
 
 ## 4. Update Rule

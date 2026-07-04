@@ -1068,6 +1068,7 @@ type SingleCycleResult =
       Outcome: string
       ExitCode: string
       ArtifactManifestPath: string
+      PersistenceBoundaryPath: string
       FinalMessagePath: string
       ReplyMessageId: string
       ReplyBody: string }
@@ -1078,11 +1079,12 @@ val runSingleCycleAsync : HostRuntime -> SingleCycleOptions -> CancellationToken
 Rules:
 
 - `runSingleCycleAsync` is a bounded package helper for `E2E-002`; it is not the durable sharded actor loop.
-- The function polls the session inbox once, assembles a prompt, invokes the selected installed engine, persists artifacts, sends a PTCS reply, then acknowledges the inbox cursor.
+- The function polls the session inbox once, assembles a prompt, invokes the selected installed engine, persists artifacts, sends a PTCS reply, writes a ready-to-ack session boundary, then acknowledges the inbox cursor.
 - Current real engine implementation is Agy `1.0.x --print`; Agy flags must render before `--print`, and the prompt text is the final positional argument.
-- Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON and manifest JSON.
+- Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON, manifest JSON, and `session-boundary.json`.
+- `session-boundary.json` records phase `ready-to-ack`, selected cursor, consumed PTCS message ids, reply message id/body, manifest path and final message path. It must be written after reply evidence and before MessageFabric ack.
 - Reply body contains a redacted/truncated summary plus artifact references; it must not contain the raw prompt transcript.
-- The in-process/package-owned profile only proves ack-after-artifact-and-reply ordering; durable crash recovery remains `OPS-002` / future selected provider profile scope.
+- `OPS-002` proves bounded single-cycle ack-after-artifact-and-reply-boundary ordering. Crash restart rehydration and sharded provider replay remain future worker-loop/provider scope.
 
 ## 15. Testing design preview
 

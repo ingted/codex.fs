@@ -55,6 +55,8 @@ module SessionEngineCycle =
           ExitCode: string
           /// Artifact manifest path relative to artifact root.
           ArtifactManifestPath: string
+          /// Persistence boundary artifact written after reply evidence and before inbox ack.
+          PersistenceBoundaryPath: string
           /// Final message artifact path relative to artifact root.
           FinalMessagePath: string
           /// PTCS reply message id.
@@ -165,6 +167,22 @@ module SessionEngineCycle =
                artifactManifestPath = result.ArtifactManifestPath
                finalMessagePath = result.FinalMessagePath |}
 
+    let boundaryText sessionId runId (batch: MessageFabricInboxBatch) (reply: MessageFabricEnvelope) manifestRelativePath finalPath =
+        let (SessionId sessionIdText) = sessionId
+        let (RunId runIdText) = runId
+
+        json
+            {| phase = "ready-to-ack"
+               sessionId = sessionIdText
+               runId = runIdText
+               selectedCursor = batch.NextCursor
+               consumedMessageIds = batch.Messages |> List.map _.MessageId
+               replyMessageId = reply.MessageId
+               replyBody = reply.Body
+               artifactManifestPath = manifestRelativePath
+               finalMessagePath = finalPath
+               persistedBeforeAck = true |}
+
     let requestText (request: RunRequest) =
         let (RunId runId) = request.RunId
         let (SessionId sessionId) = request.SessionId
@@ -251,6 +269,7 @@ module SessionEngineCycle =
           Outcome = String.Empty
           ExitCode = String.Empty
           ArtifactManifestPath = String.Empty
+          PersistenceBoundaryPath = String.Empty
           FinalMessagePath = String.Empty
           ReplyMessageId = String.Empty
           ReplyBody = String.Empty }
@@ -405,6 +424,16 @@ module SessionEngineCycle =
                             [ "codex.fs"; "e2e"; "run"; outcomeText outcome ]
                             (Some runIdText)
 
+                    let boundaryArtifact =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            sessionId
+                            runId
+                            SessionBoundaryJson
+                            "session-boundary.json"
+                            (boundaryText sessionId runId batch reply manifestRelativePath finalPath)
+                            DateTimeOffset.UtcNow
+
                     let! ack = MessageFabricBinding.ackInboxAsync fabric sessionBinding batch.NextCursor
 
                     return
@@ -417,6 +446,7 @@ module SessionEngineCycle =
                           Outcome = outcomeText outcome
                           ExitCode = processResult.ExitCode |> Option.map string |> Option.defaultValue String.Empty
                           ArtifactManifestPath = manifestRelativePath
+                          PersistenceBoundaryPath = boundaryArtifact.Reference.Path
                           FinalMessagePath = finalPath
                           ReplyMessageId = reply.MessageId
                           ReplyBody = replyBody }
