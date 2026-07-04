@@ -1,12 +1,12 @@
 # WBS Detail: HOST-003 Host Control Endpoint
 
-WBS ID：`HOST-003`  
-狀態：Planned  
-Progress：0  
-StartTime：未動工  
-UpdatedAt：2026-07-04 18:10 +08:00  
-Previous：`HOST-002`  
-SD：`SD §9`, `SD §17 SD-TBD-001`  
+WBS ID：`HOST-003`
+狀態：Done
+Progress：100
+StartTime：2026-07-04 21:21 +08:00
+UpdatedAt：2026-07-04 21:27 +08:00
+Previous：`HOST-002`
+SD：`SD §9`, `SD §17 SD-TBD-001`
 Test：`T-HOST-003`
 
 ## Scope
@@ -26,9 +26,25 @@ Test：`T-HOST-003`
 - Endpoint protocol and network profile documented in SD before implementation.
 - Config includes bind address, optional port, advertised URI and loopback-only dev switch.
 - Cluster/runtime verifier uses advertised LAN/routable URI, not loopback.
-- OpenAPI metadata and Swagger generation are mandatory per SD §10.
+- Endpoint metadata is OpenAPI-ready through typed DTOs, endpoint definitions, examples and `Produces<HostControlHealthResponse>`; generated OpenAPI JSON and Swagger UI evidence are tracked by `DOC-003`.
 - `codex.fs.cli` must not write MessageFabric streams or artifacts directly.
 
 ## Blockers
 
-- `HOST-002` minimal host runtime.
+- None.
+
+## Implementation
+
+- Added `CodexFs.Host.HostControl` in `src/codex.fs.host/HostControl.fs`.
+- Route: `GET /api/codexfs/host/health`.
+- Runtime: Kestrel HTTP listener using `control.bindAddress` + `control.port`.
+- Client/admin URI: `HostControlContract.HealthUri`, derived from `control.advertiseUri`.
+- Message boundary: HTTP remains control plane only; PTCS MessageFabric remains the message truth source.
+- Actor boundary: this endpoint does not create an ActorSystem; production `CommSpaActorFabric` / sharded cluster binding must use LAN/routable addresses outside this HTTP control surface.
+
+## Verification
+
+- `dotnet restore .\codex.fs.slnx` passed.
+- `dotnet build .\codex.fs.slnx --no-restore` passed before docs sync.
+- `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed and printed `TC-HOST-003 endpoint contract passed`.
+- `TC-HOST-003` dynamically selects a non-loopback IPv4 address and free port, calls `HostControlContract.HealthUri`, and asserts HTTP 200 JSON over the advertised URI.

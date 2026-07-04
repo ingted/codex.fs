@@ -1,6 +1,11 @@
 module CodexFs.Tests.Program
 
 open System
+open System.Net
+open System.Net.Http
+open System.Net.NetworkInformation
+open System.Net.Sockets
+open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
 open CodexFs.Compaction
@@ -28,6 +33,30 @@ let assertBefore name (first: string) (second: string) (actual: string) =
 
 let runTask (task: Task<'T>) =
     task.GetAwaiter().GetResult()
+
+let isUsableNonLoopbackIpv4 (address: IPAddress) =
+    address.AddressFamily = AddressFamily.InterNetwork
+    && not (IPAddress.IsLoopback address)
+    && not (address.ToString().StartsWith("0.", StringComparison.Ordinal))
+    && not (address.ToString().StartsWith("169.254.", StringComparison.Ordinal))
+
+let findPreferredNonLoopbackIpv4 () =
+    NetworkInterface.GetAllNetworkInterfaces()
+    |> Array.filter (fun network -> network.OperationalStatus = OperationalStatus.Up)
+    |> Array.collect (fun network -> network.GetIPProperties().UnicastAddresses |> Seq.toArray)
+    |> Array.filter (fun addressInfo -> isUsableNonLoopbackIpv4 addressInfo.Address)
+    |> Array.sortBy (fun addressInfo ->
+        if addressInfo.DuplicateAddressDetectionState = DuplicateAddressDetectionState.Preferred then 0 else 1)
+    |> Array.tryHead
+    |> Option.map _.Address
+
+let reserveTcpPort () =
+    use listener = new TcpListener(IPAddress.Any, 0)
+    listener.Start()
+    let endpoint = listener.LocalEndpoint :?> IPEndPoint
+    let port = endpoint.Port
+    listener.Stop()
+    port
 
 let messageRef messageId cursor fromParticipantId toParticipantId groupId correlationId =
     { MessageId = messageId
@@ -315,6 +344,83 @@ assertEqual "host runtime stopped" CodexFs.Host.HostRuntime.Stopped stoppedHostR
 assertEqual "host runtime stopped fabric cleared" true stoppedHostRuntime.MessageFabric.IsNone
 
 printfn "TC-HOST-002 host runtime/health passed"
+
+let hostControlAddress =
+    findPreferredNonLoopbackIpv4 ()
+    |> Option.defaultWith (fun () -> failwith "TC-HOST-003 requires a non-loopback IPv4 address for advertised URI verification.")
+
+let hostControlPort = reserveTcpPort ()
+let hostControlAdvertiseUri = $"http://{hostControlAddress}:{hostControlPort}"
+
+let hostControlSettings =
+    hostSettings
+    |> Map.add "control.bindAddress" (hostControlAddress.ToString())
+    |> Map.add "control.port" (string hostControlPort)
+    |> Map.add "control.advertiseUri" hostControlAdvertiseUri
+    |> Map.add "control.allowLoopbackOnly" "false"
+    |> Map.add "ptcs.fabricMode" "package-owned"
+
+let hostControlLoad = CodexFs.HostConfig.loadFromMap hostControlSettings
+assertTrue "host control config loaded" hostControlLoad.Config.IsSome
+
+let hostControlRuntime =
+    match CodexFs.Host.HostRuntime.tryCreateFromLoadResult hostControlLoad with
+    | Ok runtime -> runtime
+    | Error issues -> failwith $"expected host control runtime config; issues={issues}"
+
+let hostControlStartedUtc = DateTimeOffset.Parse("2026-07-04T13:18:00Z")
+
+let hostControlServer =
+    match runTask (CodexFs.Host.HostControl.tryStartAsync hostControlStartedUtc CancellationToken.None hostControlRuntime) with
+    | Ok server -> server
+    | Error issues -> failwith $"expected host control server; issues={issues}"
+
+assertEqual "host control bind address" (hostControlAddress.ToString()) hostControlServer.Contract.BindAddress
+assertEqual "host control advertise uri" hostControlAdvertiseUri hostControlServer.Contract.AdvertiseUri
+assertContains "host control health route" CodexFs.Host.HostControl.Routes.Health hostControlServer.Contract.HealthUri
+assertTrue "host control not localhost" (not (hostControlServer.Contract.HealthUri.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+assertTrue "host control not 127" (not (hostControlServer.Contract.HealthUri.Contains("127.", StringComparison.Ordinal)))
+assertTrue
+    "host control endpoint docs"
+    (hostControlServer.Contract.Endpoints
+     |> List.exists (fun endpoint ->
+         endpoint.Name = CodexFs.Host.HostControl.EndpointNames.Health
+         && endpoint.SuccessExample.Body.Contains("advertiseUri", StringComparison.Ordinal)
+         && endpoint.FailureExample.Body.Contains("invalid-control-endpoint", StringComparison.Ordinal)))
+
+let mutable stoppedControlRuntime = None
+
+let hostControlResponseText =
+    try
+        use handler = new HttpClientHandler(UseProxy = false)
+        use client = new HttpClient(handler, true)
+        client.Timeout <- TimeSpan.FromSeconds 10.0
+
+        let response = runTask (client.GetAsync(hostControlServer.Contract.HealthUri))
+        let body = runTask (response.Content.ReadAsStringAsync())
+
+        assertEqual "host control http status" HttpStatusCode.OK response.StatusCode
+        body
+    finally
+        stoppedControlRuntime <- Some(runTask (CodexFs.Host.HostControl.stopAsync CancellationToken.None hostControlServer))
+
+assertTrue "host control stopped" stoppedControlRuntime.IsSome
+assertEqual "host control stopped status" CodexFs.Host.HostRuntime.Stopped stoppedControlRuntime.Value.Status
+
+let hostControlJson = JsonDocument.Parse(hostControlResponseText)
+let hostControlRoot = hostControlJson.RootElement
+
+assertEqual "host control response status" "running" (hostControlRoot.GetProperty("status").GetString())
+assertEqual "host control response advertise uri" hostControlAdvertiseUri (hostControlRoot.GetProperty("advertiseUri").GetString())
+assertEqual "host control response health uri" hostControlServer.Contract.HealthUri (hostControlRoot.GetProperty("healthUri").GetString())
+assertEqual "host control response bind address" (hostControlAddress.ToString()) (hostControlRoot.GetProperty("bindAddress").GetString())
+assertEqual "host control response port" hostControlPort (hostControlRoot.GetProperty("port").GetInt32())
+assertEqual "host control response loopback false" false (hostControlRoot.GetProperty("allowLoopbackOnly").GetBoolean())
+assertEqual "host control response fabric" true (hostControlRoot.GetProperty("hasMessageFabric").GetBoolean())
+assertTrue "host control response no raw token" (not (hostControlResponseText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+hostControlJson.Dispose()
+
+printfn "TC-HOST-003 endpoint contract passed"
 
 let ptcsFabric = MessageFabricBinding.createInProcessFabric ()
 let ptcsRunSuffix = Guid.NewGuid().ToString("N")

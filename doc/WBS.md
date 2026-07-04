@@ -51,11 +51,11 @@ Status 值：
 | SESS-003 | 實作 rule-based local compact | SESS-002 | 100 | Done | None | 2026-07-04 20:08 +08:00 | 2026-07-04 20:12 +08:00 | Requirement R-005, SD §11.1, §17 | T-SESS-003 | TC-SESS-003 `tests/codex.fs.Tests` compact preserves blockers | inline |
 | HOST-001 | 實作 host config loading | CF-005;PTCS-001 | 100 | Done | None | 2026-07-04 20:55 +08:00 | 2026-07-04 21:03 +08:00 | SD §9 | T-HOST-001 | TC-HOST-001 config parse/redaction | inline |
 | HOST-002 | 實作 minimal host runtime | HOST-001;PTCS-002;SESS-001 | 100 | Done | None | 2026-07-04 21:08 +08:00 | 2026-07-04 21:14 +08:00 | SD §9, §16.7 | T-HOST-002 | TC-HOST-002 host runtime/health | inline |
-| HOST-003 | 定義並實作 host control endpoint | HOST-002 | 0 | Planned | None | 未動工 | 2026-07-04 21:14 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
+| HOST-003 | 定義並實作 host control endpoint | HOST-002 | 100 | Done | None | 2026-07-04 21:21 +08:00 | 2026-07-04 21:27 +08:00 | SD §9, §17 | T-HOST-003 | TC-HOST-003 endpoint contract | [@HOST-003](WBS.HOST-003.md) |
 | DOC-001 | API docs toolchain spike | CF-001 | 100 | Done | None | 2026-07-04 19:26 +08:00 | 2026-07-04 19:34 +08:00 | SD §10, §17 | T-DOC-001 | TC-DOC-001 docs toolchain decision | [@DOC-001](WBS.DOC-001.md) |
 | DOC-002 | XML doc comments baseline | DOC-001;CF-002 | 100 | Done | None | 2026-07-04 19:35 +08:00 | 2026-07-04 19:40 +08:00 | SD §10 | T-DOC-002 | TC-DOC-002 XML docs generated | inline |
-| DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 0 | Planned | HOST-003 | 未動工 | 2026-07-04 18:10 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | inline |
-| CLI-001 | 實作 CLI command DU/help | HOST-003 | 0 | Planned | HOST-003 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | inline |
+| DOC-003 | Swagger/OpenAPI generation | DOC-001;HOST-003 | 0 | Planned | None | 未動工 | 2026-07-04 21:27 +08:00 | SD §10 | T-DOC-003 | TC-DOC-003 OpenAPI available | inline |
+| CLI-001 | 實作 CLI command DU/help | HOST-003 | 0 | Planned | None | 未動工 | 2026-07-04 21:27 +08:00 | SD §14, §16.9 | T-CLI-001 | TC-CLI-001 Argu parser/help | inline |
 | CLI-002 | CLI session send real path | CLI-001;PTCS-002 | 0 | Planned | CLI-001/PTCS-002 | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.1, SD §14 | T-CLI-002 | TC-CLI-002 CLI send through MessageFabric | inline |
 | CLI-003 | CLI attach/drain/status | CLI-002 | 0 | Planned | CLI-002 | 未動工 | 2026-07-04 17:53 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | inline |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |

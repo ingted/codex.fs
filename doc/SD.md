@@ -528,6 +528,63 @@ Host control endpoint decision:
 - HTTP is control plane only. Actor/session collaboration and message truth remain PTCS `CommSpaActorFabric` / `CommSpaMessageFabric`.
 - Swagger/OpenAPI documents the HTTP control surface, not MessageFabric as a separate transport.
 
+Implemented HTTP control package surface:
+
+```fsharp
+namespace CodexFs.Host
+
+module HostControl
+
+module Routes =
+    val Health : string // "/api/codexfs/host/health"
+
+type HostControlContract =
+    { Protocol: string
+      BindAddress: string
+      Port: int
+      BindUri: string
+      AdvertiseUri: string
+      HealthUri: string
+      AllowLoopbackOnly: bool
+      Endpoints: HostControlEndpointDefinition list }
+
+type HostControlHealthResponse =
+    { Status: string
+      DefaultEngine: string
+      EnabledEngines: string list
+      ArtifactRoot: string
+      ControlProtocol: string
+      BindAddress: string
+      Port: int
+      AdvertiseUri: string
+      HealthUri: string
+      AllowLoopbackOnly: bool
+      PtcsFabricMode: string
+      PtcsSessionParticipantPrefix: string
+      PtcsDefaultInboxLimit: int
+      DurableAgentTasks: bool
+      HasMessageFabric: bool
+      MessageFabricType: string
+      StartedUtc: string
+      EngineOverrideKeys: string list
+      Warnings: string list
+      Diagnostics: HostControlDiagnosticResponse list }
+
+val buildContract : HostConfig -> HostControlContract
+val healthResponse : HostControlContract -> HostRuntime -> HostControlHealthResponse
+val tryStartAsync : DateTimeOffset -> CancellationToken -> HostRuntime -> Task<Result<HostControlServer, HostConfigIssue list>>
+val stopAsync : CancellationToken -> HostControlServer -> Task<HostRuntime>
+```
+
+Rules:
+
+- `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /api/codexfs/host/health`.
+- `HostControlContract.HealthUri` is built from `control.advertiseUri`; CLI/Web/admin callers must use the advertised URI, not the bind URI when these differ.
+- Non-loopback clustered profiles are validated by `HostConfig`; `control.allowLoopbackOnly = false` rejects loopback bind/advertise config before HTTP start.
+- The health endpoint returns non-secret operational metadata only. It reports executable override keys but never executable override values.
+- Starting the HTTP control endpoint may initialize the in-process PTCS MessageFabric via `HostRuntime`; it still does not create an ActorSystem and does not become a MessageFabric transport.
+- Endpoint definitions include success/failure examples and typed response metadata (`Produces<HostControlHealthResponse>`) so `DOC-003` can add generated OpenAPI JSON and Swagger UI without hand-written YAML.
+
 ## 10. API documentation / SDK docs design
 
 API documentation is part of the implementation contract, not a post-processing task.

@@ -42,4 +42,12 @@
 - `HostRuntime.startInProcessMessageFabric` uses `MessageFabricBinding.createInProcessFabric()` and therefore initializes real PTCS package runtime, not a fake mailbox.
 - The in-process MessageFabric slice does not create an ActorSystem; production `CommSpaActorFabric` / sharded cluster binding must use LAN/routable bind/advertise addresses, never `127.0.0.1`.
 - `HostRuntime.health` omits executable override values and reports only `EngineOverrideKeys`; use `healthSummary` for redacted text output.
-- HTTP listener/control endpoint work remains `HOST-003`; Swagger/OpenAPI remains `DOC-003`.
+- HTTP listener/control endpoint is implemented by `CodexFs.Host.HostControl`; Swagger/OpenAPI route generation remains `DOC-003`.
+
+## 2026-07-04 HOST-003 HTTP Control Endpoint
+
+- `CodexFs.Host.HostControl.tryStartAsync` starts a real Kestrel HTTP listener from `HostConfig.ControlEndpoint.BindAddress` and `Port`.
+- The stable health route is `GET /api/codexfs/host/health`; callers should use `HostControlContract.HealthUri`, which is derived from `control.advertiseUri`.
+- Clustered profiles must keep `control.allowLoopbackOnly = false`; `HostConfig.validate` rejects localhost/127.* bind or advertise settings before HTTP start.
+- `HostControlHealthResponse` is an option-free JSON DTO with camelCase output; it reports non-secret runtime state and redacted diagnostics only.
+- Endpoint definitions carry success/failure examples and typed response metadata for future OpenAPI/Swagger generation; the endpoint remains control plane only and never replaces PTCS MessageFabric.

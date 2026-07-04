@@ -23,11 +23,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="HostRuntime.fs" />
+    <Compile Include="HostControl.fs" />
   </ItemGroup>
 
 </Project>
