@@ -60,7 +60,7 @@ Status 值：
 | CLI-003 | CLI attach/drain/status | CLI-002 | 100 | Done | None | 2026-07-04 22:00 +08:00 | 2026-07-04 22:09 +08:00 | SD §14 | T-CLI-003 | TC-CLI-003 attach/drain/status | [@CLI-003](WBS.CLI-003.md) |
 | REL-001 | NuGet package metadata | DOC-002;CF-001 | 100 | Done | None | 2026-07-04 19:48 +08:00 | 2026-07-04 19:55 +08:00 | Requirement §9, SD §2 | T-REL-001 | TC-REL-001 pack metadata/docs | inline |
 | REL-002 | codex.fs.cli dotnet tool package | REL-001;HOST-001;CLI-003 | 100 | Done | None | 2026-07-04 22:35 +08:00 | 2026-07-04 22:41 +08:00 | Requirement R-001, SD §2, §14 | T-REL-002 | TC-REL-002 tool install/run help | [@REL-002](WBS.REL-002.md) |
-| REL-003 | codex.fs.host standalone tool entrypoint | REL-002;HOST-003;E2E-002 | 0 | Planned | Need host CLI protocol decision | 未動工 | 2026-07-04 22:41 +08:00 | Requirement R-001, SD §2, §9 | T-REL-003 | TC-REL-003 host tool start/status | inline |
+| REL-003 | codex.fs.host standalone tool entrypoint | REL-002;HOST-003;E2E-002 | 100 | Done | None | 2026-07-04 22:55 +08:00 | 2026-07-04 23:06 +08:00 | Requirement R-001, SD §2, §9 | T-REL-003 | TC-REL-003 host tool start/status | [@REL-003](WBS.REL-003.md) |
 | E2E-001 | Installed engine probe real path | CDX-003;AGY-003 | 100 | Done | None | 2026-07-04 19:41 +08:00 | 2026-07-04 19:47 +08:00 | SD §15 | T-E2E-001 | TC-E2E-001 installed codex/agy probe real path | inline |
 | E2E-002 | MessageFabric message to engine to reply | HOST-002;CLI-003 | 100 | Done | None | 2026-07-04 22:13 +08:00 | 2026-07-04 22:27 +08:00 | Requirement §10, SA §6.1, SD §14 | T-E2E-002 | TC-E2E-002 `misc/verifyMessageToEngineReply.fsx` | [@E2E-002](WBS.E2E-002.md) |
 | E2E-003 | Multi-agent group collaboration | E2E-002;PTCS-003 | 0 | Planned | PTCS-003 optional durable path | 未動工 | 2026-07-04 17:53 +08:00 | Requirement §6.3 | T-E2E-003 | TC-E2E-003 multi-agent MessageFabric group | inline |
@@ -81,6 +81,7 @@ Status 值：
 | [@CLI-003](WBS.CLI-003.md) | CLI status/attach/drain read the real session inbox through host control endpoints and drain acknowledges the cursor. |
 | [@E2E-002](WBS.E2E-002.md) | First closed-loop real path spans MessageFabric, host, engine, artifacts and reply. |
 | [@REL-002](WBS.REL-002.md) | `codex.fs.cli` installs and runs as a local dotnet tool from generated nupkg; host standalone tool is tracked separately. |
+| [@REL-003](WBS.REL-003.md) | `codex.fs.host.tool` installs as a dotnet tool and exposes command name `codex.fs.host`; host library remains referenceable. |
 | [@OPS-001](WBS.OPS-001.md) | Process orphan recovery kills only a pid/name/start-time matched codex.fs-owned lease. |
 
 ## 4. Update Rule

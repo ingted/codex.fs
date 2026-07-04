@@ -95,6 +95,14 @@
 - Root `--help`, `-h`, `help`, `/?`, and empty argv are handled by `CodexFs.Cli.Program.isRootHelp` before Argu command dispatch.
 - `codex.fs.host` remains a referenceable library package; standalone host tool entrypoint is tracked separately as `REL-003`.
 
+## 2026-07-04 REL-003 Host Dotnet Tool
+
+- `codex.fs.host` remains the referenceable library package. Do not convert it to `PackAsTool=true`.
+- `codex.fs.host.tool` is the thin dotnet tool package; its command name is `codex.fs.host`.
+- Host tool commands use `FAkka.Argu` and reuse `HostConfig`, `HostRuntime`, and `HostControl`.
+- `codex.fs.host start --run-seconds 0 ...` is the bounded verification path; it starts the real Kestrel host and stops immediately after successful startup.
+- Non-dev host tool examples must use LAN/DNS advertise URIs; loopback is only for explicit dev profiles.
+
 ## 2026-07-04 OPS-001 Process Orphan Recovery
 
 - `ProcessRunner.ProcessLease` records pid, process name, observed start time and non-secret marker for codex.fs-owned processes.

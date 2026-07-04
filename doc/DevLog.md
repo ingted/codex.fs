@@ -103,3 +103,12 @@
 - Behavior: recovery only terminates a process when pid, process name and start time match the saved lease; it does not kill by process name scan.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; output included `TC-OPS-001 orphan process recovery passed`.
 - Traceability: WBS `OPS-001`, detail `doc/WBS.OPS-001.md`, and Test `T-OPS-001` updated to `Done` / `Pass`; durable recovery/ack ordering remains `OPS-002`.
+
+## 2026-07-04 23:06 +08:00 REL-003 host dotnet tool
+
+- Scope: added `src/codex.fs.host.tool` as a thin standalone dotnet tool wrapper.
+- Decision: keep `codex.fs.host` as a referenceable host library package; publish/install the tool through package id `codex.fs.host.tool`, command name `codex.fs.host`.
+- Behavior: host tool uses `FAkka.Argu`, supports `status` and bounded/unbounded `start`, and delegates startup to existing `HostControl.tryStartAsync`.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; output included `TC-REL-003 host tool start/status passed`.
+- Packaging: packed `codex.fs.host.tool.0.1.0-alpha.1.nupkg` to `G:\codex.fs\bin\rel003-packs-202607042303`; installed to `G:\codex.fs\bin\rel003-host-tool-202607042303`; `codex.fs.host.exe --help`, `status`, and `start --run-seconds 0` passed with LAN advertised URIs.
+- Traceability: WBS `REL-003`, detail `doc/WBS.REL-003.md`, and Test `T-REL-003` updated to `Done` / `Pass`.

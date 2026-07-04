@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>codex.fs.host.tool</PackageId>
+    <Version>0.1.0-alpha.1</Version>
+    <Authors>ingted</Authors>
+    <Company>ingted</Company>
+    <Description>Standalone dotnet tool wrapper for codex.fs.host.</Description>
+    <PackageTags>fsharp;codex;agents;ptcs;host;dotnet-tool</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ingted/codex.fs</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/ingted/codex.fs</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>codex.fs.host</ToolCommandName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FAkka.Argu" Version="[10.1.301]" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\codex.fs.host\codex.fs.host.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+</Project>

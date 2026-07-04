@@ -27,6 +27,8 @@ src/
     codex.fs.fsproj
   codex.fs.host/
     codex.fs.host.fsproj
+  codex.fs.host.tool/
+    codex.fs.host.tool.fsproj
   codex.fs.cli/
     codex.fs.cli.fsproj
   codex.fs.engine.codex/
@@ -48,7 +50,8 @@ Package IDs:
 | Package | Assembly namespace | Purpose |
 | --- | --- | --- |
 | `codex.fs` | `CodexFs` | Core engine/artifact/compaction contracts。 |
-| `codex.fs.host` | `CodexFs.Host` | Host runtime package; standalone host dotnet tool entrypoint remains `REL-003` so the library package stays referenceable。 |
+| `codex.fs.host` | `CodexFs.Host` | Referenceable host runtime/control library package。 |
+| `codex.fs.host.tool` | `CodexFs.HostTool` | Thin dotnet tool wrapper; command name `codex.fs.host`。 |
 | `codex.fs.cli` | `CodexFs.Cli` | Terminal client and dotnet tool。 |
 | `codex.fs.engine.codex` | `CodexFs.Engine.Codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | `CodexFs.Engine.Agy` | Agy CLI adapter。 |
@@ -619,6 +622,18 @@ Rules:
 - Starting the HTTP control endpoint may initialize the in-process PTCS MessageFabric via `HostRuntime`; this HTTP slice still does not create an ActorSystem and does not become a MessageFabric transport.
 - Future ActorSystem initialization belongs to the PTCS ActorFabric/session-worker slice and must use the same non-loopback cluster profile rules as above.
 - Endpoint definitions include success/failure examples and typed response metadata (`Produces<HostControlHealthResponse>`) so `DOC-003` can add generated OpenAPI JSON and Swagger UI without hand-written YAML.
+
+Host standalone tool contract:
+
+- `codex.fs.host` command is provided by package `codex.fs.host.tool`; the existing `codex.fs.host` package remains a normal referenceable NuGet library package.
+- The tool is a thin wrapper over `HostConfig`, `HostRuntime`, and `HostControl`; it must not fork a second host protocol.
+- Argument parsing uses `FAkka.Argu`.
+- Commands:
+  - `codex.fs.host status --setting <key=value>` loads config and prints non-secret local runtime health without binding an HTTP listener.
+  - `codex.fs.host start --setting <key=value> [--run-seconds <n>]` starts the real HTTP control endpoint through `HostControl.tryStartAsync`.
+- `--run-seconds` is for bounded automation and verification; omitting it runs until Ctrl+C.
+- Clustered/non-dev usage must set `control.bindAddress`, `control.port`, `control.advertiseUri`, and `control.allowLoopbackOnly=false` with a LAN/DNS-reachable advertised URI. Loopback remains dev-only.
+- The tool does not implement durable task handoff, process lease persistence, or ActorSystem initialization; those remain `PTCS-003` / `OPS-002`.
 
 ## 10. API documentation / SDK docs design
 

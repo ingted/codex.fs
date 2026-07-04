@@ -546,6 +546,73 @@ assertParseErrorContains "cli invalid arg" "unrecognized argument" [| "session";
 
 printfn "TC-CLI-001 Argu parser/help passed"
 
+let hostToolHelp = CodexFs.HostTool.HostTool.helpText ()
+
+assertTrue "host tool empty help" (CodexFs.HostTool.HostTool.isRootHelp [||])
+assertTrue "host tool long help" (CodexFs.HostTool.HostTool.isRootHelp [| "--help" |])
+assertTrue "host tool short help" (CodexFs.HostTool.HostTool.isRootHelp [| "-h" |])
+assertTrue "host tool word help" (CodexFs.HostTool.HostTool.isRootHelp [| "help" |])
+assertTrue "host tool command not root help" (not (CodexFs.HostTool.HostTool.isRootHelp [| "start" |]))
+assertContains "host tool help status" "status <options>" hostToolHelp
+assertContains "host tool help start" "start <options>" hostToolHelp
+assertContains "host tool examples" "codex.fs.host start --run-seconds 5" hostToolHelp
+
+let hostToolPort = reserveTcpPort ()
+let hostToolAdvertiseUri = $"http://{hostControlAddress}:{hostToolPort}"
+
+let hostToolCommonArgs =
+    [| "--setting"
+       $"control.bindAddress={hostControlAddress}"
+       "--setting"
+       $"control.port={hostToolPort}"
+       "--setting"
+       $"control.advertiseUri={hostToolAdvertiseUri}"
+       "--setting"
+       "control.allowLoopbackOnly=false"
+       "--setting"
+       "ptcs.fabricMode=package-owned" |]
+
+let hostToolStatusOptions =
+    match CodexFs.HostTool.HostTool.tryParseAction (Array.append [| "status" |] hostToolCommonArgs) with
+    | Ok(Some(CodexFs.HostTool.HostTool.HostStatus options)) -> options
+    | Ok action -> failwith $"expected host tool status action; actual={action}"
+    | Error message -> failwith $"expected host tool status parse; error={message}"
+
+let hostToolStatusText =
+    match CodexFs.HostTool.HostTool.statusText hostToolStatusOptions with
+    | Ok text -> text
+    | Error message -> failwith $"expected host tool status text; error={message}"
+
+assertContains "host tool status created" "status=created" hostToolStatusText
+assertContains "host tool status advertise" $"controlAdvertiseUri={hostToolAdvertiseUri}" hostToolStatusText
+assertTrue "host tool status not localhost" (not (hostToolStatusText.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+
+let hostToolStartArgs =
+    [| yield "start"
+       yield "--run-seconds"
+       yield "0"
+       yield! hostToolCommonArgs |]
+
+let hostToolStartOptions =
+    match CodexFs.HostTool.HostTool.tryParseAction hostToolStartArgs with
+    | Ok(Some(CodexFs.HostTool.HostTool.HostStart options)) -> options
+    | Ok action -> failwith $"expected host tool start action; actual={action}"
+    | Error message -> failwith $"expected host tool start parse; error={message}"
+
+let hostToolStartText =
+    match runTask (CodexFs.HostTool.HostTool.startTextAsync (DateTimeOffset.Parse("2026-07-04T14:55:00Z")) hostToolStartOptions CancellationToken.None) with
+    | Ok text -> text
+    | Error message -> failwith $"expected host tool bounded start; error={message}"
+
+assertContains "host tool start running" "status=running" hostToolStartText
+assertContains "host tool start bind" $"bindUri=http://{hostControlAddress}:{hostToolPort}" hostToolStartText
+assertContains "host tool start health" $"{hostToolAdvertiseUri}/api/codexfs/host/health" hostToolStartText
+assertContains "host tool start stopped" "status=stopped" hostToolStartText
+assertTrue "host tool start no localhost" (not (hostToolStartText.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+assertTrue "host tool start no 127" (not (hostToolStartText.Contains("127.", StringComparison.Ordinal)))
+
+printfn "TC-REL-003 host tool start/status passed"
+
 let ptcsFabric = MessageFabricBinding.createInProcessFabric ()
 let ptcsRunSuffix = Guid.NewGuid().ToString("N")
 let ptcsAgentId = $"agent.ptcs002.{ptcsRunSuffix}"
