@@ -15,6 +15,7 @@
 - argument parsing 使用 `FAkka.Argu`。
 - CLI version differences 使用 module + adapter registry，不使用 runtime generic parser。
 - host `--version` 保留為印出自身版本，不作 engine parser selection。
+- public API 必須採 comment-as-SDK-doc policy；HTTP control surface 若存在，必須產生 OpenAPI/Swagger 文件。
 
 ## 2. Project layout
 
@@ -338,7 +339,15 @@ type HostConfig =
       MaxPendingMessagesPerTurn: int
       Compaction: CompactionPolicy
       Redaction: RedactionPolicy
+      ApiDocs: ApiDocsConfig
       Ptcs: PtcsHostConfig }
+
+type ApiDocsConfig =
+    { GenerateXmlDocs: bool
+      GenerateOpenApi: bool
+      ExposeSwaggerUi: bool
+      SwaggerRoutePrefix: string option
+      IncludeExamples: bool }
 
 type PtcsHostConfig =
     { FabricMode: string
@@ -371,8 +380,46 @@ Host responsibilities:
 - initialize artifact store。
 - start session workers。
 - expose control endpoint for CLI/Web/admin callers。
+- expose Swagger UI only when the selected host control endpoint is HTTP and the active profile allows it。
 
-## 10. Session behavior design
+## 10. API documentation / SDK docs design
+
+API documentation is part of the implementation contract, not a post-processing task.
+
+Documentation sources:
+
+| Surface | Required documentation source | Generated output |
+| --- | --- | --- |
+| Public F# modules/types/functions | XML doc comments (`///`) with summary/remarks/param/returns/example where applicable | NuGet SDK docs / generated reference site |
+| Host HTTP control endpoints | typed DTOs + endpoint metadata + XML comments | OpenAPI v3 document and Swagger UI |
+| CLI commands | `FAkka.Argu` DU metadata + command examples | CLI help text and docs snippets |
+| PTCS integration operations | SD mapping table + API comments on adapter functions | SDK docs and integration guide |
+
+Tooling candidates:
+
+- OpenAPI/Swagger: prefer ASP.NET Core OpenAPI integration with Swashbuckle or NSwag if `codex.fs.host` exposes HTTP endpoints.
+- SDK reference docs: use F# XML documentation output as the canonical source; evaluate DocFX or FSharp.Formatting for generating human-readable SDK reference pages.
+- Examples: keep examples close to the API through XML `<example>` blocks or doc-tested snippets when tooling supports it.
+
+Rules:
+
+- Do not maintain a hand-written Swagger YAML as the source of truth when the host endpoint can generate OpenAPI from typed contracts.
+- Public API comments must document behavior, failure modes, idempotency expectations, security/redaction notes, and PTCS MessageFabric side effects.
+- Request DTO docs must describe every field, default, validation rule, and whether a value is persisted, redacted, or sent through MessageFabric.
+- Response DTO docs must describe outcome states, nullable fields, artifact references, and error semantics.
+- Every endpoint or SDK function added by a WBS item must include at least one success example and one meaningful failure/error example unless the API is internal-only.
+- Swagger UI must not expose secret values. Production exposure should be disabled by default or guarded by the host deployment profile.
+- API examples must use non-secret sample values and must not include real local paths unless the example is explicitly marked local-only.
+
+WBS definition of done for API-facing items:
+
+- XML doc comments are updated for all new or changed public types, DU cases, record fields, modules and functions.
+- Host HTTP endpoints, if changed, have updated OpenAPI metadata and Swagger-visible examples.
+- Parameters and outputs are documented in code comments and in any affected SD/Test/WBS detail rows.
+- Tests or verification commands cover generated OpenAPI availability when an HTTP host is part of the slice.
+- Breaking API changes update migration notes before the package/tool is published.
+
+## 11. Session behavior design
 
 Domain behavior should be testable without Akka and without live PTCS process.
 
@@ -408,7 +455,7 @@ let decide (state: SessionState) (command: SessionCommand) : SessionState * Sess
 
 Akka shell, if needed, is an adapter around this behavior and PTCS ActorFabric. It must not introduce a second persistent truth for messages.
 
-## 11. Artifact manifest design
+## 12. Artifact manifest design
 
 ```fsharp
 type ArtifactKind =
@@ -443,7 +490,7 @@ type ArtifactManifest =
       Artifacts: ArtifactRef list }
 ```
 
-## 12. Redaction design
+## 13. Redaction design
 
 Redaction applies before writing display logs and before sending MessageFabric replies.
 
@@ -466,7 +513,7 @@ Raw CLI stdout/stderr policy is configurable:
 - never log environment variable values。
 - MessageFabric body should use redacted summary and artifact references, not full raw transcript by default。
 
-## 13. CLI client design
+## 14. CLI client design
 
 `codex.fs.cli` commands:
 
@@ -489,7 +536,7 @@ Argument parsing:
 
 `codex.fs.cli` should submit through host APIs that ultimately use PTCS MessageFabric; it should not write artifacts or MessageFabric streams directly.
 
-## 14. Testing design preview
+## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
 
@@ -502,8 +549,10 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 - durable agent task handoff tests with `CommSpaDurableMessageFabric` when durable profile is enabled。
 - process runner tests using controlled command fixtures, not as production validation。
 - real path verification for installed Codex/Agy where available。
+- OpenAPI/Swagger generation tests for host HTTP control endpoints when HTTP is selected。
+- SDK documentation generation check for public packages before NuGet-facing release。
 
-## 15. Implementation sequence preview
+## 16. Implementation sequence preview
 
 1. Core domain + artifact manifest。
 2. Engine adapter contract。
@@ -512,12 +561,13 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 5. File artifact store。
 6. PTCS MessageFabric session binding。
 7. Minimal `codex.fs.host` with PTCS local fabric。
-8. `codex.fs.cli` terminal client。
-9. Durable agent task handoff via `CommSpaDurableMessageFabric`。
-10. Compaction。
-11. PTCS Web UI extension/RFC。
+8. API documentation baseline: XML docs, OpenAPI/Swagger profile for HTTP host surface, and generated SDK docs pipeline。
+9. `codex.fs.cli` terminal client。
+10. Durable agent task handoff via `CommSpaDurableMessageFabric`。
+11. Compaction。
+12. PTCS Web UI extension/RFC。
 
-## 16. Open design items
+## 17. Open design items
 
 | ID | Item |
 | --- | --- |
@@ -526,3 +576,4 @@ Detailed test plan belongs in `doc/Test.md`, but SD expects:
 | SD-TBD-003 | Whether compaction uses selected engine or dedicated adapter. |
 | SD-TBD-004 | First supported PTCS package version and exact NuGet reference range. |
 | SD-TBD-005 | Whether standalone host starts package-owned PTCS fabric by default or requires an existing PTCS host. |
+| SD-TBD-006 | Final OpenAPI generator and SDK reference documentation toolchain, including DocFX/FSharp.Formatting evaluation. |
