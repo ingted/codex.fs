@@ -126,6 +126,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `PERSIST-001` resolves the transcript/note/artifact policy RFC slice: raw run evidence is private by default, MessageFabric/UI/CLI should render redacted summaries plus manifest/note refs, and compacted history must preserve message ids, run ids and artifact refs without replacing raw artifacts.
 
+`WEBR-001` / `RFC-WEB-0002` supersedes any implementation interpretation that control-only `codex.fs.host` web is enough. Product Web must be PTCS classic shell plus codex.fs WebSharper Bundle and ActorFabric-backed AI workers. `codex.fs.host` may keep control-only mode, but product Web mode must either compose PTCS Host shell or run a PTCS webshell profile with the same visible layout and fabric semantics.
+
 ## 4. Runtime components
 
 | Component | Responsibility |

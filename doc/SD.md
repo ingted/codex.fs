@@ -702,8 +702,8 @@ val stopAsync : CancellationToken -> HostControlServer -> Task<HostRuntime>
 Rules:
 
 - `tryStartAsync` starts a real Kestrel HTTP listener using `control.bindAddress` and `control.port`, and exposes `GET /`, `GET /chat`, `GET/POST /diagnostics/session-send`, CLI send/read endpoints, plus `GET /api/codexfs/host/health`.
-- `GET /` is the operator landing page. It must return HTTP 200 HTML and link to diagnostics, health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled; it must state browser chat belongs to PTCS WebSharper chat room.
-- `GET /chat` is a legacy guard page only. It must not present a prompt composer. It points operators to the canonical PTCS Web chat and may link to diagnostics.
+- `GET /` is the operator landing page for control-only mode. It must return HTTP 200 HTML and link to diagnostics, health, OpenAPI JSON and Swagger UI when those docs endpoints are enabled; it must state control-only mode is not the product chat UI.
+- `GET /chat` in control-only mode is a legacy guard/redirect page only. It must not present a prompt composer. It points operators to the canonical PTCS Web chat and may link to diagnostics.
 - `GET /diagnostics/session-send` is the standalone diagnostics form. `POST /diagnostics/session-send` accepts `application/x-www-form-urlencoded` fields `sessionId`, `workerId`, and `prompt`, then sends through `acceptSessionMessageAsync`.
 - Diagnostics `sessionId` is optional; blank defaults to `foreman`. This keeps first-use diagnostics and CLI aligned with the default package foreman.
 - `POST /api/codexfs/foreman/messages` is the CLI default route when the caller does not know a session id. It sends to session id `foreman`, deriving target participant `<ptcs.sessionParticipantPrefix>.foreman` unless `workerId` overrides it.
@@ -715,6 +715,14 @@ Rules:
 - Starting the HTTP control endpoint may initialize the in-process PTCS MessageFabric via `HostRuntime`; this HTTP slice still does not create an ActorSystem and does not become a MessageFabric transport.
 - Future ActorSystem initialization belongs to the PTCS ActorFabric/session-worker slice and must use the same non-loopback cluster profile rules as above.
 - Endpoint definitions include success/failure examples and typed response metadata so `DOC-003` / `DOC-004` can expose generated OpenAPI JSON and Swagger UI without hand-written YAML.
+
+`RFC-WEB-0002` adds a separate product Web profile:
+
+- `control-only` mode is the current HTTP control/diagnostics surface and is never product chat.
+- `ptcs-webshell` mode is the only acceptable product Web profile for `codex.fs.host.tool`.
+- `ptcs-webshell` must host or compose PTCS classic `/chat` shell with nav tabs, participant list, thread/session area and composer.
+- `ptcs-webshell` registers codex.fs AI WebSharper Bundle and shares the same PTCS `CommHub`, `CommSpaMessageFabric` and ActorFabric profile as worker participants.
+- If an external PTCS Host process already owns the shell, codex.fs integrates through package/bundle/actor registration instead of starting a separate browser chat.
 
 Host standalone tool contract:
 
@@ -1430,6 +1438,44 @@ Invocation options collected by CLI are intent metadata. Runtime/actor owns vali
 | artifacts | redacted final summary plus run id, manifest ref and note ref; raw prompt/stdout/stderr stay under persistence policy |
 
 Future Web verifier `misc/verifyPtcsAiChatBundle.fsx` must drive a real browser against PTCS Host `/chat`, load the extension manifest/assets, send public/direct/group messages through real MessageFabric, verify Foreman/worker participants, switch authorized perspective, and render real artifact/note refs. Standalone `codex.fs.host` `/chat`, fake mailboxes or internal-only UI smoke cannot satisfy `T-WEB-001` implementation acceptance.
+
+### 14.3 PTCS classic webshell rewrite
+
+`RFC-WEB-0002` corrects the implementation target after the Dynamic bundle mismatch.
+
+The target Web composition is:
+
+```text
+PTCS classic /chat shell
+  -> nav tabs / participant list / thread / composer
+  -> codex.fs.web WebSharper Bundle
+  -> useAIChat(...) CommHub registration
+  -> PTCS MessageFabric public/direct/group
+  -> PTCS ActorFabric SessionActor/WorkerActor
+  -> codex.fs.runtime prompt loop
+  -> headless Codex/Agy
+  -> artifacts/notes/reply refs
+```
+
+Required project shape:
+
+| Project | Required shape |
+| --- | --- |
+| `codex.fs.web` | WebSharper Bundle project like `PulseTrade.Comm.Spa.Dynamic`; exact PTCS package reference; generated assets under `wwwroot/js`; no hand-written JavaScript. |
+| `codex.fs.web.server` or server module | `useAIChat(...)` registration, extension metadata, script assets and fixed JSON handlers over `CommHub`. |
+| `codex.fs.host` | control-only mode plus product `ptcs-webshell` composition mode; product mode must expose PTCS classic shell. |
+| `codex.fs.actor` | PTCS ActorFabric Foreman/Worker participants visible in PTCS participant list. |
+| `codex.fs.runtime` | prompt-loop owner, not HTTP route handler or browser code. |
+
+Cut from product acceptance:
+
+- standalone `GET /chat` guard page;
+- `GET/POST /diagnostics/session-send`;
+- manually built HTML chat page in `codex.fs.host`;
+- fake/mock browser or mailbox verifier;
+- any Web path that does not show PTCS classic tabs + participant list + thread/composer.
+
+The first implementation WBS after this RFC is `WEBR-002`: source/API inventory of PTCS classic shell and Dynamic bundle. No new Web code should be written before that inventory maps the actual PTCS route, DTO and extension APIs.
 
 ## 15. Testing design preview
 

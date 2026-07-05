@@ -238,3 +238,11 @@
 - Web target vocabulary matches CLI/actor vocabulary: Foreman default, exact worker participant, public channel and group id. Perspective switching is authorized read/render only and must not forge `agent.*` sender identity.
 - Engine/model/reasoning/invocation controls emit normalized intent metadata; runtime/actor validates policy and engine adapter capabilities before rendering versioned Codex/Agy argv.
 - Web rendering should show redacted final summary, run id, manifest ref and note ref. Raw prompt/stdout/stderr stay governed by the persistence policy.
+
+## 2026-07-05 WEBR-001 PTCS Classic Webshell Rewrite
+
+- `RFC-WEB-0002` resets Web implementation: product Web must be PTCS classic `/chat` shell plus codex.fs WebSharper Bundle, not `codex.fs.host` control-only routes.
+- `PulseTrade.Comm.Spa.Dynamic` is the baseline package shape for codex.fs Web: WebSharper Bundle, generated `wwwroot/js`, exact PTCS package reference and server/client split.
+- `codex.fs.host` must distinguish `control-only` from product `ptcs-webshell`; only `ptcs-webshell` may claim browser chat usability.
+- Existing `GET /chat` guard and `/diagnostics/session-send` are cut from product acceptance and may remain only as legacy/control diagnostics.
+- AI behavior belongs to PTCS ActorFabric SessionActor/WorkerActor plus runtime prompt loop; browser sends intent through PTCS MessageFabric and renders refs.

@@ -86,5 +86,6 @@
 | `RFC-RUNTIME-0001.prompt-loop-package-boundary.md` | Accepted: Runtime prompt-loop orchestration, ports/effects, side-effect ordering and migration from bounded host helper. |
 | `RFC-ACTOR-0001.session-worker-actor-model.md` | Accepted: Sharded `SessionActor` / `WorkerActor` protocol, spawn/register, participant routing, durable delivery and runtime call boundary. |
 | `RFC-WEB-0001.ptcs-ai-chat-bundle.md` | Accepted: WebSharper `useAIChat(...)` bundle design, PTCS Dynamic reference pattern, participant/perspective controls and redacted artifact refs. |
+| `RFC-WEB-0002.ptcs-classic-webshell-rewrite.md` | Accepted: reset Web implementation to PTCS classic chat shell plus codex.fs WebSharper Bundle and ActorFabric-backed AI workers; standalone diagnostics/guard pages are cut from product acceptance. |
 | `RFC-CLI-0002.interactive-participant-client.md` | Accepted: Terminal chat client UX: Foreman default target, target participant/public/group switching, perspective display and model/reasoning/invocation option handoff. |
 | `RFC-PERSIST-0001.transcript-note-artifact-store.md` | Accepted: Prompt/reply/stdio capture, private raw artifacts, redacted run notes, local compact refs and recovery boundaries. |

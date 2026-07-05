@@ -58,6 +58,7 @@ PTCS 已定義：
 - `codex.fs.cli` 是 terminal participant client，預設與 Foreman/SessionActor 溝通；只有明確指定 participant/worker 時才切換目標。
 - codex.fs Web UI 應作為 PTCS WebSharper extension/bundle，例如 `useAIChat(...)` 類型的客製 bundle，提供 participant perspective、engine/model/reasoning/invocation controls；不得用 standalone host `/chat` 取代 PTCS chat room。
 - `RFC-WEB-0001` 接受此 Web bundle boundary：browser 使用 PTCS MessageFabric public/direct/group scopes 與 Foreman/worker participants 溝通，只送 invocation intent metadata，artifact/note 顯示遵循 redacted refs policy。
+- `RFC-WEB-0002` 進一步重設 Web implementation：產品 Web 必須呈現 PTCS classic `/chat` shell，也就是上方 tabs/nav、左側 participant list、右側 chat thread/session/composer；`codex.fs.host` control-only/diagnostics web 不可再被稱為產品 UI。
 
 ## 3. 目標
 
@@ -159,6 +160,20 @@ standalone host tool 必須提供基本 operator usability route：
 - `/openapi/v1.json` 與 `/docs/index.html` when API docs enabled。
 
 `/chat` 不是 package-owned standalone host 的操作 PoC，也不是 production PTCS participant-perspective Web UI。production browser chat 必須使用既有 PTCS Host WebSharper chat room 與 caller-owned PTCS MessageFabric / ActorFabric，讓 worker/session participants 以相同 hub/fabric 出現。
+
+`RFC-WEB-0002` 之後，若 `codex.fs.host.tool` 宣稱啟動 product Web profile，必須進入 `ptcs-webshell` 模式：host 或 compose PTCS classic shell，並註冊 codex.fs AI WebSharper Bundle。`control-only` 模式仍可保留 `/`, `/diagnostics/session-send`, health, OpenAPI/Swagger，但必須在 UI 與 docs 中明確標為非產品 chat。
+
+### R-001A Product PTCS Webshell
+
+Product Web profile 必須：
+
+- reuse PTCS classic `/chat` shell，不自行重寫 tabs/nav、participant list、thread/composer；
+- 以 `codex.fs.web` WebSharper Bundle 方式掛入 AI controls；
+- 使用 `CommHub.RegisterClientExtension`、script asset registration 與固定 JSON handler；
+- 讓 Foreman/SessionActor 與 WorkerActor 以 PTCS `agent` participants 出現在 participant list；
+- 讓 public/direct/group send 走 PTCS MessageFabric；
+- 讓 ActorFabric SessionActor/WorkerActor 負責 AI prompt-loop，而不是 browser 或 diagnostics route；
+- 用 Playwright 驗證 `/chat` 可見 tabs、participant list、thread/session/composer、AI controls 與 artifact/note refs。
 
 ### R-002 CLI client
 

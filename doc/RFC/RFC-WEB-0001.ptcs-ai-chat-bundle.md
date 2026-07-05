@@ -6,6 +6,8 @@ ID：`RFC-WEB-0001`
 關聯 WBS：`WEB-001`  
 關聯 Test：`T-WEB-001`
 
+> 後續修正：`RFC-WEB-0002` supersedes any interpretation that this bundle RFC is enough for product Web implementation. Product Web must reuse PTCS classic `/chat` shell; `codex.fs.host` control-only web is not acceptable as product chat.
+
 ## 背景
 
 `PRODUCT-001` 已將產品責任重設：PTCS Host 擁有 WebSharper chat room / hub / auth profile；`codex.fs.host` 擁有 codex.fs composition/control/docs/deployment；prompt/history 拼接、local compact、headless CLI invocation、stdio capture、notes/artifacts 屬於 runtime/session worker。

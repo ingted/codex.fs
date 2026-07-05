@@ -263,3 +263,11 @@
 - UX: Web target vocabulary covers Foreman, exact worker participant, public channel and group id; perspective switching is authorized read/render only.
 - Invocation/artifacts: browser controls emit normalized intent metadata while runtime/actor validates policy and renders versioned CLI argv; Web renders redacted summary plus manifest/note refs, not raw stdout/stderr.
 - Traceability: updated `RFC-WEB-0001`, WBS `WEB-001`, detail `doc/WBS.WEB-001.md`, Test `T-WEB-001`, Requirement, SA, SD, `RFC_Project_Planing.md` and KM.
+
+## 2026-07-05 10:30 +08:00 WEBR-001 PTCS classic webshell rewrite reset
+
+- Scope: accepted `RFC-WEB-0002` as a corrective reset/RFC slice after confirming current `codex.fs.host` web is only control/diagnostics and not PTCS classic chat shell.
+- Cut list: standalone `/chat` guard, `/diagnostics/session-send`, HOST-006 PoC and HOST-007 guard alignment are not product Web acceptance paths.
+- Target: product Web must reuse PTCS classic `/chat` shell with tabs/nav, participant list, thread/session/composer, plus `codex.fs.web` WebSharper Bundle modeled after `PulseTrade.Comm.Spa.Dynamic`.
+- Actor boundary: AI execution must be PTCS ActorFabric SessionActor/WorkerActor plus runtime prompt loop; browser only sends MessageFabric intent and renders redacted refs.
+- Traceability: added `RFC-WEB-0002`, `WBS.WEBR-001.md`, `Test.WEBR-001.md`, WBS rows `WEBR-001..WEBR-008`, `RUNTIME-002`, `ACTOR-002`, `E2E-004`, and matching Test rows/verifier contracts.
