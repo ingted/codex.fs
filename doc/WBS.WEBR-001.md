@@ -26,8 +26,8 @@ Test：`T-WEBR-001`
 | ID | Work item | Previous | Progress | Status | Blocker | SD item | Test item | Verifier |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- |
 | WEBR-002 | PTCS classic shell and Dynamic bundle baseline inventory | WEBR-001 | 100 | Done | None | SD §14.3 | T-WEBR-002 | `misc/verifyPtcsClassicShellInventory.fsx`; [inventory](WEBR-002.PTCS-classic-shell-inventory.md) |
-| WEBR-003 | Create `codex.fs.web` WebSharper Bundle project | WEBR-002 | 0 | Planned | None | SD §14.3 | T-WEBR-003 | `misc/verifyCodexFsWebBundle.fsx` |
-| WEBR-004 | Implement `useAIChat(...)` CommHub registration/server extension | WEBR-003 | 0 | Planned | WEBR-003 bundle scaffold | SD §14.3 | T-WEBR-004 | `misc/verifyUseAIChatRegistration.fsx` |
+| WEBR-003 | Create `codex.fs.web` WebSharper Bundle project | WEBR-002 | 100 | Done | None | SD §14.3 | T-WEBR-003 | `misc/verifyCodexFsWebBundle.fsx` |
+| WEBR-004 | Implement `useAIChat(...)` CommHub registration/server extension | WEBR-003 | 0 | Planned | None | SD §14.3 | T-WEBR-004 | `misc/verifyUseAIChatRegistration.fsx` |
 | WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 0 | Planned | WEBR-004 registration | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` |
 | RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 0 | Planned | None | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` |
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 0 | Planned | RUNTIME-002 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
@@ -61,3 +61,15 @@ UpdatedAt：2026-07-05 10:47 +08:00
 - Source/API inventory is recorded in `doc/WEBR-002.PTCS-classic-shell-inventory.md`.
 - Verifier `dotnet fsi --exec .\misc\verifyPtcsClassicShellInventory.fsx` passed on 2026-07-05 10:48 +08:00 and checks real PTCS package, PTCS Host, Dynamic bundle and codex.fs host cut-list source paths.
 - `WEBR-003` is unblocked: create `codex.fs.web` as a WebSharper Bundle project with exact PTCS `[0.2.5-beta71]` reference and generated assets under `wwwroot/js`.
+
+## WEBR-003 Closeout
+
+UpdatedAt：2026-07-05 11:07 +08:00
+
+- Added `src/codex.fs.web` as a WebSharper Bundle package with `PackageId=codex.fs.web`, `AssemblyName=CodexFs.Web`, exact `PulseTrade.Comm.Spa [0.2.5-beta71]` reference, `WebSharper.FSharp 10.1.5.674`, generated bundle output under `wwwroot/js`, and no hand-written JavaScript.
+- Added server-side `CommHub.useAIChat(...)` baseline registration over PTCS extension APIs: script asset registration, fixed metadata JSON POST handler, extension manifest, and append-page shape template.
+- Added `wsconfig.json` with `buildService=false` and `buildServiceLogging=false` because WebSharper build service can leave `websharper.log` locked/inaccessible; generated WebSharper logs are ignored from source control.
+- Generated `wwwroot/js` is tracked as bundle package content, matching `PulseTrade.Comm.Spa.Dynamic`; the nupkg contains `content/wwwroot/js/CodexFs.Web.js` and `content/wwwroot/js/CodexFs.Web.head.js`.
+- Verifier `dotnet fsi --exec .\misc\verifyCodexFsWebBundle.fsx` passed on 2026-07-05 11:07 +08:00 and ran a real `dotnet build` for `codex.fs.web`, producing 4 generated JavaScript files and verifying nupkg content assets.
+- Regression evidence: `dotnet build .\codex.fs.slnx` passed, and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed.
+- `WEBR-004` is unblocked: next step is to verify `useAIChat(...)` registration through a real `CommHub` extension manifest/asset/handler path.

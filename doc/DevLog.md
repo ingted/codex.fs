@@ -281,3 +281,13 @@
 - Cut-list: reconfirmed standalone `codex.fs.host` `/chat` and `/diagnostics/session-send` are control/diagnostics only, not product Web acceptance.
 - Verification: `dotnet fsi --exec .\misc\verifyPtcsClassicShellInventory.fsx` passed.
 - Traceability: updated WBS/Test detail and stock rows; added verifier `misc/verifyPtcsClassicShellInventory.fsx`.
+
+## 2026-07-05 11:07 +08:00 WEBR-003 codex.fs.web WebSharper Bundle scaffold
+
+- Scope: added `src/codex.fs.web` as the first real PTCS WebSharper Bundle project for codex.fs Web, modeled after `PulseTrade.Comm.Spa.Dynamic`.
+- Package shape: `codex.fs.web` targets `net10.0`, uses `WebSharperProject=Bundle`, exact `PulseTrade.Comm.Spa [0.2.5-beta71]`, `WebSharper.FSharp 10.1.5.674`, generated package on build, and no hand-written JavaScript.
+- Server seam: `CommHub.useAIChat(...)` registers generated script assets, a fixed metadata JSON POST handler, extension manifest and append-page shape template through PTCS extension APIs.
+- Build stability: added `wsconfig.json` to disable WebSharper build service/logging after local `websharper.log` access-denied failures were traced to `wsfscservice`; only generated WebSharper logs are ignored from Git.
+- Package content: generated `wwwroot/js` is tracked and packed as `content/wwwroot/js`, matching `PulseTrade.Comm.Spa.Dynamic`.
+- Verification: `dotnet fsi --exec .\misc\verifyCodexFsWebBundle.fsx`, `dotnet build .\codex.fs.slnx`, and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed.
+- Traceability: updated WBS/Test detail and stock rows, SD §14.3, `RFC_Project_Planing.md`, README and KM.

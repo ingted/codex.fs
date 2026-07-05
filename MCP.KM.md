@@ -254,3 +254,11 @@
 - Browser chat sends `chat-send` through `/sync/ws` first and uses `/chat/api/send` as a fallback; acceptance must not bypass MessageFabric with a standalone textarea route.
 - PTCS extension seam is `CommHub.RegisterClientExtension`, `RegisterClientExtensionScriptAsset`, `RegisterClientExtensionJsonPostHandler`, `ClientExtensionRegistration`, and `ClientExtensionScriptAsset`.
 - `PulseTrade.Comm.Spa.Dynamic` is the direct pattern for `codex.fs.web`: `WebSharperProject=Bundle`, generated `wwwroot/js`, `PulseTrade.Comm.Spa [0.2.5-beta71]`, and server `useDynamicSdui(...)`.
+
+## 2026-07-05 WEBR-003 codex.fs.web Bundle Scaffold
+
+- `src/codex.fs.web` now exists as the PTCS WebSharper Bundle package for codex.fs Web; it references `PulseTrade.Comm.Spa [0.2.5-beta71]` and `WebSharper.FSharp 10.1.5.674`.
+- `CodexFs.Web.Server.CommHubExtensions.useAIChat(...)` is the first server registration seam: generated script asset registration, fixed metadata JSON handler, extension manifest, and append-page shape template.
+- WebSharper on Windows can leave `websharper.log` locked through `wsfscservice`; `wsconfig.json` sets `buildService=false` and `buildServiceLogging=false`, and generated `websharper.log` is ignored from Git.
+- `src/codex.fs.web/wwwroot/js/` is tracked package content, matching `PulseTrade.Comm.Spa.Dynamic`; nupkg assets live under `content/wwwroot/js`.
+- `misc/verifyCodexFsWebBundle.fsx` is the real verifier for this slice; it uses FAkka.Argu, runs `dotnet build`, checks generated bundle files, checks nupkg content assets and forbids hand-written JavaScript outside generated/build output.

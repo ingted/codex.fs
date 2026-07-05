@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>CodexFs.Web</AssemblyName>
+    <RootNamespace>CodexFs.Web</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>codex.fs.web</PackageId>
+    <Version>0.1.0-alpha.6</Version>
+    <Authors>ingted</Authors>
+    <Company>ingted</Company>
+    <Description>PTCS WebSharper AI chat extension bundle for codex.fs.</Description>
+    <PackageTags>fsharp;codex;agents;ptcs;websharper</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ingted/codex.fs</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/ingted/codex.fs</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <WebSharperProject>Bundle</WebSharperProject>
+    <WebSharperBundleOutputDir>wwwroot\js</WebSharperBundleOutputDir>
+    <WebSharperRunCompiler>true</WebSharperRunCompiler>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta71]" />
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Library.fs" />
+    <Compile Include="Server\Extension.fs" />
+    <Compile Include="Client\AIChatClient.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="wwwroot\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

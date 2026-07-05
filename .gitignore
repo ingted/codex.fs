@@ -15,3 +15,6 @@ Desktop.ini
 
 # Local codex.fs verifier artifacts
 .codex.fs/
+
+# WebSharper generated artifacts
+**/websharper.log

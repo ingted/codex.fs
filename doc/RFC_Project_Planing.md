@@ -29,6 +29,7 @@
 | `src/codex.fs.cli/codex.fs.cli.fsproj` | `codex.fs.cli` / command `codex.fs.cli` | dotnet tool | Terminal command surface for host/session control; current alpha supports host status, send/status/attach/drain. | 需要重做成 interactive terminal participant chat client：可選 participant、切換視角、設定 model/reasoning/invocation args、attach stream、瀏覽 notes/artifacts。 | Refactor heavily. |
 | `src/codex.fs.tool/codex.fs.tool.fsproj` | `codex.fs.tool` / command `codex.fs` | dotnet tool alias | Short command alias over the same CLI code. | 保留為 short alias package，或在 CLI 穩定後只包裝 `codex.fs.cli`。不可分叉出不同 behavior。 | Keep as thin alias. |
 | `src/codex.fs.host.tool/codex.fs.host.tool.fsproj` | `codex.fs.host.tool` / command `codex.fs.host` | dotnet tool | Standalone host tool wrapper for `codex.fs.host`; starts HTTP control endpoint. | 保留為 standalone dev/ops host entrypoint。正式 PTCS deployment 仍應由 PTCS Host 或 peer cluster node reference `codex.fs.host` package。 | Keep as thin wrapper. |
+| `src/codex.fs.web/codex.fs.web.fsproj` | `codex.fs.web` | WebSharper bundle package | PTCS AI chat extension bundle baseline: exact `PulseTrade.Comm.Spa [0.2.5-beta71]`, generated `wwwroot/js`, `CommHub.useAIChat(...)` registration seam. | 擴充成 PTCS classic `/chat` 裡的 AI controls：participant switch, Foreman/worker chat, public/direct/group, model/reasoning/invocation controls, artifacts/notes viewer。 | Keep and expand through WEBR WBS. |
 
 ## 3. 可能新增專案
 
@@ -39,7 +40,6 @@
 | `codex.fs.actor` | library | Akka.NET sharded cluster actors：`SessionActor` / `WorkerActor` / spawn protocol / durable delivery / mailbox accumulation / participant lifecycle。 | `codex.fs.host`, PTCS Host integration node. | ActorFabric/MessageFabric workflow 是產品核心，應獨立於 HTTP host 與 CLI。 |
 | `codex.fs.persistence` | library | Notes/transcript/artifact persistence abstraction：prompt+reply stdio capture, note file layout, append-only transcript, local compact snapshot, recovery boundary。 | `codex.fs.runtime`, `codex.fs.actor`, `codex.fs.host`. | 現在 artifact store 過薄；未來要能替換 local file / durable store / encrypted config。 |
 | `codex.fs.engines` | library | Codex/Agy/versioned headless CLI adapters, FAkka.Argu DU, capability probing, argv rendering, stdout/stderr/event parsing。 | `codex.fs.runtime`, `codex.fs.host`, tests. | 若 core `codex.fs` 過大，可把 version-specific CLI adapter 從 core 分出。 |
-| `codex.fs.web` | WebSharper bundle package | PTCS client extension/bundle，提供類似 `useAIChat(...)` 的 UI：participant switch, foreman/worker chat, public/direct/group, model/reasoning/invocation controls, artifacts/notes viewer。 | PTCS Host / `PulseTrade.Comm.Spa.Host`. | Web UI 必須參考 `PulseTrade.Comm.Spa.Dynamic` 的 bundle/extension pattern，不能放在 HTTP host diagnostics。 |
 | `codex.fs.web.server` | library or bundled server extension | 將 `codex.fs.web` 註冊到 PTCS `CommHub`：client extension metadata, same-origin JSON handlers, allowed host control endpoints, dynamic Argu metadata for invocation forms。 | PTCS Host integration. | 若 WebSharper bundle 需要 server-side registration/API handlers，避免全部塞進 `codex.fs.web` client bundle。 |
 | `codex.fs.sdk` | library | 給第三方 host 或 scripts 使用的 high-level client SDK：register participant, send message, attach transcript, query artifacts/notes, select invocation profile。 | External apps, F# scripts, tests. | 比直接呼叫 HTTP/MessageFabric 低階 API 穩定，方便 NuGet users。 |
 | `codex.fs.verifiers` | test/support project or scripts package | Real-path verifiers：PTCS Host web bundle, CLI interactive flow, actor spawn/register, headless codex stdio persistence, recovery/local compact。 | CI/dev validation. | 避免把大型 E2E 驗證塞入 unit tests；可保留真路徑驗收腳本。 |
@@ -64,7 +64,7 @@
 | Actors | possible `codex.fs.actor` | Sharded SessionActor/WorkerActor workflow and durable message delivery. |
 | Host | `codex.fs.host`, `codex.fs.host.tool` | Runtime startup, control endpoints, OpenAPI/Swagger, standalone dev/ops entrypoint. |
 | Terminal UI | `codex.fs.cli`, `codex.fs.tool` | Interactive participant chat client and ops commands. |
-| Web UI | possible `codex.fs.web`, `codex.fs.web.server` | PTCS WebSharper AI chat extension/bundle. |
+| Web UI | `codex.fs.web`, possible `codex.fs.web.server` | PTCS WebSharper AI chat extension/bundle. |
 | Verification | tests plus possible `codex.fs.verifiers` | Real-path build/test/browser/actor/headless CLI verification. |
 
 ## 6. Open Decisions

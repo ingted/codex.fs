@@ -1491,6 +1491,19 @@ The first implementation WBS after this RFC is `WEBR-002`: source/API inventory 
 
 Verifier: `misc/verifyPtcsClassicShellInventory.fsx`; detail: `doc/WEBR-002.PTCS-classic-shell-inventory.md`.
 
+`WEBR-003` implementation result:
+
+| Area | Implemented contract |
+| --- | --- |
+| Project | `src/codex.fs.web/codex.fs.web.fsproj` is a WebSharper Bundle package with `PackageId=codex.fs.web`, `AssemblyName=CodexFs.Web`, target `net10.0`, and generated package on build. |
+| Dependencies | Exact `PulseTrade.Comm.Spa [0.2.5-beta71]` and `WebSharper.FSharp 10.1.5.674`; no ProjectReference backdoor to PTCS source. |
+| Bundle output | `WebSharperBundleOutputDir=wwwroot\js`; generated files are tracked package content like `PulseTrade.Comm.Spa.Dynamic`, while WebSharper `websharper.log` is ignored. |
+| Server seam | `CodexFs.Web.Server.CommHubExtensions.useAIChat(...)` registers fixed metadata JSON handler, generated script assets, extension manifest and append-page shape template over real PTCS `CommHub` APIs. |
+| Client seam | `CodexFs.Web.Client.AIChatClient.Main` is the WebSharper SPA entrypoint; full controls remain WEBR-006 after ActorFabric participants are visible. |
+| Build stability | `wsconfig.json` sets `buildService=false` and `buildServiceLogging=false` because WebSharper build service can leave `websharper.log` locked/inaccessible on Windows. |
+
+Verifier: `misc/verifyCodexFsWebBundle.fsx`; passed 2026-07-05 11:07 +08:00 and checks nupkg `content/wwwroot/js` assets. Regression build/test also passed: `dotnet build .\codex.fs.slnx`; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
