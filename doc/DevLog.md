@@ -321,3 +321,11 @@
 - Boundary: host single-cycle remains the PTCS/artifact/process/reply/ack interpreter; `RuntimePromptLoop` is deterministic planning and does not claim durable sharded delivery.
 - Tests: `dotnet build .\codex.fs.slnx`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyRuntimeLoopExtraction.fsx` passed. The verifier delegated to `misc/verifyMessageToEngineReply.fsx` and wrote ignored real-path artifacts under `G:\codex.fs\src\codex.fs\.codex.fs\runtime002-artifacts`.
 - Traceability: updated WBS/Test detail and stock rows, SD §11.3/§12 and KM. `ACTOR-002` is unblocked for real PTCS ActorFabric Foreman/Worker proof.
+
+## 2026-07-05 14:25 +08:00 ACTOR-002 PTCS ActorFabric Foreman/Worker proof
+
+- Scope: added the first real PTCS ActorFabric-backed Foreman/Worker participant proof after runtime prompt-loop extraction.
+- Implementation: added `src/codex.fs.ptcs/ActorFabricBinding.fs` with `WorkerParticipantSpec`, registration/spawn commands, registration replies, `CodexWorkerActor`, `props` and `spawnWorker`; the actor registers through `MessageFabricBinding.registerParticipantAsync`.
+- Boundary: this proves Foreman/Worker visibility over PTCS ActorFabric/MessageFabric. Durable sharded delivery, passivation/recovery and actor-invoked `RuntimePromptLoop` remain future hardening/E2E work.
+- Tests: `dotnet fsi --exec .\misc\verifyPtcsActorFabricForeman.fsx -- --no-restore` passed on 2026-07-05 14:25 +08:00; the verifier checks source contracts, builds/runs `codex.fs.Tests`, starts real `CommSpaActorFabric` with LAN `ClusterHost`, spawns Foreman/Worker and verifies both as `agent` participants through MessageFabric listing.
+- Traceability: updated WBS/Test detail and stock rows, SD §11.3/§14.3 and KM. `WEBR-006` is unblocked for AI target/perspective/invocation controls in the PTCS shell.

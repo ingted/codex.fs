@@ -289,3 +289,11 @@
 - `RuntimeReadyToAckBoundary.SelectedCursor` is `string option`, matching PTCS `MessageFabricCursor`; adapters should preserve `None` instead of converting missing cursors to empty strings.
 - `misc/verifyRuntimeLoopExtraction.fsx` is the RUNTIME-002 verifier. It uses FAkka.Argu, checks source contracts, builds/runs `codex.fs.Tests`, then delegates to `misc/verifyMessageToEngineReply.fsx` for the real MessageFabric -> Agy -> artifact -> reply path.
 - The ignored verifier artifact root is `G:\codex.fs\src\codex.fs\.codex.fs\runtime002-artifacts`. Do not commit raw prompt/stdout/stderr artifacts from that path.
+
+## 2026-07-05 ACTOR-002 PTCS ActorFabric Foreman/Worker Proof
+
+- `CodexFs.Ptcs.ActorFabricBinding` is the current actor shell seam: `WorkerParticipantSpec`, `EnsureParticipantRegistered`, `SpawnWorkerParticipant`, `WorkerParticipantRegistered`, `WorkerParticipantSpawned`, `CodexWorkerActor`, `props` and `spawnWorker`.
+- `CodexWorkerActor` registers participants through the existing `MessageFabricBinding.registerParticipantAsync`; Foreman and child Worker become PTCS `agent` participants with codex.fs labels.
+- The proof uses a real `CommSpaActorFabric` with LAN `ClusterHost` and the PTCS-owned `ActorSystem`; it is not an in-memory fake mailbox or standalone HTTP endpoint.
+- `misc/verifyPtcsActorFabricForeman.fsx` is the ACTOR-002 verifier. It checks source contracts, builds/runs `codex.fs.Tests`, spawns Foreman/Worker and verifies both through `CommSpaMessageFabric.ListParticipantsAsync`.
+- This slice unblocks WEBR-006 controls, but does not yet provide production durable sharded delivery or actor-invoked runtime prompt loop execution.

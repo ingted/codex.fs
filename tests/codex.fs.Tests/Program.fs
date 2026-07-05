@@ -10,6 +10,7 @@ open System.Net.Sockets
 open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
+open Akka.Actor
 open CodexFs.Compaction
 open CodexFs.Domain
 open CodexFs.ProcessRunner
@@ -1196,6 +1197,90 @@ let groupBatch = runTask (MessageFabricBinding.pollInboxAsync ptcsFabric groupBi
 assertTrue "group poll contains message" (groupBatch.Messages |> List.exists (fun message -> message.MessageId = groupEnvelope.MessageId))
 
 printfn "TC-PTCS-002 MessageFabric binding passed"
+
+let actor002Suffix = Guid.NewGuid().ToString("N")
+let actor002Hub = PulseTrade.Comm.Spa.CommHub.createEmpty()
+let actor002MessageFabric = PulseTrade.Comm.Spa.CommSpaMessageFabric.create actor002Hub
+
+let actor002Options =
+    { PulseTrade.Comm.Spa.CommSpaActorFabricOptions.defaults with
+        SystemName = "CodexFsActor002" + actor002Suffix.Substring(0, 8)
+        ClusterHost = hostControlAddress.ToString()
+        ClusterPort = 0
+        ShardTypeName = "codexfs-actor002-" + actor002Suffix.Substring(0, 8)
+        WebSocketHandlerName = "codexfs-actor002-ws-" + actor002Suffix.Substring(0, 8)
+        AskTimeout = TimeSpan.FromSeconds 10.0
+        ClusterJoinTimeout = TimeSpan.FromSeconds 10.0 }
+
+let actor002Fabric = PulseTrade.Comm.Spa.CommSpaActorFabric.startWithOptions actor002Options actor002Hub.PersistenceBackend
+
+try
+    assertTrue "actor002 node address non-loopback" (not (actor002Fabric.NodeAddress.Contains("127.", StringComparison.Ordinal)))
+    assertTrue "actor002 node address no localhost" (not (actor002Fabric.NodeAddress.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+    assertContains "actor002 node address host" (hostControlAddress.ToString()) actor002Fabric.NodeAddress
+
+    let actor002ForemanSpec =
+        ActorFabricBinding.foremanSpec $"agent.codexfs.actor002.{actor002Suffix}"
+
+    let actor002ForemanActorName =
+        ActorFabricBinding.actorNameFromParticipantId "foreman" actor002ForemanSpec.ParticipantId
+
+    let actor002Foreman =
+        ActorFabricBinding.spawnWorker actor002Fabric actor002MessageFabric actor002ForemanActorName actor002ForemanSpec
+
+    let actor002EnsureForeman: ActorFabricBinding.EnsureParticipantRegistered =
+        { RequestedAtUtc = Some(DateTimeOffset.Parse("2026-07-05T14:15:00Z")) }
+
+    let actor002ForemanRegistration =
+        runTask
+            (actor002Foreman.Ask<ActorFabricBinding.WorkerParticipantRegistered>(
+                actor002EnsureForeman,
+                TimeSpan.FromSeconds 10.0
+            ))
+
+    assertEqual "actor002 foreman participant id" actor002ForemanSpec.ParticipantId actor002ForemanRegistration.ParticipantId
+    assertEqual "actor002 foreman kind" "agent" actor002ForemanRegistration.Kind
+    assertTrue "actor002 foreman label" (actor002ForemanRegistration.Labels |> List.contains "role:foreman")
+    assertContains "actor002 foreman actor path" actor002ForemanActorName actor002ForemanRegistration.ActorPath
+    assertEqual "actor002 foreman node address" actor002Fabric.NodeAddress actor002ForemanRegistration.NodeAddress
+
+    let actor002WorkerSpec =
+        ActorFabricBinding.workerSpec
+            $"agent.codexfs.actor002.worker.{actor002Suffix}"
+            (Some "codex.fs ACTOR-002 Worker")
+            [ "codex.fs"; "actorfabric"; "worker"; "actor002"; "role:worker" ]
+
+    let actor002SpawnCommand: ActorFabricBinding.SpawnWorkerParticipant =
+        { Spec = actor002WorkerSpec
+          ActorName = None }
+
+    let actor002Spawned =
+        runTask
+            (actor002Foreman.Ask<ActorFabricBinding.WorkerParticipantSpawned>(
+                actor002SpawnCommand,
+                TimeSpan.FromSeconds 10.0
+            ))
+
+    assertEqual "actor002 spawned foreman id" actor002ForemanSpec.ParticipantId actor002Spawned.ForemanParticipantId
+    assertEqual "actor002 spawned worker id" actor002WorkerSpec.ParticipantId actor002Spawned.Worker.ParticipantId
+    assertEqual "actor002 spawned worker kind" "agent" actor002Spawned.Worker.Kind
+    assertTrue "actor002 spawned worker label" (actor002Spawned.Worker.Labels |> List.contains "actor002")
+    assertEqual "actor002 worker node address" actor002Fabric.NodeAddress actor002Spawned.Worker.NodeAddress
+
+    let actor002Agents =
+        runTask (actor002MessageFabric.ListParticipantsAsync(Some "agent", Some true))
+
+    assertTrue
+        "actor002 participant list contains foreman"
+        (actor002Agents |> List.exists (fun participant -> participant.ParticipantId = actor002ForemanSpec.ParticipantId))
+
+    assertTrue
+        "actor002 participant list contains worker"
+        (actor002Agents |> List.exists (fun participant -> participant.ParticipantId = actor002WorkerSpec.ParticipantId))
+
+    printfn "TC-ACTOR-002 PTCS ActorFabric Foreman/Worker participants passed"
+finally
+    actor002Fabric.Stop()
 
 let e2e003RunSuffix = Guid.NewGuid().ToString("N")
 let e2e003GroupId = $"group.e2e003.{e2e003RunSuffix}"

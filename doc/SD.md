@@ -999,6 +999,14 @@ Implemented RUNTIME-002 extraction:
 - `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` remains the concrete adapter/interpreter for this slice: it polls PTCS, writes artifacts, invokes `ProcessRunner`, sends the reply, writes ready-to-ack boundary, then acks MessageFabric.
 - This extraction unblocks `ACTOR-002` because ActorFabric worker shells can call the same runtime plan instead of duplicating host-era prompt/request/argv/reply logic. It does not satisfy production sharded durability by itself.
 
+Implemented ACTOR-002 ActorFabric proof:
+
+- `CodexFs.Ptcs.ActorFabricBinding` is the PTCS ActorFabric-backed worker shell boundary for the reset slice.
+- `WorkerParticipantSpec` describes Foreman/Worker participant identity, display name, kind and non-secret UI labels.
+- `CodexWorkerActor` runs on the PTCS-owned `ActorSystem`; it handles `EnsureParticipantRegistered` and `SpawnWorkerParticipant`, then registers Foreman/Worker as PTCS `agent` participants through `MessageFabricBinding.registerParticipantAsync`.
+- `spawnWorker` is the direct actor spawn seam used by tests and future host composition; the test starts real `CommSpaActorFabric` with LAN `ClusterHost`, not a loopback-only HTTP shortcut.
+- This proof is intentionally limited to participant visibility over real PTCS ActorFabric/MessageFabric. Durable sharded delivery, passivation/recovery and invoking `RuntimePromptLoop` from actor delivery handlers remain future implementation hardening.
+
 ## 12. Artifact manifest design
 
 ```fsharp
