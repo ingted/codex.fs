@@ -313,3 +313,11 @@
 - Implementation: control root, legacy `/chat` and diagnostics text now point product browser chat to `web.profile=ptcs-webshell`.
 - Verifier: added `misc/verifyNoStandaloneChatProductPath.fsx`; command `dotnet fsi --exec .\misc\verifyNoStandaloneChatProductPath.fsx` passed on 2026-07-05 13:03 +08:00.
 - Traceability: updated WBS/Test detail and stock rows, SD §14.3 and KM. Remaining work is runtime extraction, ActorFabric participant visibility, AI controls/artifact refs and full E2E.
+
+## 2026-07-05 13:59 +08:00 RUNTIME-002 runtime prompt-loop extraction
+
+- Scope: extracted host-era prompt/request/argv/reply/boundary planning into reusable runtime code for future ActorFabric workers.
+- Implementation: added `src/codex.fs/RuntimePromptLoop.fs` with `RuntimePromptInput`, `RuntimePromptPlan`, `AgyPrintExecutionInput`, `RuntimeExecutionPlan`, `RuntimeReplyIntent` and `RuntimeReadyToAckBoundary`; updated `src/codex.fs.host/SessionEngineCycle.fs` to use it.
+- Boundary: host single-cycle remains the PTCS/artifact/process/reply/ack interpreter; `RuntimePromptLoop` is deterministic planning and does not claim durable sharded delivery.
+- Tests: `dotnet build .\codex.fs.slnx`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyRuntimeLoopExtraction.fsx` passed. The verifier delegated to `misc/verifyMessageToEngineReply.fsx` and wrote ignored real-path artifacts under `G:\codex.fs\src\codex.fs\.codex.fs\runtime002-artifacts`.
+- Traceability: updated WBS/Test detail and stock rows, SD §11.3/§12 and KM. `ACTOR-002` is unblocked for real PTCS ActorFabric Foreman/Worker proof.

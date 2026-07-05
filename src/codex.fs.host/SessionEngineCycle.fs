@@ -3,7 +3,6 @@ namespace CodexFs.Host
 open System
 open System.IO
 open System.Text
-open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
 open CodexFs
@@ -64,36 +63,6 @@ module SessionEngineCycle =
           /// Reply body sent through MessageFabric.
           ReplyBody: string }
 
-    let jsonOptions =
-        JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true)
-
-    let json value =
-        JsonSerializer.Serialize(value, jsonOptions)
-
-    let newRunId (now: DateTimeOffset) =
-        let suffix = Guid.NewGuid().ToString("N").Substring(0, 8)
-        RunId($"run-{now:yyyyMMddHHmmssfff}-{suffix}")
-
-    let engineText engine =
-        match engine with
-        | Codex -> "codex"
-        | Agy -> "agy"
-        | Custom name -> $"custom:{name}"
-
-    let outcomeText outcome =
-        match outcome with
-        | Completed -> "completed"
-        | Failed -> "failed"
-        | TimedOut -> "timed-out"
-        | Cancelled -> "cancelled"
-
-    let processOutcome (result: ProcessRunner.ProcessRunResult) =
-        match result.Outcome, result.ExitCode with
-        | ProcessRunner.Exited, Some 0 -> Completed
-        | ProcessRunner.TimedOut, _ -> TimedOut
-        | ProcessRunner.Cancelled, _ -> Cancelled
-        | _ -> Failed
-
     let defaultExecutable engine =
         match engine with
         | Codex -> "codex"
@@ -122,127 +91,6 @@ module SessionEngineCycle =
           ReceivedUtc = None
           Tags = safeTags message.Tags
           Metadata = Map.ofList [ "source", "ptcs-messagefabric" ] }
-
-    let messageBatchJsonl (messages: MessageFabricEnvelope list) =
-        messages
-        |> List.map (fun message ->
-            json
-                {| messageId = message.MessageId
-                   fromParticipantId = message.FromParticipantId
-                   body = message.Body
-                   tags = safeTags message.Tags |})
-        |> String.concat Environment.NewLine
-        |> fun text -> if String.IsNullOrEmpty text then text else text + Environment.NewLine
-
-    let artifactRefDto (ref: ArtifactRef) =
-        {| kind = ref.Kind.ToString()
-           path = ref.Path
-           sha256 = ref.Sha256
-           size = ref.Size
-           createdUtc = ref.CreatedUtc |}
-
-    let manifestText (manifest: ArtifactManifest) =
-        let (RunId runId) = manifest.RunId
-        let (SessionId sessionId) = manifest.SessionId
-
-        json
-            {| runId = runId
-               sessionId = sessionId
-               engine = engineText manifest.Engine
-               surfaceId = manifest.SurfaceId
-               startedUtc = manifest.StartedUtc
-               completedUtc = manifest.CompletedUtc
-               outcome = outcomeText manifest.Outcome
-               artifacts = manifest.Artifacts |> List.map artifactRefDto |}
-
-    let runResultText (result: RunResult) =
-        let (RunId runId) = result.RunId
-
-        json
-            {| runId = runId
-               outcome = outcomeText result.Outcome
-               exitCode = result.ExitCode
-               startedUtc = result.StartedUtc
-               completedUtc = result.CompletedUtc
-               artifactManifestPath = result.ArtifactManifestPath
-               finalMessagePath = result.FinalMessagePath |}
-
-    let boundaryText sessionId runId (batch: MessageFabricInboxBatch) (reply: MessageFabricEnvelope) manifestRelativePath finalPath =
-        let (SessionId sessionIdText) = sessionId
-        let (RunId runIdText) = runId
-
-        json
-            {| phase = "ready-to-ack"
-               sessionId = sessionIdText
-               runId = runIdText
-               selectedCursor = batch.NextCursor
-               consumedMessageIds = batch.Messages |> List.map _.MessageId
-               replyMessageId = reply.MessageId
-               replyBody = reply.Body
-               artifactManifestPath = manifestRelativePath
-               finalMessagePath = finalPath
-               persistedBeforeAck = true |}
-
-    let requestText (request: RunRequest) =
-        let (RunId runId) = request.RunId
-        let (SessionId sessionId) = request.SessionId
-
-        json
-            {| runId = runId
-               sessionId = sessionId
-               engine = engineText request.Engine
-               surfaceId = request.SurfaceId
-               workingDirectory = request.WorkingDirectory
-               promptPath = request.PromptPath
-               artifactDirectory = request.ArtifactDirectory
-               timeout = request.Timeout.ToString()
-               additionalDirectories = request.AdditionalDirectories
-               ptcsMessageIds = request.PtcsMessages |> List.map _.MessageId
-               metadata = request.Metadata |}
-
-    let renderedCommandText (rendered: Engine.RenderedCommand) =
-        json
-            {| fileName = rendered.FileName
-               arguments = rendered.Arguments
-               workingDirectory = rendered.WorkingDirectory
-               redactedDisplay = rendered.RedactedDisplay |}
-
-    let truncate chars (text: string) =
-        let safeText =
-            if isNull text then
-                String.Empty
-            else
-                text.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", " ").Trim()
-
-        if safeText.Length <= chars then
-            safeText
-        else
-            safeText.Substring(0, chars) + "..."
-
-    let redactedSummary stdout stderr =
-        let candidate =
-            if String.IsNullOrWhiteSpace stdout then
-                stderr
-            else
-                stdout
-
-        Redaction.redactHighRisk candidate
-        |> fun result -> truncate 240 result.Text
-
-    let buildAgyCommand executablePath workingDirectory timeout promptMarkdown =
-        let agyArgs =
-            { Engine.Agy.V1_0.Print.emptyArgs with
-                Print = true
-                PromptText = Some promptMarkdown
-                PrintTimeout = Some timeout }
-
-        Engine.Agy.V1_0.Print.renderCommand executablePath workingDirectory agyArgs
-
-    let processCommand (rendered: Engine.RenderedCommand) : ProcessRunner.ProcessCommand =
-        { FileName = rendered.FileName
-          Arguments = rendered.Arguments
-          WorkingDirectory = Some rendered.WorkingDirectory
-          Environment = rendered.Environment }
 
     let ensureParticipantAsync fabric participantId displayName =
         task {
@@ -286,7 +134,7 @@ module SessionEngineCycle =
                 let engine, executablePath, workingDirectory, artifactRoot, timeout = effectiveOptions runtime options
 
                 if engine <> Agy then
-                    invalidOp $"E2E single-cycle runner currently supports agy only; requested {engineText engine}."
+                    invalidOp $"E2E single-cycle runner currently supports agy only; requested {RuntimePromptLoop.engineText engine}."
 
                 let sessionBinding = HostControl.sessionBinding runtime.Config options.SessionId
                 do! ensureParticipantAsync fabric sessionBinding.ParticipantId options.SessionId
@@ -302,14 +150,14 @@ module SessionEngineCycle =
                     return emptyResult options.SessionId sessionBinding.ParticipantId
                 else
                     let startedUtc = DateTimeOffset.UtcNow
-                    let runId = newRunId startedUtc
+                    let runId = RuntimePromptLoop.newRunId startedUtc
                     let storeConfig = { FileArtifactStore.ArtifactRoot = artifactRoot }
                     let sessionId = SessionId options.SessionId
                     let promptMessages = batch.Messages |> List.map envelopeToPromptMessage
                     let (RunId runIdText) = runId
 
-                    let prompt =
-                        PromptAssembly.assemble
+                    let promptPlan =
+                        RuntimePromptLoop.planPrompt
                             { SessionId = sessionId
                               RunId = runId
                               ParticipantId = sessionBinding.ParticipantId
@@ -324,46 +172,43 @@ module SessionEngineCycle =
                                     AdditionalContext = [ "e2e", "single-cycle verifier path" ] } }
 
                     let promptArtifact =
-                        FileArtifactStore.writeText storeConfig sessionId runId PromptMarkdown "prompt.md" prompt.Markdown startedUtc
+                        FileArtifactStore.writeText storeConfig sessionId runId PromptMarkdown "prompt.md" promptPlan.Prompt.Markdown startedUtc
 
                     let ptcsBatchArtifact =
-                        FileArtifactStore.writeText storeConfig sessionId runId PtcsMessageBatchJsonl "ptcs-messages.jsonl" (messageBatchJsonl batch.Messages) startedUtc
+                        FileArtifactStore.writeText storeConfig sessionId runId PtcsMessageBatchJsonl "ptcs-messages.jsonl" promptPlan.MessageBatchJsonl startedUtc
 
-                    let request =
-                        { RunId = runId
-                          SessionId = sessionId
-                          Engine = engine
-                          SurfaceId = Some Engine.Agy.V1_0.Print.SurfaceId
-                          WorkingDirectory = workingDirectory
-                          PromptPath = promptArtifact.Reference.Path
-                          ArtifactDirectory = FileArtifactStore.runDirectory storeConfig sessionId runId
-                          Timeout = timeout
-                          AdditionalDirectories = options.AdditionalDirectories
-                          PtcsMessages = prompt.MessageRefs
-                          PtcsTask = None
-                          Metadata = Map.ofList [ "cycle", "single"; "sessionParticipantId", sessionBinding.ParticipantId ] }
+                    let executionPlan =
+                        RuntimePromptLoop.planAgyPrintExecution
+                            { PromptPlan = promptPlan
+                              SessionId = sessionId
+                              RunId = runId
+                              ExecutablePath = executablePath
+                              WorkingDirectory = workingDirectory
+                              PromptPath = promptArtifact.Reference.Path
+                              ArtifactDirectory = FileArtifactStore.runDirectory storeConfig sessionId runId
+                              Timeout = timeout
+                              AdditionalDirectories = options.AdditionalDirectories
+                              Metadata = Map.ofList [ "cycle", "single"; "sessionParticipantId", sessionBinding.ParticipantId ] }
 
                     let requestArtifact =
-                        FileArtifactStore.writeText storeConfig sessionId runId RequestJson "request.json" (requestText request) startedUtc
-
-                    let rendered = buildAgyCommand executablePath workingDirectory timeout prompt.Markdown
+                        FileArtifactStore.writeText storeConfig sessionId runId RequestJson "request.json" executionPlan.RequestJson startedUtc
 
                     let renderedArtifact =
-                        FileArtifactStore.writeText storeConfig sessionId runId RenderedArgvJson "rendered-argv.json" (renderedCommandText rendered) startedUtc
+                        FileArtifactStore.writeText storeConfig sessionId runId RenderedArgvJson "rendered-argv.json" executionPlan.RenderedCommandJson startedUtc
 
                     let! processResult =
                         ProcessRunner.runAsync
                             { Timeout = timeout
                               KillGracePeriod = TimeSpan.FromSeconds 5.0 }
-                            (processCommand rendered)
+                            executionPlan.ProcessCommand
                             cancellationToken
 
-                    let outcome = processOutcome processResult
+                    let outcome = RuntimePromptLoop.processOutcome processResult
 
                     let outputMapping =
                         Engine.Agy.V1_0.Print.mapOutputArtifacts
                             storeConfig
-                            request
+                            executionPlan.Request
                             { Stdout = processResult.Stdout
                               Stderr = processResult.Stderr
                               StartedUtc = processResult.StartedUtc
@@ -383,7 +228,7 @@ module SessionEngineCycle =
                           FinalMessagePath = outputMapping.FinalMessage |> Option.map _.Reference.Path }
 
                     let resultArtifact =
-                        FileArtifactStore.writeText storeConfig sessionId runId ResultJson "result.json" (runResultText runResult) processResult.CompletedUtc
+                        FileArtifactStore.writeText storeConfig sessionId runId ResultJson "result.json" (RuntimePromptLoop.runResultText runResult) processResult.CompletedUtc
 
                     let manifest =
                         { outputMapping.Manifest with
@@ -406,23 +251,21 @@ module SessionEngineCycle =
                         invalidOp "Artifact manifest directory could not be resolved."
 
                     Directory.CreateDirectory manifestDirectory |> ignore
-                    File.WriteAllText(manifestPath, manifestText manifest, UTF8Encoding(false, true))
+                    File.WriteAllText(manifestPath, RuntimePromptLoop.manifestText manifest, UTF8Encoding(false, true))
 
-                    let summary = redactedSummary processResult.Stdout processResult.Stderr
                     let finalPath = runResult.FinalMessagePath |> Option.defaultValue String.Empty
-                    let replyBody =
-                        $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; summary={summary}"
-
                     let targetParticipantId = batch.Messages.Head.FromParticipantId
+                    let replyIntent =
+                        RuntimePromptLoop.replyIntent runId outcome manifestRelativePath finalPath targetParticipantId processResult.Stdout processResult.Stderr
 
                     let! reply =
                         MessageFabricBinding.sendDirectReplyAsync
                             fabric
                             (replyBinding runtime sessionBinding)
-                            targetParticipantId
-                            replyBody
-                            [ "codex.fs"; "e2e"; "run"; outcomeText outcome ]
-                            (Some runIdText)
+                            replyIntent.TargetParticipantId
+                            replyIntent.Body
+                            replyIntent.Tags
+                            replyIntent.CorrelationId
 
                     let boundaryArtifact =
                         FileArtifactStore.writeText
@@ -431,23 +274,33 @@ module SessionEngineCycle =
                             runId
                             SessionBoundaryJson
                             "session-boundary.json"
-                            (boundaryText sessionId runId batch reply manifestRelativePath finalPath)
+                            (RuntimePromptLoop.readyToAckBoundaryText
+                                { SessionId = sessionId
+                                  RunId = runId
+                                  SelectedCursor = batch.NextCursor
+                                  ConsumedMessageIds = promptMessages |> List.map _.Ref.MessageId
+                                  Reply =
+                                    { MessageId = reply.MessageId
+                                      Body = reply.Body }
+                                  ArtifactManifestPath = manifestRelativePath
+                                  FinalMessagePath = finalPath
+                                  PersistedBeforeAck = true })
                             DateTimeOffset.UtcNow
 
                     let! ack = MessageFabricBinding.ackInboxAsync fabric sessionBinding batch.NextCursor
 
                     return
-                        { Status = outcomeText outcome
+                        { Status = RuntimePromptLoop.outcomeText outcome
                           SessionId = options.SessionId
                           SessionParticipantId = sessionBinding.ParticipantId
                           RunId = runIdText
                           ConsumedMessageCount = batch.Messages.Length
                           AckCursor = ack.Cursor |> Option.defaultValue String.Empty
-                          Outcome = outcomeText outcome
+                          Outcome = RuntimePromptLoop.outcomeText outcome
                           ExitCode = processResult.ExitCode |> Option.map string |> Option.defaultValue String.Empty
                           ArtifactManifestPath = manifestRelativePath
                           PersistenceBoundaryPath = boundaryArtifact.Reference.Path
                           FinalMessagePath = finalPath
                           ReplyMessageId = reply.MessageId
-                          ReplyBody = replyBody }
+                          ReplyBody = replyIntent.Body }
         }

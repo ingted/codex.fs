@@ -4,7 +4,7 @@ WBS ID：`WEBR-001`
 狀態：Done for RFC/reset slice  
 Progress：100  
 StartTime：2026-07-05 10:30 +08:00  
-UpdatedAt：2026-07-05 13:05 +08:00
+UpdatedAt：2026-07-05 13:59 +08:00
 Previous：`WEB-001`, `ACTOR-001`, `PERSIST-001`  
 SD：`SD §9`, `SD §14.1`, `SD §14.3`  
 Test：`T-WEBR-001`
@@ -29,8 +29,8 @@ Test：`T-WEBR-001`
 | WEBR-003 | Create `codex.fs.web` WebSharper Bundle project | WEBR-002 | 100 | Done | None | SD §14.3 | T-WEBR-003 | `misc/verifyCodexFsWebBundle.fsx` |
 | WEBR-004 | Implement `useAIChat(...)` CommHub registration/server extension | WEBR-003 | 100 | Done | None | SD §14.3 | T-WEBR-004 | `misc/verifyUseAIChatRegistration.fsx` |
 | WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 100 | Done | None | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` |
-| RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 0 | Planned | None | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` |
-| ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 0 | Planned | RUNTIME-002 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
+| RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 100 | Done | None | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` |
+| ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 0 | Planned | None | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 0 | Planned | ACTOR-002 visible participants | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx` |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
@@ -102,4 +102,15 @@ UpdatedAt：2026-07-05 13:05 +08:00
 - Added regression assertions that control-only `/chat` has no composer/form/PTCS extension manifest and diagnostics has no PTCS manifest.
 - Added `misc/verifyNoStandaloneChatProductPath.fsx` using `FAkka.Argu` plus `ParseLine.fsx`; the verifier builds tests and runs the full test runner.
 - Verifier `dotnet fsi --exec .\misc\verifyNoStandaloneChatProductPath.fsx` passed on 2026-07-05 13:03 +08:00.
-- Remaining product work is `RUNTIME-002`, `ACTOR-002`, `WEBR-006`, `WEBR-007` and `E2E-004`.
+- At WEBR-008 closeout time, remaining product work was `RUNTIME-002`, `ACTOR-002`, `WEBR-006`, `WEBR-007` and `E2E-004`.
+
+## RUNTIME-002 Closeout
+
+UpdatedAt：2026-07-05 13:59 +08:00
+
+- Added `src/codex.fs/RuntimePromptLoop.fs` as the reusable runtime prompt-loop planning module. It owns deterministic prompt planning, consumed-message JSONL shaping, Agy print execution plan, normalized request/rendered argv JSON, process outcome mapping, redacted reply intent and ready-to-ack boundary JSON.
+- Refactored `src/codex.fs.host/SessionEngineCycle.fs` so host keeps PTCS registration/poll/send/ack and artifact write sequencing, while prompt/request/argv/reply/boundary planning comes from `RuntimePromptLoop`.
+- Added compiled test coverage in `tests/codex.fs.Tests/Program.fs` for `TC-RUNTIME-002 runtime prompt-loop plan passed`.
+- Added verifier `misc/verifyRuntimeLoopExtraction.fsx` using `FAkka.Argu` plus `ParseLine.fsx`. It checks source contracts, builds/runs `codex.fs.Tests`, then delegates to `misc/verifyMessageToEngineReply.fsx` for the real MessageFabric -> Agy -> artifact -> reply path.
+- Verifier `dotnet fsi --exec .\misc\verifyRuntimeLoopExtraction.fsx` passed on 2026-07-05 13:59 +08:00 and wrote ignored real-path artifacts under `G:\codex.fs\src\codex.fs\.codex.fs\runtime002-artifacts`.
+- `ACTOR-002` is unblocked for a PTCS ActorFabric Foreman/Worker proof. Durable sharded persistence remains outside this slice.

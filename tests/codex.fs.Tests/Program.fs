@@ -153,6 +153,84 @@ assertEqual "last cursor" (Some "cursor-002") result.LastCursor
 
 printfn "TC-SESS-002 prompt batch assembly passed"
 
+let runtimePromptInput: CodexFs.RuntimePromptLoop.RuntimePromptInput =
+    { SessionId = input.SessionId
+      RunId = input.RunId
+      ParticipantId = input.ParticipantId
+      Engine = input.Engine
+      SurfaceId = input.SurfaceId
+      WorkingDirectory = input.WorkingDirectory
+      Messages = input.Messages
+      Policy = input.Policy }
+
+let runtimePromptPlan =
+    CodexFs.RuntimePromptLoop.planPrompt runtimePromptInput
+
+assertEqual "runtime prompt markdown matches prompt assembly" markdown runtimePromptPlan.Prompt.Markdown
+assertContains "runtime message batch first id" "\"messageId\": \"msg-001\"" runtimePromptPlan.MessageBatchJsonl
+assertContains "runtime message batch first sender" "\"fromParticipantId\": \"user.alice\"" runtimePromptPlan.MessageBatchJsonl
+assertContains "runtime message batch second body" "message 2 with" runtimePromptPlan.MessageBatchJsonl
+
+let runtimeExecutionPlan =
+    CodexFs.RuntimePromptLoop.planAgyPrintExecution
+        { PromptPlan = runtimePromptPlan
+          SessionId = input.SessionId
+          RunId = input.RunId
+          ExecutablePath = "agy"
+          WorkingDirectory = input.WorkingDirectory
+          PromptPath = "sessions/sess-002/runs/run-002/prompt.md"
+          ArtifactDirectory = "workspace/codex.fs/.codex.fs/sessions/sess-002/runs/run-002"
+          Timeout = TimeSpan.FromSeconds 90.0
+          AdditionalDirectories = [ "workspace/codex.fs/Libs" ]
+          Metadata = Map.ofList [ "cycle", "unit"; "sessionParticipantId", input.ParticipantId ] }
+
+assertEqual "runtime request engine" Agy runtimeExecutionPlan.Request.Engine
+assertEqual "runtime request surface" (Some CodexFs.Engine.Agy.V1_0.Print.SurfaceId) runtimeExecutionPlan.Request.SurfaceId
+assertEqual "runtime request message refs" 2 runtimeExecutionPlan.Request.PtcsMessages.Length
+assertContains "runtime request json run" "\"runId\": \"run-002\"" runtimeExecutionPlan.RequestJson
+assertContains "runtime request json metadata" "\"sessionParticipantId\": \"agent.sess002\"" runtimeExecutionPlan.RequestJson
+assertEqual "runtime rendered executable" "agy" runtimeExecutionPlan.RenderedCommand.FileName
+assertTrue "runtime rendered print arg" (runtimeExecutionPlan.RenderedCommand.Arguments |> List.exists ((=) "--print"))
+assertTrue "runtime rendered prompt arg includes markdown" (runtimeExecutionPlan.RenderedCommand.Arguments |> List.exists (fun arg -> arg.Contains("# codex.fs session prompt", StringComparison.Ordinal)))
+assertContains "runtime rendered json executable" "\"fileName\": \"agy\"" runtimeExecutionPlan.RenderedCommandJson
+assertEqual "runtime process executable" runtimeExecutionPlan.RenderedCommand.FileName runtimeExecutionPlan.ProcessCommand.FileName
+assertEqual "runtime process cwd" (Some input.WorkingDirectory) runtimeExecutionPlan.ProcessCommand.WorkingDirectory
+
+let runtimeReplyIntent =
+    CodexFs.RuntimePromptLoop.replyIntent
+        input.RunId
+        Completed
+        "sessions/sess-002/runs/run-002/manifest.json"
+        "sessions/sess-002/runs/run-002/final.md"
+        "user.alice"
+        "runtime final output"
+        ""
+
+assertEqual "runtime reply target" "user.alice" runtimeReplyIntent.TargetParticipantId
+assertContains "runtime reply manifest" "manifest=sessions/sess-002/runs/run-002/manifest.json" runtimeReplyIntent.Body
+assertContains "runtime reply summary" "summary=runtime final output" runtimeReplyIntent.Body
+assertEqual "runtime reply correlation" (Some "run-002") runtimeReplyIntent.CorrelationId
+
+let runtimeBoundaryText =
+    CodexFs.RuntimePromptLoop.readyToAckBoundaryText
+        { SessionId = input.SessionId
+          RunId = input.RunId
+          SelectedCursor = Some "cursor-002"
+          ConsumedMessageIds = runtimePromptPlan.Prompt.MessageRefs |> List.map _.MessageId
+          Reply =
+            { MessageId = "reply-002"
+              Body = runtimeReplyIntent.Body }
+          ArtifactManifestPath = "sessions/sess-002/runs/run-002/manifest.json"
+          FinalMessagePath = "sessions/sess-002/runs/run-002/final.md"
+          PersistedBeforeAck = true }
+
+assertContains "runtime boundary phase" "\"phase\": \"ready-to-ack\"" runtimeBoundaryText
+assertContains "runtime boundary reply id" "\"replyMessageId\": \"reply-002\"" runtimeBoundaryText
+assertContains "runtime boundary cursor" "\"selectedCursor\": \"cursor-002\"" runtimeBoundaryText
+assertContains "runtime boundary persisted before ack" "\"persistedBeforeAck\": true" runtimeBoundaryText
+
+printfn "TC-RUNTIME-002 runtime prompt-loop plan passed"
+
 let compactMessageRef =
     messageRef "msg-blocker-001" (Some "cursor-blocker-001") "user.owner" (Some "agent.sess003") None None
 

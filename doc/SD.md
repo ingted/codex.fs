@@ -989,6 +989,16 @@ Rules:
 - Actor shells call runtime from delivery/sharding handlers and do not duplicate prompt logic.
 - Existing `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` is bounded host-era E2E evidence and a migration candidate, not the final durable sharded runtime loop.
 
+Implemented RUNTIME-002 extraction:
+
+- `CodexFs.RuntimePromptLoop` in `src/codex.fs/RuntimePromptLoop.fs` is the reusable planning boundary for current single-turn runtime work.
+- `planPrompt` accepts `RuntimePromptInput` and returns `RuntimePromptPlan` with deterministic prompt markdown plus consumed MessageFabric JSONL evidence.
+- `planAgyPrintExecution` accepts the stored prompt artifact path and returns normalized `RunRequest`, request JSON, rendered Agy argv JSON and `ProcessRunner.ProcessCommand`.
+- `replyIntent` returns a redacted direct MessageFabric reply intent; it does not send through PTCS itself.
+- `readyToAckBoundaryText` writes `phase=ready-to-ack`, consumed message ids, reply evidence, manifest path, final path and `persistedBeforeAck=true`.
+- `CodexFs.Host.SessionEngineCycle.runSingleCycleAsync` remains the concrete adapter/interpreter for this slice: it polls PTCS, writes artifacts, invokes `ProcessRunner`, sends the reply, writes ready-to-ack boundary, then acks MessageFabric.
+- This extraction unblocks `ACTOR-002` because ActorFabric worker shells can call the same runtime plan instead of duplicating host-era prompt/request/argv/reply logic. It does not satisfy production sharded durability by itself.
+
 ## 12. Artifact manifest design
 
 ```fsharp

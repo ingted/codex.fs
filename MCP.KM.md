@@ -281,3 +281,11 @@
 - Control-only root, legacy `/chat` and diagnostics pages now point product browser chat to `web.profile=ptcs-webshell`.
 - Regression tests assert the control-only `/chat` guard has no composer, no form and no PTCS extension manifest; diagnostics has no PTCS extension manifest.
 - `misc/verifyNoStandaloneChatProductPath.fsx` is the WBS verifier and runs the full `codex.fs.Tests` path.
+
+## 2026-07-05 RUNTIME-002 Runtime Prompt Loop Extraction
+
+- `CodexFs.RuntimePromptLoop` is the current reusable prompt-loop planning boundary. It is pure/deterministic for prompt planning, request JSON, rendered argv JSON, reply intent and ready-to-ack boundary text.
+- `SessionEngineCycle.runSingleCycleAsync` now acts as a host adapter/interpreter over PTCS MessageFabric, artifact writes, `ProcessRunner`, reply send and ack. New ActorFabric shells should call `RuntimePromptLoop` instead of copying host prompt/request logic.
+- `RuntimeReadyToAckBoundary.SelectedCursor` is `string option`, matching PTCS `MessageFabricCursor`; adapters should preserve `None` instead of converting missing cursors to empty strings.
+- `misc/verifyRuntimeLoopExtraction.fsx` is the RUNTIME-002 verifier. It uses FAkka.Argu, checks source contracts, builds/runs `codex.fs.Tests`, then delegates to `misc/verifyMessageToEngineReply.fsx` for the real MessageFabric -> Agy -> artifact -> reply path.
+- The ignored verifier artifact root is `G:\codex.fs\src\codex.fs\.codex.fs\runtime002-artifacts`. Do not commit raw prompt/stdout/stderr artifacts from that path.
