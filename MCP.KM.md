@@ -275,3 +275,9 @@
 - `CodexFs.Host.HostWebShell` starts PTCS classic `/chat` by creating one `CommHub`, registering `useAIChat()`, creating `CommSpaMessageFabric` from that same hub, and calling PTCS `Server.start`.
 - `codex.fs.host start` now routes to PTCS webshell only when `web.profile=ptcs-webshell`; otherwise it remains the ASP.NET control host. This prevents the legacy guard `/chat` from being mistaken for product Web.
 - `misc/verifyHostPtcsWebProfile.fsx` verifies the real path through `codex.fs.Tests`: LAN bind, `/chat` manifest, `codex-fs-ai-chat`, generated script fetch, `/healthz`, non-guard HTML and host tool bounded start.
+
+## 2026-07-05 WEBR-008 No Standalone Product Chat
+
+- Control-only root, legacy `/chat` and diagnostics pages now point product browser chat to `web.profile=ptcs-webshell`.
+- Regression tests assert the control-only `/chat` guard has no composer, no form and no PTCS extension manifest; diagnostics has no PTCS extension manifest.
+- `misc/verifyNoStandaloneChatProductPath.fsx` is the WBS verifier and runs the full `codex.fs.Tests` path.

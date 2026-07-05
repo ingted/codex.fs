@@ -585,7 +585,8 @@ module HostControl =
   <h1>codex.fs host</h1>
   <p class="status">running</p>
   <p>Advertised URI: <code>{htmlEncode contract.AdvertiseUri}</code></p>
-  <p>Browser chat is provided by PTCS WebSharper chat room. This standalone host only exposes diagnostics and HTTP control endpoints.</p>
+  <p>Browser chat is provided by the PTCS WebSharper chat room. This standalone control host only exposes diagnostics and HTTP control endpoints.</p>
+  <p>Product browser chat requires <code>codex.fs.host start --setting web.profile=ptcs-webshell ...</code> and the advertised PTCS <code>/chat</code> URL from that process.</p>
   <h2>Available endpoints</h2>
   <ul>
     {docsItems}
@@ -632,6 +633,7 @@ module HostControl =
           "  <h1>codex.fs diagnostics session send</h1>"
           $"  <p>Host: <code>{htmlEncode contract.AdvertiseUri}</code></p>"
           "  <p>Product browser chat belongs to the PTCS WebSharper chat room. This page is only a standalone host diagnostic tool.</p>"
+          "  <p>Start product browser chat with <code>codex.fs.host start --setting web.profile=ptcs-webshell ...</code>, then open the advertised PTCS <code>/chat</code> URL.</p>"
           resultSection
           $"  <form method=\"post\" action=\"{htmlEncode Routes.DiagnosticsSessionSend}\">"
           "    <div class=\"grid\">"
@@ -665,6 +667,7 @@ module HostControl =
           "  <h1>Use PTCS chat</h1>"
           "  <p>codex.fs does not own the product browser chat. Workers must appear as PTCS participants through MessageFabric/ActorFabric and the PTCS WebSharper chat room.</p>"
           "  <p>This standalone host provides HTTP control and diagnostics only.</p>"
+          "  <p>Start product browser chat with <code>codex.fs.host start --setting web.profile=ptcs-webshell ...</code>, then open the advertised PTCS <code>/chat</code> URL.</p>"
           $"  <p>Diagnostic send form: <a href=\"{htmlEncode contract.DiagnosticsSessionSendUri}\">{htmlEncode contract.DiagnosticsSessionSendUri}</a></p>"
           "</body>"
           "</html>" ]

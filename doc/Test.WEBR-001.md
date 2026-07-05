@@ -2,7 +2,7 @@
 
 Test Group：`WEBR-001`  
 狀態：Accepted for RFC/reset slice  
-UpdatedAt：2026-07-05 12:35 +08:00
+UpdatedAt：2026-07-05 13:05 +08:00
 
 ## Test Matrix
 
@@ -17,7 +17,7 @@ UpdatedAt：2026-07-05 12:35 +08:00
 | T-ACTOR-002 | ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | Integration/Actor | Real PTCS `CommSpaActorFabric` and MessageFabric | Foreman/worker actors register as `agent` participants and appear through PTCS participant listing | Planned |
 | T-WEBR-006 | WEBR-006 | `misc/verifyAiIntentControls.fsx` | Browser/Integration | Real PTCS shell extension controls | Target/perspective/engine/model/reasoning controls emit normalized intent metadata; no browser argv rendering | Planned |
 | T-WEBR-007 | WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Browser/E2E | Real worker run artifact refs | PTCS shell renders redacted reply, run id, manifest ref and note ref | Planned |
-| T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | No standalone diagnostics/guard page is used as product chat; control-only mode labels itself non-product | Planned |
+| T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | Passed on 2026-07-05 13:03 +08:00; verifier builds/runs `codex.fs.Tests` and asserts control-only `/chat` guard has no composer/form/PTCS manifest, diagnostics is diagnostic-only and product path guidance points to `web.profile=ptcs-webshell` | Pass |
 | T-E2E-004 | E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | Browser/E2E | Real PTCS shell + ActorFabric + MessageFabric + headless engine | Human sends prompt in `/chat`, Foreman actor runs engine, artifacts are stored, reply appears with refs | Planned |
 
 ## Hard Gates

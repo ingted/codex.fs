@@ -108,7 +108,7 @@ Status 值：
 | T-ACTOR-002 | ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | Integration/Actor | Real PTCS `CommSpaActorFabric` and MessageFabric | ACTOR-001/RUNTIME-002 | Foreman/worker actors register as `agent` participants and appear through PTCS participant listing | Planned | RUNTIME-002 | SD §11.2, §14.3 |
 | T-WEBR-006 | WEBR-006 | `misc/verifyAiIntentControls.fsx` | Browser/Integration | Real PTCS shell extension controls | WEBR-004/ACTOR-002 | Target/perspective/engine/model/reasoning controls emit normalized intent metadata; browser never renders CLI argv | Planned | ACTOR-002 visible participants | SD §14.2, §14.3 |
 | T-WEBR-007 | WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Browser/E2E | Real worker run artifact refs | WEBR-006/PERSIST-001 | PTCS shell renders redacted reply, run id, manifest ref and note ref | Planned | runtime artifact provider | SD §12, §14.3 |
-| T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | WEBR-005 | No standalone diagnostics/guard page is used as product chat; control-only mode labels itself non-product | Planned | product web profile exists | SD §9, §14.3 |
+| T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | WEBR-005 | `dotnet fsi --exec .\misc\verifyNoStandaloneChatProductPath.fsx` passed on 2026-07-05 13:03 +08:00; verifier builds/runs `codex.fs.Tests` and asserts control-only `/chat` guard has no composer/form/PTCS manifest, diagnostics is diagnostic-only and product path guidance points to `web.profile=ptcs-webshell` | Pass | None | SD §9, §14.3 |
 | T-E2E-004 | E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | Browser/E2E | Real PTCS shell + ActorFabric + MessageFabric + headless engine | WEBR-006/WEBR-007/ACTOR-002 | Human sends prompt in `/chat`, Foreman actor runs engine, artifacts are stored, reply appears with refs | Planned | all implementation slices | SD §14.3 |
 
 ## 3. Verifier Script Names
@@ -135,7 +135,7 @@ These script names are verifier contracts. They must not be referenced as passin
 | `misc/verifyPtcsActorFabricForeman.fsx` | Planned real PTCS ActorFabric verifier for Foreman/Worker visibility. | T-ACTOR-002 |
 | `misc/verifyAiIntentControls.fsx` | Planned browser verifier for AI target/perspective/invocation controls. | T-WEBR-006 |
 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Planned browser/E2E verifier for artifact and note refs in PTCS shell. | T-WEBR-007 |
-| `misc/verifyNoStandaloneChatProductPath.fsx` | Planned regression verifier that standalone diagnostics/guard routes are not product chat. | T-WEBR-008 |
+| `misc/verifyNoStandaloneChatProductPath.fsx` | Implemented regression verifier that standalone diagnostics/guard routes are not product chat. | T-WEBR-008 |
 | `misc/verifyPtcsAiChatE2E.fsx` | Planned end-to-end verifier for PTCS shell to ActorFabric to engine to artifact reply. | T-E2E-004 |
 
 ## 4. Evidence Rule

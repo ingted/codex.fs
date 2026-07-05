@@ -95,7 +95,7 @@ Status 值：
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 0 | Planned | RUNTIME-002 | - | 2026-07-05 10:30 +08:00 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 0 | Planned | ACTOR-002 visible participants | - | 2026-07-05 10:30 +08:00 | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | - | 2026-07-05 10:30 +08:00 | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
-| WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 0 | Planned | None | - | 2026-07-05 10:30 +08:00 | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | 2026-07-05 12:55 +08:00 | 2026-07-05 13:03 +08:00 | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;WEBR-007;ACTOR-002 | 0 | Planned | all implementation slices | - | 2026-07-05 10:30 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 
 ## 3. Roll-up / Detail Files

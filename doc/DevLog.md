@@ -306,3 +306,10 @@
 - Host tool: `codex.fs.host start --setting web.profile=ptcs-webshell ...` starts the PTCS webshell; default start remains control-only.
 - Verifier: added `misc/verifyHostPtcsWebProfile.fsx`; command `dotnet fsi --exec .\misc\verifyHostPtcsWebProfile.fsx` passed on 2026-07-05 12:32 +08:00.
 - Traceability: updated WBS/Test detail and stock rows, SD §14.3, README/project planning and KM. `WEBR-006` still waits for ActorFabric-visible participants; `WEBR-008` is unblocked.
+
+## 2026-07-05 13:05 +08:00 WEBR-008 no standalone product chat
+
+- Scope: added regression coverage so ASP.NET control `/chat` and diagnostics cannot be mistaken for product chat.
+- Implementation: control root, legacy `/chat` and diagnostics text now point product browser chat to `web.profile=ptcs-webshell`.
+- Verifier: added `misc/verifyNoStandaloneChatProductPath.fsx`; command `dotnet fsi --exec .\misc\verifyNoStandaloneChatProductPath.fsx` passed on 2026-07-05 13:03 +08:00.
+- Traceability: updated WBS/Test detail and stock rows, SD §14.3 and KM. Remaining work is runtime extraction, ActorFabric participant visibility, AI controls/artifact refs and full E2E.

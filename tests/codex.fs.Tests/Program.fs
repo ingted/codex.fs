@@ -709,6 +709,8 @@ printfn "TC-HOST-003 endpoint contract passed"
 
 assertContains "host root title" "codex.fs host" hostControlRootPageText
 assertContains "host root ptcs chat note" "PTCS WebSharper chat room" hostControlRootPageText
+assertContains "host root product webshell guidance" "web.profile=ptcs-webshell" hostControlRootPageText
+assertContains "host root control-only note" "standalone control host" hostControlRootPageText
 assertContains "host root diagnostics link" hostControlServer.Contract.DiagnosticsSessionSendUri hostControlRootPageText
 assertContains "host root health link" hostControlServer.Contract.HealthUri hostControlRootPageText
 assertContains "host root openapi link" hostControlServer.Contract.OpenApiJsonUri hostControlRootPageText
@@ -718,16 +720,25 @@ assertTrue "host root no raw token" (not (hostControlRootPageText.Contains(fakeG
 assertContains "host legacy chat title" "Use PTCS chat" hostControlLegacyChatPageText
 assertContains "host legacy chat fabric note" "MessageFabric/ActorFabric" hostControlLegacyChatPageText
 assertContains "host legacy chat diagnostics link" hostControlServer.Contract.DiagnosticsSessionSendUri hostControlLegacyChatPageText
+assertContains "host legacy chat webshell guidance" "web.profile=ptcs-webshell" hostControlLegacyChatPageText
+assertTrue "host legacy chat no composer" (not (hostControlLegacyChatPageText.Contains("chat-composer", StringComparison.OrdinalIgnoreCase)))
+assertTrue "host legacy chat no manifest" (not (hostControlLegacyChatPageText.Contains("ptc-comm-client-extensions", StringComparison.OrdinalIgnoreCase)))
+assertTrue "host legacy chat no prompt form" (not (hostControlLegacyChatPageText.Contains("<form", StringComparison.OrdinalIgnoreCase)))
 assertTrue "host legacy chat no raw token" (not (hostControlLegacyChatPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 
 assertContains "host diagnostics title" "codex.fs diagnostics session send" hostControlDiagnosticsPageText
 assertContains "host diagnostics form action" "action=\"/diagnostics/session-send\"" hostControlDiagnosticsPageText
 assertContains "host diagnostics prompt field" "name=\"prompt\"" hostControlDiagnosticsPageText
 assertContains "host diagnostics foreman default" "value=\"foreman\"" hostControlDiagnosticsPageText
+assertContains "host diagnostics diagnostic-only note" "diagnostic tool" hostControlDiagnosticsPageText
+assertContains "host diagnostics webshell guidance" "web.profile=ptcs-webshell" hostControlDiagnosticsPageText
+assertTrue "host diagnostics no ptcs manifest" (not (hostControlDiagnosticsPageText.Contains("ptc-comm-client-extensions", StringComparison.OrdinalIgnoreCase)))
 assertTrue "host diagnostics no raw token" (not (hostControlDiagnosticsPageText.Contains(fakeGithubToken, StringComparison.Ordinal)))
 assertContains "host diagnostics accepted" "Accepted" hostControlDiagnosticsPostText
 assertContains "host diagnostics default target" "agent.codexfs.diagnostics." hostControlDiagnosticsPostText
 assertTrue "host diagnostics post no raw token" (not (hostControlDiagnosticsPostText.Contains(fakeGithubToken, StringComparison.Ordinal)))
+
+printfn "TC-WEBR-008 no standalone chat product path passed"
 
 let cliHostStatusJson = JsonDocument.Parse(cliHostStatusText)
 let cliHostStatusRoot = cliHostStatusJson.RootElement

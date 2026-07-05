@@ -4,7 +4,7 @@ WBS ID：`WEBR-001`
 狀態：Done for RFC/reset slice  
 Progress：100  
 StartTime：2026-07-05 10:30 +08:00  
-UpdatedAt：2026-07-05 12:35 +08:00
+UpdatedAt：2026-07-05 13:05 +08:00
 Previous：`WEB-001`, `ACTOR-001`, `PERSIST-001`  
 SD：`SD §9`, `SD §14.1`, `SD §14.3`  
 Test：`T-WEBR-001`
@@ -33,7 +33,7 @@ Test：`T-WEBR-001`
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 0 | Planned | RUNTIME-002 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 0 | Planned | ACTOR-002 visible participants | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx` |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
-| WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 0 | Planned | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
+| WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
 | E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;WEBR-007;ACTOR-002 | 0 | Planned | all implementation slices | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
 
 ## Cut / Rewrite Notes
@@ -93,3 +93,13 @@ UpdatedAt：2026-07-05 12:35 +08:00
 - Updated `codex.fs.host.tool start` so `web.profile=ptcs-webshell` starts the product PTCS webshell; default `control-only` behavior remains unchanged.
 - Verifier `dotnet fsi --exec .\misc\verifyHostPtcsWebProfile.fsx` passed on 2026-07-05 12:32 +08:00. It builds/runs `codex.fs.Tests`, binds to the LAN IP, verifies `/chat` PTCS manifest plus `codex-fs-ai-chat`, fetches generated script asset and verifies host tool bounded start.
 - `WEBR-008` is unblocked for removing/deprecating the legacy standalone `/chat` product path claim. `WEBR-006` still waits for ActorFabric-visible participants from `ACTOR-002`.
+
+## WEBR-008 Closeout
+
+UpdatedAt：2026-07-05 13:05 +08:00
+
+- Updated control-only root, legacy `/chat` guard and diagnostics page text to explicitly point product browser chat at `web.profile=ptcs-webshell`.
+- Added regression assertions that control-only `/chat` has no composer/form/PTCS extension manifest and diagnostics has no PTCS manifest.
+- Added `misc/verifyNoStandaloneChatProductPath.fsx` using `FAkka.Argu` plus `ParseLine.fsx`; the verifier builds tests and runs the full test runner.
+- Verifier `dotnet fsi --exec .\misc\verifyNoStandaloneChatProductPath.fsx` passed on 2026-07-05 13:03 +08:00.
+- Remaining product work is `RUNTIME-002`, `ACTOR-002`, `WEBR-006`, `WEBR-007` and `E2E-004`.

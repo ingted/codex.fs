@@ -1528,6 +1528,17 @@ Verifier: `misc/verifyUseAIChatRegistration.fsx`; passed 2026-07-05 11:37 +08:00
 
 Verifier: `misc/verifyHostPtcsWebProfile.fsx`; passed 2026-07-05 12:32 +08:00 and runs real `dotnet build` plus full `codex.fs.Tests`. It binds to the machine LAN IP, verifies PTCS `/chat` manifest and `codex-fs-ai-chat`, fetches the generated WebSharper script asset, checks `/healthz`, rejects guard/diagnostics HTML and verifies host tool bounded start.
 
+`WEBR-008` implementation result:
+
+| Area | Implemented contract |
+| --- | --- |
+| Control root | Root HTML states the ASP.NET host is a control host and product browser chat requires `web.profile=ptcs-webshell`. |
+| Legacy `/chat` | Control-only `/chat` remains a guard/pointer and is tested to have no composer, no form and no PTCS extension manifest. |
+| Diagnostics | `/diagnostics/session-send` remains diagnostics-only and is tested to have no PTCS extension manifest. |
+| Regression verifier | `misc/verifyNoStandaloneChatProductPath.fsx` checks source markers and runs full tests to prevent guard/diagnostics routes from being treated as product chat. |
+
+Verifier: `misc/verifyNoStandaloneChatProductPath.fsx`; passed 2026-07-05 13:03 +08:00.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:
