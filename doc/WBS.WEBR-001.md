@@ -4,7 +4,7 @@ WBS ID：`WEBR-001`
 狀態：Done for RFC/reset slice  
 Progress：100  
 StartTime：2026-07-05 10:30 +08:00  
-UpdatedAt：2026-07-05 11:40 +08:00
+UpdatedAt：2026-07-05 12:35 +08:00
 Previous：`WEB-001`, `ACTOR-001`, `PERSIST-001`  
 SD：`SD §9`, `SD §14.1`, `SD §14.3`  
 Test：`T-WEBR-001`
@@ -28,12 +28,12 @@ Test：`T-WEBR-001`
 | WEBR-002 | PTCS classic shell and Dynamic bundle baseline inventory | WEBR-001 | 100 | Done | None | SD §14.3 | T-WEBR-002 | `misc/verifyPtcsClassicShellInventory.fsx`; [inventory](WEBR-002.PTCS-classic-shell-inventory.md) |
 | WEBR-003 | Create `codex.fs.web` WebSharper Bundle project | WEBR-002 | 100 | Done | None | SD §14.3 | T-WEBR-003 | `misc/verifyCodexFsWebBundle.fsx` |
 | WEBR-004 | Implement `useAIChat(...)` CommHub registration/server extension | WEBR-003 | 100 | Done | None | SD §14.3 | T-WEBR-004 | `misc/verifyUseAIChatRegistration.fsx` |
-| WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 0 | Planned | None | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` |
+| WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 100 | Done | None | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` |
 | RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 0 | Planned | None | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` |
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 0 | Planned | RUNTIME-002 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 0 | Planned | ACTOR-002 visible participants | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx` |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
-| WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 0 | Planned | product web profile exists | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
+| WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 0 | Planned | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
 | E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;WEBR-007;ACTOR-002 | 0 | Planned | all implementation slices | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
 
 ## Cut / Rewrite Notes
@@ -83,3 +83,13 @@ UpdatedAt：2026-07-05 11:40 +08:00
 - Added `misc/verifyUseAIChatRegistration.fsx` using `FAkka.Argu` plus `ParseLine.fsx`; the verifier builds `tests/codex.fs.Tests` and runs the full test runner.
 - Verifier `dotnet fsi --exec .\misc\verifyUseAIChatRegistration.fsx` passed on 2026-07-05 11:37 +08:00.
 - `WEBR-005` is unblocked: next step is product host composition that serves PTCS classic `/chat` with this extension registered.
+
+## WEBR-005 Closeout
+
+UpdatedAt：2026-07-05 12:35 +08:00
+
+- Added explicit `HostConfig.WebShell` settings: `web.profile`, `web.bindAddress`, `web.port`, `web.advertiseUri`, `web.allowLoopbackOnly`, `web.actorFabric`.
+- Added `CodexFs.Host.HostWebShell` product composition path: creates one PTCS `CommHub`, registers `useAIChat()`, creates `CommSpaMessageFabric` from the same hub, and starts PTCS classic `/chat`.
+- Updated `codex.fs.host.tool start` so `web.profile=ptcs-webshell` starts the product PTCS webshell; default `control-only` behavior remains unchanged.
+- Verifier `dotnet fsi --exec .\misc\verifyHostPtcsWebProfile.fsx` passed on 2026-07-05 12:32 +08:00. It builds/runs `codex.fs.Tests`, binds to the LAN IP, verifies `/chat` PTCS manifest plus `codex-fs-ai-chat`, fetches generated script asset and verifies host tool bounded start.
+- `WEBR-008` is unblocked for removing/deprecating the legacy standalone `/chat` product path claim. `WEBR-006` still waits for ActorFabric-visible participants from `ACTOR-002`.

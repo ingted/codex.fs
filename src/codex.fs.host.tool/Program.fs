@@ -59,6 +59,7 @@ module HostTool =
     let examples =
         [ "codex.fs.host status --setting control.advertiseUri=http://192.168.10.20:8788"
           "codex.fs.host start --setting control.bindAddress=192.168.10.20 --setting control.port=8788 --setting control.advertiseUri=http://192.168.10.20:8788"
+          "codex.fs.host start --setting web.profile=ptcs-webshell --setting web.bindAddress=192.168.10.20 --setting web.port=8897 --setting web.advertiseUri=http://192.168.10.20:8897 --setting web.allowLoopbackOnly=false"
           "codex.fs.host start --run-seconds 5 --setting control.bindAddress=192.168.10.20 --setting control.port=8788 --setting control.advertiseUri=http://192.168.10.20:8788" ]
 
     /// Render generated help plus stable examples.
@@ -167,10 +168,35 @@ module HostTool =
           HostRuntime.healthSummary server.Runtime ]
         |> String.concat Environment.NewLine
 
+    /// Render the text emitted after the PTCS product web shell starts.
+    let webShellStartedText (server: HostWebShell.HostWebShellServer) =
+        let scriptUrlsText = String.concat "," server.Contract.ScriptUrls
+
+        [ "status=running"
+          "profile=ptcs-webshell"
+          $"bindUri={server.Contract.BindUri}"
+          $"advertiseUri={server.Contract.AdvertiseUri}"
+          $"chatUri={server.Contract.ChatUri}"
+          $"healthUri={server.Contract.HealthUri}"
+          $"extensionId={server.Contract.ExtensionId}"
+          $"scriptUrls={scriptUrlsText}"
+          HostRuntime.healthSummary server.Runtime ]
+        |> String.concat Environment.NewLine
+
     let stopServerTextAsync server =
         task {
             try
                 let! stoppedRuntime = HostControl.stopAsync CancellationToken.None server
+                return $"status={HostRuntime.formatStatus stoppedRuntime.Status}"
+            with ex ->
+                let redacted = Redaction.redactHighRisk ex.Message
+                return $"status=stop-failed{Environment.NewLine}error={redacted.Text}"
+        }
+
+    let stopWebShellTextAsync server =
+        task {
+            try
+                let! stoppedRuntime = HostWebShell.stopAsync CancellationToken.None server
                 return $"status={HostRuntime.formatStatus stoppedRuntime.Status}"
             with ex ->
                 let redacted = Redaction.redactHighRisk ex.Message
@@ -191,23 +217,42 @@ module HostTool =
             match loadRuntime options with
             | Error message -> return Error message
             | Ok runtime ->
-                match! HostControl.tryStartAsync startedUtc cancellationToken runtime with
-                | Error issues -> return Error(formatIssues issues)
-                | Ok server ->
-                    let runningText = startedText server
+                if HostWebShell.isEnabled runtime.Config then
+                    match! HostWebShell.tryStartAsync startedUtc cancellationToken runtime with
+                    | Error issues -> return Error(formatIssues issues)
+                    | Ok server ->
+                        let runningText = webShellStartedText server
 
-                    try
-                        do! waitForRunDurationAsync options.RunSeconds cancellationToken
-                        let! stoppedText = stopServerTextAsync server
-                        return Ok(runningText + Environment.NewLine + stoppedText)
-                    with
-                    | :? OperationCanceledException ->
-                        let! stoppedText = stopServerTextAsync server
-                        return Ok(runningText + Environment.NewLine + stoppedText)
-                    | ex ->
-                        let! stoppedText = stopServerTextAsync server
-                        let redacted = Redaction.redactHighRisk ex.Message
-                        return Error(runningText + Environment.NewLine + stoppedText + Environment.NewLine + $"error={redacted.Text}")
+                        try
+                            do! waitForRunDurationAsync options.RunSeconds cancellationToken
+                            let! stoppedText = stopWebShellTextAsync server
+                            return Ok(runningText + Environment.NewLine + stoppedText)
+                        with
+                        | :? OperationCanceledException ->
+                            let! stoppedText = stopWebShellTextAsync server
+                            return Ok(runningText + Environment.NewLine + stoppedText)
+                        | ex ->
+                            let! stoppedText = stopWebShellTextAsync server
+                            let redacted = Redaction.redactHighRisk ex.Message
+                            return Error(runningText + Environment.NewLine + stoppedText + Environment.NewLine + $"error={redacted.Text}")
+                else
+                    match! HostControl.tryStartAsync startedUtc cancellationToken runtime with
+                    | Error issues -> return Error(formatIssues issues)
+                    | Ok server ->
+                        let runningText = startedText server
+
+                        try
+                            do! waitForRunDurationAsync options.RunSeconds cancellationToken
+                            let! stoppedText = stopServerTextAsync server
+                            return Ok(runningText + Environment.NewLine + stoppedText)
+                        with
+                        | :? OperationCanceledException ->
+                            let! stoppedText = stopServerTextAsync server
+                            return Ok(runningText + Environment.NewLine + stoppedText)
+                        | ex ->
+                            let! stoppedText = stopServerTextAsync server
+                            let redacted = Redaction.redactHighRisk ex.Message
+                            return Error(runningText + Environment.NewLine + stoppedText + Environment.NewLine + $"error={redacted.Text}")
         }
 
     let printResult successExit errorExit result =

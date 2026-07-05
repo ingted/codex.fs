@@ -268,3 +268,10 @@
 - `tests/codex.fs.Tests` now references `src/codex.fs.web`; the product test runner exercises `CommHub.useAIChat()` against a real PTCS `CommHub`.
 - The verified contract covers extension manifest `codex-fs-ai-chat`, generated WebSharper script assets, runtime script asset, metadata JSON handler `/client-extensions/codexfs-ai-chat/metadata`, and append-page template `codexfs-ai-chat`.
 - `misc/verifyUseAIChatRegistration.fsx` is the WBS verifier; it uses `FAkka.Argu` and `ParseLine.fsx`, then runs real `dotnet build` and `dotnet run` for `codex.fs.Tests`.
+
+## 2026-07-05 WEBR-005 PTCS Webshell Host Profile
+
+- `HostConfig.WebShell` makes product Web explicit: default `web.profile=control-only`, product path `web.profile=ptcs-webshell` with separate bind/advertise URI and loopback policy.
+- `CodexFs.Host.HostWebShell` starts PTCS classic `/chat` by creating one `CommHub`, registering `useAIChat()`, creating `CommSpaMessageFabric` from that same hub, and calling PTCS `Server.start`.
+- `codex.fs.host start` now routes to PTCS webshell only when `web.profile=ptcs-webshell`; otherwise it remains the ASP.NET control host. This prevents the legacy guard `/chat` from being mistaken for product Web.
+- `misc/verifyHostPtcsWebProfile.fsx` verifies the real path through `codex.fs.Tests`: LAN bind, `/chat` manifest, `codex-fs-ai-chat`, generated script fetch, `/healthz`, non-guard HTML and host tool bounded start.

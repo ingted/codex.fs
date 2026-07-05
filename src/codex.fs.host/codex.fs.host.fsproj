@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\codex.fs\codex.fs.fsproj" />
     <ProjectReference Include="..\codex.fs.ptcs\codex.fs.ptcs.fsproj" />
+    <ProjectReference Include="..\codex.fs.web\codex.fs.web.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,6 +39,7 @@
 
   <ItemGroup>
     <Compile Include="HostRuntime.fs" />
+    <Compile Include="HostWebShell.fs" />
     <Compile Include="HostControl.fs" />
     <Compile Include="SessionEngineCycle.fs" />
   </ItemGroup>

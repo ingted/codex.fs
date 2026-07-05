@@ -366,6 +366,8 @@ assertEqual "host pending limit" 25 hostConfig.MaxPendingMessagesPerTurn
 assertEqual "host bind address" "192.168.10.20" hostConfig.ControlEndpoint.BindAddress
 assertEqual "host advertise uri" "http://192.168.10.20:8788" hostConfig.ControlEndpoint.AdvertiseUri
 assertEqual "host loopback false" false hostConfig.ControlEndpoint.AllowLoopbackOnly
+assertEqual "host default web shell profile" "control-only" hostConfig.WebShell.Profile
+assertEqual "host default web shell advertise" "http://127.0.0.1:8897" hostConfig.WebShell.AdvertiseUri
 assertEqual "host swagger prefix" (Some "docs") hostConfig.ApiDocs.SwaggerRoutePrefix
 assertEqual "host fabric mode" "caller-owned-cluster" hostConfig.Ptcs.FabricMode
 assertEqual "host reply participant" (Some "agent.codexfs.host") hostConfig.Ptcs.ReplyParticipantId
@@ -450,6 +452,68 @@ printfn "TC-HOST-002 host runtime/health passed"
 let hostControlAddress =
     findPreferredNonLoopbackIpv4 ()
     |> Option.defaultWith (fun () -> failwith "TC-HOST-003 requires a non-loopback IPv4 address for advertised URI verification.")
+
+let webShellPort = reserveTcpPort ()
+let webShellAdvertiseUri = $"http://{hostControlAddress}:{webShellPort}"
+
+let webShellSettings =
+    hostSettings
+    |> Map.add "control.bindAddress" (hostControlAddress.ToString())
+    |> Map.add "control.advertiseUri" $"http://{hostControlAddress}:8788"
+    |> Map.add "control.allowLoopbackOnly" "false"
+    |> Map.add "web.profile" "ptcs-webshell"
+    |> Map.add "web.bindAddress" (hostControlAddress.ToString())
+    |> Map.add "web.port" (string webShellPort)
+    |> Map.add "web.advertiseUri" webShellAdvertiseUri
+    |> Map.add "web.allowLoopbackOnly" "false"
+    |> Map.add "web.actorFabric" "disabled"
+
+let webShellLoad = CodexFs.HostConfig.loadFromMap webShellSettings
+assertTrue "web shell config loaded" webShellLoad.Config.IsSome
+
+let webShellRuntime =
+    match CodexFs.Host.HostRuntime.tryCreateFromLoadResult webShellLoad with
+    | Ok runtime -> runtime
+    | Error issues -> failwith $"expected web shell runtime config; issues={issues}"
+
+let webShellServer =
+    match runTask (CodexFs.Host.HostWebShell.tryStartAsync (DateTimeOffset.Parse("2026-07-04T13:17:00Z")) CancellationToken.None webShellRuntime) with
+    | Ok server -> server
+    | Error issues -> failwith $"expected PTCS webshell server; issues={issues}"
+
+try
+    assertEqual "web shell profile" "ptcs-webshell" webShellServer.Contract.Profile
+    assertEqual "web shell bind" $"http://{hostControlAddress}:{webShellPort}" webShellServer.Contract.BindUri
+    assertEqual "web shell advertise" webShellAdvertiseUri webShellServer.Contract.AdvertiseUri
+    assertEqual "web shell chat uri" $"{webShellAdvertiseUri}/chat" webShellServer.Contract.ChatUri
+    assertEqual "web shell health uri" $"{webShellAdvertiseUri}/healthz" webShellServer.Contract.HealthUri
+    assertEqual "web shell extension id" Package.extensionId webShellServer.Contract.ExtensionId
+    assertTrue "web shell scripts" (webShellServer.Contract.ScriptUrls |> List.exists (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase)))
+    assertEqual "web shell has message fabric" true webShellServer.Contract.HasMessageFabric
+    assertContains "web shell message fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" (webShellServer.Contract.MessageFabricType |> Option.defaultValue "")
+
+    use webShellHttp = new HttpClient()
+    let webShellChatHtml = runTask (webShellHttp.GetStringAsync webShellServer.Contract.ChatUri)
+    assertContains "web shell ptcs extension manifest" "ptc-comm-client-extensions" webShellChatHtml
+    assertContains "web shell ai extension manifest" Package.extensionId webShellChatHtml
+    assertContains "web shell ptcs bundle" "/build/PulseTrade.Comm.Spa.js" webShellChatHtml
+    assertTrue "web shell not guard page" (not (webShellChatHtml.Contains("Use PTCS chat", StringComparison.OrdinalIgnoreCase)))
+    assertTrue "web shell not diagnostics page" (not (webShellChatHtml.Contains("diagnostics session send", StringComparison.OrdinalIgnoreCase)))
+
+    let webShellMainScript =
+        webShellServer.Contract.ScriptUrls
+        |> List.find (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase))
+
+    let webShellMainScriptText = runTask (webShellHttp.GetStringAsync(webShellServer.Contract.AdvertiseUri.TrimEnd('/') + webShellMainScript))
+    assertTrue "web shell main script content" (webShellMainScriptText.Length > 100)
+
+    let webShellHealth = runTask (webShellHttp.GetStringAsync webShellServer.Contract.HealthUri)
+    assertContains "web shell health service" "PulseTrade.Comm.Spa" webShellHealth
+finally
+    let stoppedWebShell = runTask (CodexFs.Host.HostWebShell.stopAsync CancellationToken.None webShellServer)
+    assertEqual "web shell stopped" CodexFs.Host.HostRuntime.Stopped stoppedWebShell.Status
+
+printfn "TC-WEBR-005 host PTCS webshell profile passed"
 
 let hostControlPort = reserveTcpPort ()
 let hostControlAdvertiseUri = $"http://{hostControlAddress}:{hostControlPort}"
@@ -889,6 +953,51 @@ assertContains "host tool start health" $"{hostToolAdvertiseUri}/api/codexfs/hos
 assertContains "host tool start stopped" "status=stopped" hostToolStartText
 assertTrue "host tool start no localhost" (not (hostToolStartText.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
 assertTrue "host tool start no 127" (not (hostToolStartText.Contains("127.", StringComparison.Ordinal)))
+
+let hostToolWebShellPort = reserveTcpPort ()
+let hostToolWebShellAdvertiseUri = $"http://{hostControlAddress}:{hostToolWebShellPort}"
+
+let hostToolWebShellArgs =
+    [| yield "start"
+       yield "--run-seconds"
+       yield "0"
+       yield "--setting"
+       yield "web.profile=ptcs-webshell"
+       yield "--setting"
+       yield $"web.bindAddress={hostControlAddress}"
+       yield "--setting"
+       yield $"web.port={hostToolWebShellPort}"
+       yield "--setting"
+       yield $"web.advertiseUri={hostToolWebShellAdvertiseUri}"
+       yield "--setting"
+       yield "web.allowLoopbackOnly=false"
+       yield "--setting"
+       yield "web.actorFabric=disabled"
+       yield "--setting"
+       yield $"control.bindAddress={hostControlAddress}"
+       yield "--setting"
+       yield "control.allowLoopbackOnly=false"
+       yield "--setting"
+       yield $"control.advertiseUri=http://{hostControlAddress}:8788" |]
+
+let hostToolWebShellOptions =
+    match CodexFs.HostTool.HostTool.tryParseAction hostToolWebShellArgs with
+    | Ok(Some(CodexFs.HostTool.HostTool.HostStart options)) -> options
+    | Ok action -> failwith $"expected host tool webshell start action; actual={action}"
+    | Error message -> failwith $"expected host tool webshell start parse; error={message}"
+
+let hostToolWebShellText =
+    match runTask (CodexFs.HostTool.HostTool.startTextAsync (DateTimeOffset.Parse("2026-07-04T14:58:00Z")) hostToolWebShellOptions CancellationToken.None) with
+    | Ok text -> text
+    | Error message -> failwith $"expected host tool bounded webshell start; error={message}"
+
+assertContains "host tool webshell running" "status=running" hostToolWebShellText
+assertContains "host tool webshell profile" "profile=ptcs-webshell" hostToolWebShellText
+assertContains "host tool webshell chat" $"chatUri={hostToolWebShellAdvertiseUri}/chat" hostToolWebShellText
+assertContains "host tool webshell extension" $"extensionId={Package.extensionId}" hostToolWebShellText
+assertContains "host tool webshell stopped" "status=stopped" hostToolWebShellText
+assertTrue "host tool webshell no localhost" (not (hostToolWebShellText.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+assertTrue "host tool webshell no 127" (not (hostToolWebShellText.Contains("127.", StringComparison.Ordinal)))
 
 printfn "TC-REL-003 host tool start/status passed"
 

@@ -2,7 +2,7 @@
 
 Test Group：`WEBR-001`  
 狀態：Accepted for RFC/reset slice  
-UpdatedAt：2026-07-05 11:40 +08:00
+UpdatedAt：2026-07-05 12:35 +08:00
 
 ## Test Matrix
 
@@ -12,7 +12,7 @@ UpdatedAt：2026-07-05 11:40 +08:00
 | T-WEBR-002 | WEBR-002 | `misc/verifyPtcsClassicShellInventory.fsx` | Docs/Investigation | Read real PTCS Host/Dynamic source; no invented UI APIs | `dotnet fsi --exec .\misc\verifyPtcsClassicShellInventory.fsx` passed; `doc/WEBR-002.PTCS-classic-shell-inventory.md` maps `/chat`, `/chat/api/agents`, `/chat/api/thread`, `/chat/api/send`, `/sync/ws`, DOM testids, extension manifest/assets and cut-list | Pass |
 | T-WEBR-003 | WEBR-003 | `misc/verifyCodexFsWebBundle.fsx` | Compile/WebSharper | Real `dotnet build` of `codex.fs.web` with `WebSharperProject=Bundle` | Passed on 2026-07-05 11:07 +08:00; generated 4 WebSharper JavaScript files under `src/codex.fs.web/wwwroot/js`; nupkg contains `content/wwwroot/js/CodexFs.Web.js`; exact PTCS package reference and no hand-written JS verified | Pass |
 | T-WEBR-004 | WEBR-004 | `misc/verifyUseAIChatRegistration.fsx` | Integration/Web | Real `CommHub` registration, not mocked manifest | Passed on 2026-07-05 11:37 +08:00; verifier builds/runs `codex.fs.Tests` and asserts extension manifest, generated script assets, metadata JSON handler, runtime asset and append-page shape template | Pass |
-| T-WEBR-005 | WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` | Browser/Integration | Real host profile serving PTCS classic shell | Playwright sees nav tabs, participant list, thread area and composer on `/chat` | Planned |
+| T-WEBR-005 | WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` | Browser/Integration | Real host profile serving PTCS classic shell | Passed on 2026-07-05 12:32 +08:00; verifier builds/runs `codex.fs.Tests`, starts real PTCS webshell on LAN IP, verifies `/chat` manifest, `codex-fs-ai-chat`, generated script asset, `/healthz`, non-guard page and host tool bounded start | Pass |
 | T-RUNTIME-002 | RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` | Unit/Integration | Real runtime modules, no host route mock | Runtime consumes MessageFabric refs, invokes engine adapter, persists evidence and returns reply intent | Planned |
 | T-ACTOR-002 | ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | Integration/Actor | Real PTCS `CommSpaActorFabric` and MessageFabric | Foreman/worker actors register as `agent` participants and appear through PTCS participant listing | Planned |
 | T-WEBR-006 | WEBR-006 | `misc/verifyAiIntentControls.fsx` | Browser/Integration | Real PTCS shell extension controls | Target/perspective/engine/model/reasoning controls emit normalized intent metadata; no browser argv rendering | Planned |

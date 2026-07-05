@@ -298,3 +298,11 @@
 - Implementation: `tests/codex.fs.Tests` now references `src/codex.fs.web`; `Program.fs` asserts `CommHub.useAIChat()` extension manifest, generated script assets, WebSharper runtime asset, metadata JSON handler and append-page shape template.
 - Verifier: added `misc/verifyUseAIChatRegistration.fsx` using `FAkka.Argu` and `ParseLine.fsx`; command `dotnet fsi --exec .\misc\verifyUseAIChatRegistration.fsx` passed on 2026-07-05 11:37 +08:00.
 - Traceability: updated WBS/Test detail and stock rows, SD §14.3, README/project planning and KM. `WEBR-005` is now unblocked for product PTCS classic `/chat` host composition.
+
+## 2026-07-05 12:35 +08:00 WEBR-005 PTCS webshell host profile
+
+- Scope: added an explicit product web profile instead of repurposing the ASP.NET `/chat` guard page.
+- Implementation: `HostConfig.WebShell` adds `web.profile` and web bind/advertise settings; `HostRuntime` reports webshell profile; `HostWebShell.tryStartAsync` starts PTCS classic `/chat` with a shared `CommHub`, `CommSpaMessageFabric` and `useAIChat()` registration.
+- Host tool: `codex.fs.host start --setting web.profile=ptcs-webshell ...` starts the PTCS webshell; default start remains control-only.
+- Verifier: added `misc/verifyHostPtcsWebProfile.fsx`; command `dotnet fsi --exec .\misc\verifyHostPtcsWebProfile.fsx` passed on 2026-07-05 12:32 +08:00.
+- Traceability: updated WBS/Test detail and stock rows, SD §14.3, README/project planning and KM. `WEBR-006` still waits for ActorFabric-visible participants; `WEBR-008` is unblocked.

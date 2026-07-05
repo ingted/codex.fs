@@ -47,6 +47,14 @@ module HostRuntime =
           ControlAdvertiseUri: string
           /// True when loopback-only control addresses are allowed.
           ControlAllowLoopbackOnly: bool
+          /// Active product web shell profile.
+          WebShellProfile: string
+          /// Advertised PTCS WebSharper shell URI.
+          WebShellAdvertiseUri: string
+          /// True when loopback-only web shell addresses are allowed.
+          WebShellAllowLoopbackOnly: bool
+          /// PTCS actor fabric mode selected for the web shell.
+          WebShellActorFabric: string
           /// PTCS fabric mode selected by config.
           PtcsFabricMode: string
           /// Prefix used for PTCS session participants.
@@ -113,6 +121,9 @@ module HostRuntime =
         let warnings =
             [ if config.ControlEndpoint.AllowLoopbackOnly then
                   "loopback-control-enabled"
+              if config.WebShell.Profile.Trim().Equals("ptcs-webshell", StringComparison.OrdinalIgnoreCase)
+                 && config.WebShell.AllowLoopbackOnly then
+                  "loopback-webshell-enabled"
               if config.Ptcs.DurableAgentTasks then
                   "durable-agent-tasks-enabled" ]
 
@@ -123,6 +134,10 @@ module HostRuntime =
           ControlProtocol = config.ControlEndpoint.Protocol
           ControlAdvertiseUri = config.ControlEndpoint.AdvertiseUri
           ControlAllowLoopbackOnly = config.ControlEndpoint.AllowLoopbackOnly
+          WebShellProfile = config.WebShell.Profile
+          WebShellAdvertiseUri = config.WebShell.AdvertiseUri
+          WebShellAllowLoopbackOnly = config.WebShell.AllowLoopbackOnly
+          WebShellActorFabric = config.WebShell.ActorFabric
           PtcsFabricMode = config.Ptcs.FabricMode
           PtcsSessionParticipantPrefix = config.Ptcs.SessionParticipantPrefix
           PtcsDefaultInboxLimit = config.Ptcs.DefaultInboxLimit
@@ -139,6 +154,10 @@ module HostRuntime =
         let current = health runtime
         let enabledEnginesText = String.concat "," current.EnabledEngines
         let engineOverrideKeysText = String.concat "," current.EngineOverrideKeys
+        let webShellEnabled = current.WebShellProfile.Trim().Equals("ptcs-webshell", StringComparison.OrdinalIgnoreCase)
+        let webShellAdvertiseUriText = if webShellEnabled then current.WebShellAdvertiseUri else String.Empty
+        let webShellAllowLoopbackOnlyText = if webShellEnabled then string current.WebShellAllowLoopbackOnly else String.Empty
+        let webShellActorFabricText = if webShellEnabled then current.WebShellActorFabric else String.Empty
 
         [ $"status={formatStatus current.Status}"
           $"defaultEngine={current.DefaultEngine}"
@@ -147,6 +166,10 @@ module HostRuntime =
           $"controlProtocol={current.ControlProtocol}"
           $"controlAdvertiseUri={current.ControlAdvertiseUri}"
           $"controlAllowLoopbackOnly={current.ControlAllowLoopbackOnly}"
+          $"webShellProfile={current.WebShellProfile}"
+          $"webShellAdvertiseUri={webShellAdvertiseUriText}"
+          $"webShellAllowLoopbackOnly={webShellAllowLoopbackOnlyText}"
+          $"webShellActorFabric={webShellActorFabricText}"
           $"ptcsFabricMode={current.PtcsFabricMode}"
           $"ptcsSessionParticipantPrefix={current.PtcsSessionParticipantPrefix}"
           $"ptcsDefaultInboxLimit={current.PtcsDefaultInboxLimit}"

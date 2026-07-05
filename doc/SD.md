@@ -1516,6 +1516,18 @@ Verifier: `misc/verifyCodexFsWebBundle.fsx`; passed 2026-07-05 11:07 +08:00 and 
 
 Verifier: `misc/verifyUseAIChatRegistration.fsx`; passed 2026-07-05 11:37 +08:00 and runs real `dotnet build` plus full `codex.fs.Tests`. This unblocks `WEBR-005` host composition against PTCS classic `/chat`.
 
+`WEBR-005` implementation result:
+
+| Area | Implemented contract |
+| --- | --- |
+| Host config | `HostConfig.WebShell` adds explicit `web.profile=control-only|ptcs-webshell`, `web.bindAddress`, `web.port`, `web.advertiseUri`, `web.allowLoopbackOnly`, and `web.actorFabric`. Control-only remains the default. |
+| Runtime health | `HostRuntime.healthSummary` reports webshell profile without leaking default loopback URI when profile is `control-only`; `ptcs-webshell` reports advertised chat binding and actor fabric mode. |
+| Product composition | `CodexFs.Host.HostWebShell.tryStartAsync` creates one PTCS `CommHub`, registers `useAIChat()`, creates `CommSpaMessageFabric` from that same hub, and starts PTCS `Server.start` for classic `/chat`. |
+| Host tool | `codex.fs.host start --setting web.profile=ptcs-webshell ...` starts the product PTCS shell; default `start` still launches the ASP.NET control host. |
+| Boundary | The legacy ASP.NET `/chat` guard is not treated as product chat. The product path is the PTCS Suave `/chat` server returned by `HostWebShell`. |
+
+Verifier: `misc/verifyHostPtcsWebProfile.fsx`; passed 2026-07-05 12:32 +08:00 and runs real `dotnet build` plus full `codex.fs.Tests`. It binds to the machine LAN IP, verifies PTCS `/chat` manifest and `codex-fs-ai-chat`, fetches the generated WebSharper script asset, checks `/healthz`, rejects guard/diagnostics HTML and verifies host tool bounded start.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

@@ -25,6 +25,21 @@ module HostConfig =
           /// Permit loopback bind/advertise addresses for single-node development.
           AllowLoopbackOnly: bool }
 
+    /// Product PTCS WebSharper shell configuration.
+    type HostWebShellConfig =
+        { /// `control-only` keeps browser chat outside this host; `ptcs-webshell` starts PTCS classic `/chat`.
+          Profile: string
+          /// Local address used by the PTCS WebSharper shell listener.
+          BindAddress: string
+          /// Optional fixed web shell port.
+          Port: int option
+          /// URI advertised to browser users and other nodes.
+          AdvertiseUri: string
+          /// Permit loopback bind/advertise addresses for single-node development.
+          AllowLoopbackOnly: bool
+          /// PTCS actor fabric mode for the web shell, for example `auto-local` or `disabled`.
+          ActorFabric: string }
+
     /// Swagger/OpenAPI documentation settings for future host HTTP endpoints.
     type ApiDocsConfig =
         { /// Generate XML documentation for public API members.
@@ -71,6 +86,8 @@ module HostConfig =
           Redaction: RedactionPolicy
           /// Control endpoint settings.
           ControlEndpoint: HostControlEndpointConfig
+          /// Product PTCS WebSharper shell settings.
+          WebShell: HostWebShellConfig
           /// API documentation settings.
           ApiDocs: ApiDocsConfig
           /// PTCS integration settings.
@@ -118,6 +135,15 @@ module HostConfig =
           AdvertiseUri = "http://127.0.0.1:8788"
           AllowLoopbackOnly = true }
 
+    /// Default product web shell settings. The shell is disabled until explicitly requested.
+    let defaultWebShell =
+        { Profile = "control-only"
+          BindAddress = "127.0.0.1"
+          Port = Some 8897
+          AdvertiseUri = "http://127.0.0.1:8897"
+          AllowLoopbackOnly = true
+          ActorFabric = "auto-local" }
+
     /// Default API documentation settings.
     let defaultApiDocs =
         { GenerateXmlDocs = true
@@ -145,6 +171,7 @@ module HostConfig =
           Compaction = Compaction.defaultPolicy
           Redaction = { EnableHighRiskRules = true }
           ControlEndpoint = defaultControlEndpoint
+          WebShell = defaultWebShell
           ApiDocs = defaultApiDocs
           Ptcs = defaultPtcs }
 
@@ -162,6 +189,12 @@ module HostConfig =
           "control.port"
           "control.advertiseuri"
           "control.allowloopbackonly"
+          "web.profile"
+          "web.bindaddress"
+          "web.port"
+          "web.advertiseuri"
+          "web.allowloopbackonly"
+          "web.actorfabric"
           "apidocs.generatexmldocs"
           "apidocs.generateopenapi"
           "apidocs.exposeswaggerui"
@@ -375,6 +408,44 @@ module HostConfig =
                     issues
             | Error message -> addIssue "control.advertiseuri" IssueError message issues
 
+        let webProfile = config.WebShell.Profile.Trim().ToLowerInvariant()
+
+        let issues =
+            match webProfile with
+            | "control-only"
+            | "ptcs-webshell" -> issues
+            | _ -> addIssue "web.profile" IssueError "Web profile must be control-only or ptcs-webshell." issues
+
+        let issues =
+            match config.WebShell.Port with
+            | Some port when port < 1 || port > 65535 -> addIssue "web.port" IssueError "Web shell port must be between 1 and 65535." issues
+            | _ -> issues
+
+        let issues =
+            if String.IsNullOrWhiteSpace config.WebShell.BindAddress then
+                addIssue "web.bindaddress" IssueError "Web shell bind address must not be blank." issues
+            else
+                issues
+
+        let issues =
+            match tryLoopbackUri config.WebShell.AdvertiseUri with
+            | Ok advertiseLoopback ->
+                if config.WebShell.AllowLoopbackOnly then
+                    issues
+                elif isLoopbackAddress config.WebShell.BindAddress || advertiseLoopback then
+                    addIssue "web.advertiseuri" IssueError "PTCS web shell must advertise and bind a routable non-loopback address unless web.allowLoopbackOnly=true." issues
+                else
+                    issues
+            | Error message -> addIssue "web.advertiseuri" IssueError message issues
+
+        let webActorFabric = config.WebShell.ActorFabric.Trim().ToLowerInvariant()
+
+        let issues =
+            match webActorFabric with
+            | "auto-local"
+            | "disabled" -> issues
+            | _ -> addIssue "web.actorfabric" IssueError "Web shell actor fabric must be auto-local or disabled." issues
+
         let issues =
             if String.IsNullOrWhiteSpace config.Ptcs.FabricMode then
                 addIssue "ptcs.fabricmode" IssueError "PTCS fabric mode must not be blank." issues
@@ -439,69 +510,99 @@ module HostConfig =
 
         let api0 = defaults.ApiDocs
 
-        let api1, issues5 =
-            (api0, issues4)
+        let web0 = defaults.WebShell
+
+        let web1, issues5 =
+            (web0, issues4)
+            ||> applyStringSetting "web.profile" (fun current value -> { current with Profile = value })
+                    normalized
+
+        let web2, issues6 =
+            (web1, issues5)
+            ||> applyStringSetting "web.bindaddress" (fun current value -> { current with BindAddress = value })
+                    normalized
+
+        let web3, issues7 =
+            (web2, issues6)
+            ||> applySetting "web.port" parseInt (fun current value -> { current with Port = Some value }) normalized
+
+        let web4, issues8 =
+            (web3, issues7)
+            ||> applyStringSetting "web.advertiseuri" (fun current value -> { current with AdvertiseUri = value })
+                    normalized
+
+        let web5, issues9 =
+            (web4, issues8)
+            ||> applySetting "web.allowloopbackonly" parseBool (fun current value -> { current with AllowLoopbackOnly = value }) normalized
+
+        let web, issues10 =
+            (web5, issues9)
+            ||> applyStringSetting "web.actorfabric" (fun current value -> { current with ActorFabric = value })
+                    normalized
+
+        let api1, issues11 =
+            (api0, issues10)
             ||> applySetting "apidocs.generatexmldocs" parseBool (fun current value -> { current with GenerateXmlDocs = value }) normalized
 
-        let api2, issues6 =
-            (api1, issues5)
+        let api2, issues12 =
+            (api1, issues11)
             ||> applySetting "apidocs.generateopenapi" parseBool (fun current value -> { current with GenerateOpenApi = value }) normalized
 
-        let api3, issues7 =
-            (api2, issues6)
+        let api3, issues13 =
+            (api2, issues12)
             ||> applySetting "apidocs.exposeswaggerui" parseBool (fun current value -> { current with ExposeSwaggerUi = value }) normalized
 
-        let api4, issues8 =
-            (api3, issues7)
+        let api4, issues14 =
+            (api3, issues13)
             ||> applyStringSetting "apidocs.swaggerrouteprefix" (fun current value -> { current with SwaggerRoutePrefix = optionalNonBlank value })
                     normalized
 
-        let apiDocs, issues9 =
-            (api4, issues8)
+        let apiDocs, issues15 =
+            (api4, issues14)
             ||> applySetting "apidocs.includeexamples" parseBool (fun current value -> { current with IncludeExamples = value }) normalized
 
         let ptcs0 = defaults.Ptcs
 
-        let ptcs1, issues10 =
-            (ptcs0, issues9)
+        let ptcs1, issues16 =
+            (ptcs0, issues15)
             ||> applyStringSetting "ptcs.fabricmode" (fun current value -> { current with FabricMode = value }) normalized
 
-        let ptcs2, issues11 =
-            (ptcs1, issues10)
+        let ptcs2, issues17 =
+            (ptcs1, issues16)
             ||> applyStringSetting
                     "ptcs.sessionparticipantprefix"
                     (fun current value -> { current with SessionParticipantPrefix = value })
                     normalized
 
-        let ptcs3, issues12 =
-            (ptcs2, issues11)
+        let ptcs3, issues18 =
+            (ptcs2, issues17)
             ||> applyStringSetting "ptcs.replyparticipantid" (fun current value -> { current with ReplyParticipantId = optionalNonBlank value })
                     normalized
 
-        let ptcs4, issues13 =
-            (ptcs3, issues12)
+        let ptcs4, issues19 =
+            (ptcs3, issues18)
             ||> applySetting "ptcs.durableagenttasks" parseBool (fun current value -> { current with DurableAgentTasks = value }) normalized
 
-        let ptcs, issues14 =
-            (ptcs4, issues13)
+        let ptcs, issues20 =
+            (ptcs4, issues19)
             ||> applySetting "ptcs.defaultinboxlimit" parseInt (fun current value -> { current with DefaultInboxLimit = value }) normalized
 
         let compaction0 = defaults.Compaction
 
-        let compaction1, issues15 =
-            (compaction0, issues14)
+        let compaction1, issues21 =
+            (compaction0, issues20)
             ||> applySetting "compaction.maxsummarychars" parseInt (fun current value -> { current with MaxSummaryChars = Some value }) normalized
 
-        let compaction2, issues16 =
-            (compaction1, issues15)
+        let compaction2, issues22 =
+            (compaction1, issues21)
             ||> applySetting "compaction.recententrycount" parseInt (fun current value -> { current with RecentEntryCount = value }) normalized
 
-        let compaction, issues17 =
-            (compaction2, issues16)
+        let compaction, issues23 =
+            (compaction2, issues22)
             ||> applySetting "compaction.maxentrytextchars" parseInt (fun current value -> { current with MaxEntryTextChars = Some value }) normalized
 
-        let redaction, issues18 =
-            ({ EnableHighRiskRules = defaults.Redaction.EnableHighRiskRules }, issues17)
+        let redaction, issues24 =
+            ({ EnableHighRiskRules = defaults.Redaction.EnableHighRiskRules }, issues23)
             ||> applySetting
                     "redaction.enablehighriskrules"
                     parseBool
@@ -511,33 +612,34 @@ module HostConfig =
         let config0 =
             { defaults with
                 ControlEndpoint = control
+                WebShell = web
                 ApiDocs = apiDocs
                 Ptcs = ptcs
                 Compaction = compaction
                 Redaction = redaction
                 EngineExecutableOverrides = engineExecutableOverrides normalized }
 
-        let config1, issues19 =
-            (config0, issues18)
+        let config1, issues25 =
+            (config0, issues24)
             ||> applyStringSetting "artifact.root" (fun current value -> { current with ArtifactRoot = value }) normalized
 
-        let config2, issues20 =
-            (config1, issues19)
+        let config2, issues26 =
+            (config1, issues25)
             ||> applySetting "engine.default" parseEngineKind (fun current value -> { current with DefaultEngine = value }) normalized
 
-        let config3, issues21 =
-            (config2, issues20)
+        let config3, issues27 =
+            (config2, issues26)
             ||> applySetting "engine.enabled" parseEngineList (fun current value -> { current with EnabledEngines = value }) normalized
 
-        let config4, issues22 =
-            (config3, issues21)
+        let config4, issues28 =
+            (config3, issues27)
             ||> applySetting "timeout.default" parseTimeSpan (fun current value -> { current with DefaultTimeout = value }) normalized
 
-        let config, issues23 =
-            (config4, issues22)
+        let config, issues29 =
+            (config4, issues28)
             ||> applySetting "message.maxpendingperturn" parseInt (fun current value -> { current with MaxPendingMessagesPerTurn = value }) normalized
 
-        let issues = unknownIssues @ (List.rev issues23) @ validate config
+        let issues = unknownIssues @ (List.rev issues29) @ validate config
         let fatal = issues |> List.exists (fun issue -> issue.Severity = IssueError)
 
         { Config = if fatal then None else Some config
