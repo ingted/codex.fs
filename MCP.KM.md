@@ -246,3 +246,11 @@
 - `codex.fs.host` must distinguish `control-only` from product `ptcs-webshell`; only `ptcs-webshell` may claim browser chat usability.
 - Existing `GET /chat` guard and `/diagnostics/session-send` are cut from product acceptance and may remain only as legacy/control diagnostics.
 - AI behavior belongs to PTCS ActorFabric SessionActor/WorkerActor plus runtime prompt loop; browser sends intent through PTCS MessageFabric and renders refs.
+
+## 2026-07-05 WEBR-002 PTCS Classic Shell Inventory
+
+- PTCS classic shell lives in `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`: `/chat` is served by `Server.fs`, and `Client.fs` mounts `.page.chat-grid`, `chat-participant`, `chat-work`, `thread-list`, `chat-composer`, `chat-draft`, and `chat-send`.
+- `/chat/api/agents` lists `CommHub.ListParticipants(Some "agent", Some true)` plus `channel.public`; codex.fs workers must register as PTCS `agent` participants to be visible.
+- Browser chat sends `chat-send` through `/sync/ws` first and uses `/chat/api/send` as a fallback; acceptance must not bypass MessageFabric with a standalone textarea route.
+- PTCS extension seam is `CommHub.RegisterClientExtension`, `RegisterClientExtensionScriptAsset`, `RegisterClientExtensionJsonPostHandler`, `ClientExtensionRegistration`, and `ClientExtensionScriptAsset`.
+- `PulseTrade.Comm.Spa.Dynamic` is the direct pattern for `codex.fs.web`: `WebSharperProject=Bundle`, generated `wwwroot/js`, `PulseTrade.Comm.Spa [0.2.5-beta71]`, and server `useDynamicSdui(...)`.

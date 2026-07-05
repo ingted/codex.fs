@@ -1477,6 +1477,20 @@ Cut from product acceptance:
 
 The first implementation WBS after this RFC is `WEBR-002`: source/API inventory of PTCS classic shell and Dynamic bundle. No new Web code should be written before that inventory maps the actual PTCS route, DTO and extension APIs.
 
+`WEBR-002` inventory result:
+
+| Area | Confirmed source/API |
+| --- | --- |
+| PTCS shell routes | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Server.fs` routes `/` -> `/chat`, `/chat`, `/sets`, `/actors`, `/chat/api/agents`, `/chat/api/thread`, `/chat/api/send`, `/sync/ws`, append page APIs and client extension endpoints. |
+| PTCS chat DOM | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Client.fs` mounts `.page.chat-grid`, `nav-chat` / `nav-sets` / `nav-actors`, `chat-participant`, `chat-work`, `chat-pending-state`, `thread-list`, `chat-composer`, `chat-draft`, and `chat-send`. |
+| Participant source | `/chat/api/agents` uses `CommHub.ListParticipants(Some "agent", Some true)` plus fixed `channel.public`; worker visibility therefore requires real PTCS `agent` registration. |
+| Message path | Browser sends `chat-send` through `/sync/ws` first and falls back to `/chat/api/send`; server chat thread reads from durable chat stream and in-memory thread view. |
+| Extension seam | `CommHub.RegisterClientExtension`, `RegisterClientExtensionScriptAsset`, `RegisterClientExtensionJsonPostHandler`, `ClientExtensionRegistration`, `ClientExtensionScriptAsset`, and `AppendPageShapeTemplateRegistration`. |
+| Dynamic baseline | `PulseTrade.Comm.Spa.Dynamic` is a `WebSharperProject=Bundle` package with `wwwroot\js`, exact `PulseTrade.Comm.Spa [0.2.5-beta71]`, server `useDynamicSdui(...)`, and WebSharper/F# client modules. |
+| codex.fs cut-list | `codex.fs.host` `/chat` remains a PTCS guard page; `/diagnostics/session-send` remains diagnostics/control only; neither is product Web acceptance. |
+
+Verifier: `misc/verifyPtcsClassicShellInventory.fsx`; detail: `doc/WEBR-002.PTCS-classic-shell-inventory.md`.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

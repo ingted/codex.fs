@@ -271,3 +271,13 @@
 - Target: product Web must reuse PTCS classic `/chat` shell with tabs/nav, participant list, thread/session/composer, plus `codex.fs.web` WebSharper Bundle modeled after `PulseTrade.Comm.Spa.Dynamic`.
 - Actor boundary: AI execution must be PTCS ActorFabric SessionActor/WorkerActor plus runtime prompt loop; browser only sends MessageFabric intent and renders redacted refs.
 - Traceability: added `RFC-WEB-0002`, `WBS.WEBR-001.md`, `Test.WEBR-001.md`, WBS rows `WEBR-001..WEBR-008`, `RUNTIME-002`, `ACTOR-002`, `E2E-004`, and matching Test rows/verifier contracts.
+
+## 2026-07-05 10:47 +08:00 WEBR-002 PTCS classic shell inventory
+
+- Scope: completed source/API inventory before adding any new Web code.
+- Evidence: `doc/WEBR-002.PTCS-classic-shell-inventory.md` maps real PTCS package/Host/Dynamic/codex.fs host source paths.
+- PTCS shell: confirmed `/chat`, `/sets`, `/actors`, `/chat/api/agents`, `/chat/api/thread`, `/chat/api/send`, `/sync/ws`, classic chat DOM selectors and existing browser verifier expectations.
+- Extension seam: confirmed `CommHub.RegisterClientExtension`, script asset registration, fixed JSON POST handlers, `ClientExtensionRegistration`, `ClientExtensionScriptAsset`, and Dynamic `useDynamicSdui(...)` as the model for `useAIChat(...)`.
+- Cut-list: reconfirmed standalone `codex.fs.host` `/chat` and `/diagnostics/session-send` are control/diagnostics only, not product Web acceptance.
+- Verification: `dotnet fsi --exec .\misc\verifyPtcsClassicShellInventory.fsx` passed.
+- Traceability: updated WBS/Test detail and stock rows; added verifier `misc/verifyPtcsClassicShellInventory.fsx`.
