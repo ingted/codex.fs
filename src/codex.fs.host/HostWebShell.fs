@@ -4,7 +4,9 @@ open System
 open System.IO
 open System.Threading
 open System.Threading.Tasks
+open Akka.Actor
 open CodexFs
+open CodexFs.Ptcs
 open CodexFs.Web
 open CodexFs.Web.Server
 open PulseTrade.Comm.Spa
@@ -45,6 +47,12 @@ module HostWebShell =
           Contract: HostWebShellContract
           /// Running PTCS Suave server.
           Server: RunningServer
+          /// PTCS ActorFabric-backed Foreman actor, when actor fabric is enabled.
+          ForemanActor: IActorRef option
+          /// Background supervisor that asks the Foreman actor to run bounded runtime cycles.
+          ForemanLoop: Task option
+          /// Cancellation source for the Foreman runtime loop.
+          ForemanLoopCancellation: CancellationTokenSource option
           /// UTC timestamp used when the shell was started.
           StartedUtc: DateTimeOffset }
 
@@ -129,6 +137,64 @@ module HostWebShell =
         registerDefaultForeman hub
         hub
 
+    let engineExecutable (config: HostConfig.HostConfig) engine =
+        config.EngineExecutableOverrides
+        |> Map.tryFind engine
+        |> Option.filter (String.IsNullOrWhiteSpace >> not)
+        |> Option.defaultValue (RuntimeMessageFabricCycle.defaultExecutable engine)
+
+    let foremanRuntimeCommand (runtime: HostRuntime.HostRuntime) (spec: ActorFabricBinding.WorkerParticipantSpec) : ActorFabricBinding.RunRuntimeCycle =
+        let config = runtime.Config
+        let engine = config.DefaultEngine
+
+        { SessionId = "foreman"
+          SessionParticipantId = Some spec.ParticipantId
+          ReplyParticipantId = config.Ptcs.ReplyParticipantId
+          Engine = Some engine
+          ExecutablePath = Some(engineExecutable config engine)
+          WorkingDirectory = Some(Directory.GetCurrentDirectory())
+          ArtifactRoot = config.ArtifactRoot
+          Timeout = Some config.DefaultTimeout
+          SystemInstruction =
+            Some
+                "You are codex.fs Foreman. Reply concisely to the latest PTCS chat prompt and preserve requested exact tokens."
+          AdditionalDirectories = [] }
+
+    let startForemanRuntimeLoop (startedUtc: DateTimeOffset) (runtime: HostRuntime.HostRuntime) (fabric: CommSpaMessageFabric) (actorFabric: CommSpaActorFabric option) =
+        match actorFabric with
+        | None -> None, None, None
+        | Some actorFabric ->
+            let spec = ActorFabricBinding.foremanSpec runtime.Config.Ptcs.SessionParticipantPrefix
+            let actorName = ActorFabricBinding.actorNameFromParticipantId "foreman" spec.ParticipantId
+            let foreman = ActorFabricBinding.spawnWorker actorFabric fabric actorName spec
+            let loopCancellation = new CancellationTokenSource()
+            let token = loopCancellation.Token
+            let askTimeout = runtime.Config.DefaultTimeout + TimeSpan.FromSeconds 30.0
+
+            let loopTask =
+                task {
+                    let registerCommand: ActorFabricBinding.EnsureParticipantRegistered =
+                        { RequestedAtUtc = Some startedUtc }
+
+                    let! _ =
+                        foreman.Ask<ActorFabricBinding.WorkerParticipantRegistered>(
+                            registerCommand,
+                            TimeSpan.FromSeconds 10.0
+                        )
+
+                    while not token.IsCancellationRequested do
+                        try
+                            let command = foremanRuntimeCommand runtime spec
+                            let! _ = foreman.Ask<ActorFabricBinding.RuntimeCycleCompleted>(command, askTimeout)
+                            do! Task.Delay(TimeSpan.FromSeconds 1.0, token)
+                        with
+                        | :? OperationCanceledException -> ()
+                        | _ ->
+                            do! Task.Delay(TimeSpan.FromSeconds 2.0, token)
+                }
+
+            Some foreman, Some(loopTask :> Task), Some loopCancellation
+
     /// Start PTCS classic `/chat` using the codex.fs AI chat extension and a shared MessageFabric hub.
     let tryStartAsync (startedUtc: DateTimeOffset) (cancellationToken: CancellationToken) (runtime: HostRuntime.HostRuntime) =
         task {
@@ -148,6 +214,9 @@ module HostWebShell =
                 let runtime = HostRuntime.startWithMessageFabric startedUtc fabric runtime
                 let options = serverOptions runtime.Config hub
                 let server = Server.start options
+                let foremanActor, foremanLoop, foremanLoopCancellation =
+                    startForemanRuntimeLoop startedUtc runtime fabric server.ActorFabric
+
                 let extension =
                     hub.ListClientExtensions()
                     |> List.tryFind (fun item -> item.ExtensionId = Package.extensionId)
@@ -161,12 +230,30 @@ module HostWebShell =
                         { Runtime = runtime
                           Contract = contract
                           Server = server
+                          ForemanActor = foremanActor
+                          ForemanLoop = foremanLoop
+                          ForemanLoopCancellation = foremanLoopCancellation
                           StartedUtc = startedUtc }
         }
 
     /// Stop and dispose the PTCS web shell, returning stopped runtime state.
     let stopAsync (_cancellationToken: CancellationToken) server =
         task {
+            match server.ForemanLoopCancellation with
+            | Some source when not source.IsCancellationRequested ->
+                source.Cancel()
+                source.Dispose()
+            | Some source -> source.Dispose()
+            | None -> ()
+
+            match server.ForemanLoop with
+            | Some loop when not loop.IsCompleted ->
+                try
+                    loop.Wait(TimeSpan.FromSeconds 5.0) |> ignore
+                with _ ->
+                    ()
+            | _ -> ()
+
             server.Server.Stop()
             return HostRuntime.stop server.Runtime
         }

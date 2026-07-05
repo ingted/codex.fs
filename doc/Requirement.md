@@ -179,9 +179,9 @@ Product Web profile 必須：
 Current WEBR-006 status:
 
 - AI target/perspective/engine/model/reasoning/invocation/approval controls are implemented in the PTCS append renderer and verified through real browser evidence.
-- Product E2E remains incomplete until WorkerActor invokes runtime and browser reply rendering includes artifact/note refs.
+- Product E2E now has a real PTCS `/chat` browser prompt path through Foreman ActorFabric worker, MessageFabric, installed Agy, persisted artifacts and browser artifact-card reply.
 - `ptcs-webshell` deployments must set a dedicated `web.pcslRoot` and serve PTCS package `build/**` assets from host outputs.
-- `ACTOR-003` owns the next non-fake artifact provider slice: WorkerActor must invoke the shared PTCS runtime cycle and produce real manifest/final/boundary refs before WEBR-007 may render them.
+- Production durable sharded replay remains future hardening; the current E2E is a real auto-local PTCS ActorFabric path, not a fake/mock path.
 
 Current WEBR-007 status:
 
@@ -189,6 +189,11 @@ Current WEBR-007 status:
 - `ptcs-webshell` registers default Foreman participant `agent.codexfs.foreman` so users can select the包工頭 without knowing a session id.
 - `codex.fs.web` renders artifact replies in real PTCS classic `/chat` using `codexfs-artifact-reply` with run/outcome/manifest/final/note rows.
 - Browser evidence is produced by `misc/verifyArtifactRefsInPtcsShell.fsx` against real host, real PTCS chat APIs and real actor artifacts.
+
+Current E2E-004 status:
+
+- `HostWebShell` starts a Foreman actor loop when `web.actorFabric` is enabled and PTCS `RunningServer.ActorFabric` is available.
+- Playwright evidence from `misc/verifyPtcsAiChatE2E.fsx` proves a prompt typed into PTCS `/chat` reaches Foreman, is processed by installed Agy and returns an artifact card in the same thread.
 
 ### R-002 CLI client
 

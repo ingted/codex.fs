@@ -97,7 +97,7 @@ Status 值：
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | 2026-07-05 15:05 +08:00 | 2026-07-05 14:40 +08:00 | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence | [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 100 | Done | None | 2026-07-05 13:26 +08:00 | 2026-07-05 14:18 +08:00 | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | 2026-07-05 12:55 +08:00 | 2026-07-05 13:03 +08:00 | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
-| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | None | - | 2026-07-05 14:18 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 100 | Done | None | 2026-07-05 13:59 +08:00 | 2026-07-05 14:15 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 
 ## 3. Roll-up / Detail Files
 

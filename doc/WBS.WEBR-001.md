@@ -1,10 +1,10 @@
 # WBS Detail: WEBR-001 PTCS classic webshell rewrite
 
 WBS ID：`WEBR-001`  
-狀態：Done for RFC/reset slice  
+狀態：Done
 Progress：100  
 StartTime：2026-07-05 10:30 +08:00  
-UpdatedAt：2026-07-05 15:20 +08:00
+UpdatedAt：2026-07-05 14:15 +08:00
 Previous：`WEB-001`, `ACTOR-001`, `PERSIST-001`  
 SD：`SD §9`, `SD §14.1`, `SD §14.3`  
 Test：`T-WEBR-001`
@@ -35,7 +35,7 @@ Test：`T-WEBR-001`
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 100 | Done | None | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
-| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | None | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
+| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 100 | Done | None | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
 
 ## Cut / Rewrite Notes
 
@@ -181,3 +181,19 @@ UpdatedAt：2026-07-05 14:18 +08:00
   - note: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\note.md`
   - screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`
 - `E2E-004` is unblocked for full browser prompt -> Foreman actor -> runtime -> artifact reply loop.
+
+## E2E-004 Closeout
+
+UpdatedAt：2026-07-05 14:15 +08:00
+
+- Implemented `HostWebShell` Foreman runtime loop for product `ptcs-webshell` when PTCS `RunningServer.ActorFabric` is available.
+- Disabled profile remains valid as a no-actor regression path; auto-local profile is the product E2E path.
+- Verifier `dotnet fsi --exec .\misc\verifyPtcsAiChatE2E.fsx -- --no-restore` passed.
+- Evidence:
+  - host URL: `http://10.28.112.93:14091`
+  - prompt token: `CODEXFS_E2E004_25765348a165`
+  - manifest: `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\manifest.json`
+  - final: `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\final.md`
+  - note: `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\note.md`
+  - screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png`
+- Browser evidence shows PTCS classic participant list, selected Foreman, outbound prompt, Foreman artifact reply card and composer on the same `/chat` surface.

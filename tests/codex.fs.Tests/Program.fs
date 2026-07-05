@@ -613,6 +613,9 @@ try
     assertTrue "web shell scripts" (webShellServer.Contract.ScriptUrls |> List.exists (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase)))
     assertEqual "web shell has message fabric" true webShellServer.Contract.HasMessageFabric
     assertContains "web shell message fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" (webShellServer.Contract.MessageFabricType |> Option.defaultValue "")
+    assertEqual "web shell actor fabric disabled" true webShellServer.Server.ActorFabric.IsNone
+    assertEqual "web shell foreman actor disabled" true webShellServer.ForemanActor.IsNone
+    assertEqual "web shell foreman loop disabled" true webShellServer.ForemanLoop.IsNone
     assertTrue "web shell pcsl root exists" (Directory.Exists(Path.GetFullPath webShellPcslRoot))
 
     use webShellHttp = new HttpClient()

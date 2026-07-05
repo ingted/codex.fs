@@ -356,3 +356,12 @@
 - Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyArtifactRefsInPtcsShell.fsx -- --no-restore` passed.
 - Evidence: browser screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`; manifest `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\manifest.json`; note `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\note.md`.
 - Boundary: this renders refs inside PTCS classic chat and preserves artifact/note traceability. It is not yet the production durable sharded replay path; `E2E-004` remains the next end-to-end durable workflow item.
+
+## 2026-07-05 14:15 +08:00 E2E-004 PTCS browser prompt to Foreman actor loop
+
+- Scope: completed the first real PTCS classic browser prompt -> Foreman actor -> MessageFabric/runtime/Agy -> artifact reply loop.
+- Implementation: `CodexFs.Host.HostWebShell` now starts a Foreman actor runtime loop when `RunningServer.ActorFabric` is available; `web.actorFabric=disabled` remains a no-actor regression profile.
+- Verifier: added `misc/verifyPtcsAiChatE2E.fsx`, which builds/runs tests, starts LAN `ptcs-webshell`, uses Playwright to type prompt token `CODEXFS_E2E004_25765348a165` in `/chat`, waits for `codexfs-artifact-reply`, and verifies manifest/final/note files.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyPtcsAiChatE2E.fsx -- --no-restore` passed.
+- Evidence: screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png`; manifest `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\manifest.json`; final `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\final.md`; note `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\note.md`.
+- Boundary: this is a real PTCS auto-local ActorFabric E2E path, not fake/mock. Production crash-durable sharded replay remains future durability hardening.

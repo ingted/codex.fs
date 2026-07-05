@@ -134,6 +134,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `WEBR-007` completes the first artifact ref browser slice. Runtime writes `note.md`, MessageFabric replies include manifest/final/note refs, and `codex.fs.web` renders those refs inside PTCS classic `/chat` as a WebSharper extension. Because the current PTCS chat append path still falls back to `pre.message-body`, codex.fs adds a minimal DOM bridge that applies the same registered renderer to existing PTCS message-body nodes. This remains a PTCS shell extension, not a standalone chat implementation.
 
+`E2E-004` completes the first real browser-to-worker loop. `HostWebShell` now uses PTCS `RunningServer.ActorFabric` to spawn a Foreman `CodexWorkerActor` when actor fabric is enabled. A bounded host supervisor asks that actor to run `RunRuntimeCycle`; the actor, not the browser and not a standalone HTTP route, consumes the Foreman MessageFabric inbox, invokes runtime/Agy, persists artifacts and replies through MessageFabric. `web.actorFabric=disabled` remains a no-actor regression profile, not the product E2E profile.
+
 ## 4. Runtime components
 
 | Component | Responsibility |

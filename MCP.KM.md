@@ -326,3 +326,12 @@
 - `codex.fs.host` should register default Foreman `agent.codexfs.foreman` into MessageFabric before serving `/chat`; this gives first-use users a visible top-level participant without asking them to invent a session id.
 - `misc/verifyArtifactRefsInPtcsShell.fsx` is the WEBR-007 real-path verifier. It builds the solution, runs compiled tests to produce real ACTOR-003 artifacts, starts the host on LAN IP, sends the artifact reply through PTCS `/chat/api/send`, opens `/chat` with Playwright, selects Foreman and validates artifact-card selectors plus screenshot.
 - Browser evidence for the completed slice is `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`. Runtime artifact evidence remains under ignored `.codex.fs/actor003-artifacts` and must not be committed.
+
+## 2026-07-05 E2E-004 PTCS Browser Prompt To Foreman Actor
+
+- `CodexFs.Host.HostWebShell.startForemanRuntimeLoop` is the current product webshell worker bridge. It uses PTCS `RunningServer.ActorFabric` to spawn `agent.codexfs.foreman` as `ActorFabricBinding.CodexWorkerActor` and periodically asks it to run `ActorFabricBinding.RunRuntimeCycle`.
+- The Foreman actor loop must use the same `CommSpaMessageFabric` as PTCS `/chat`. Do not replace it with a host-local mailbox or direct HTTP worker call.
+- `web.actorFabric=disabled` intentionally produces no `ForemanActor` / `ForemanLoop`. Use it only for disabled-profile regression; product E2E requires `auto-local` or another real PTCS ActorFabric profile.
+- `misc/verifyPtcsAiChatE2E.fsx` is the E2E-004 verifier. It uses FAkka.Argu and Playwright, starts LAN `ptcs-webshell`, selects Foreman in the PTCS participant list, fills `[data-testid='chat-draft']`, clicks `[data-testid='chat-send']`, waits for `codexfs-artifact-reply`, and verifies manifest/final/note files under `.codex.fs/e2e004-artifacts`.
+- Completed browser evidence is `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png`; completed artifact evidence is under `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165`.
+- This proves the real PTCS auto-local ActorFabric path. It does not prove crash-durable sharded delivery replay or passivation recovery.

@@ -1640,7 +1640,7 @@ Verifier: `misc/verifyUseAIChatRegistration.fsx`; passed 2026-07-05 11:37 +08:00
 | --- | --- |
 | Host config | `HostConfig.WebShell` adds explicit `web.profile=control-only|ptcs-webshell`, `web.bindAddress`, `web.port`, `web.advertiseUri`, `web.allowLoopbackOnly`, `web.actorFabric`, and `web.pcslRoot`. Control-only remains the default. |
 | Runtime health | `HostRuntime.healthSummary` reports webshell profile without leaking default loopback URI when profile is `control-only`; `ptcs-webshell` reports advertised chat binding, actor fabric mode and explicit PCSL root when present. |
-| Product composition | `CodexFs.Host.HostWebShell.tryStartAsync` creates one PTCS `CommHub`, registers `useAIChat()`, creates `CommSpaMessageFabric` from that same hub, and starts PTCS `Server.start` for classic `/chat`; product deployments must set a dedicated `web.pcslRoot` outside tool/build output. |
+| Product composition | `CodexFs.Host.HostWebShell.tryStartAsync` creates one PTCS `CommHub`, registers `useAIChat()`, creates `CommSpaMessageFabric` from that same hub, starts PTCS `Server.start` for classic `/chat`, and when `RunningServer.ActorFabric` is available starts the Foreman actor runtime loop; product deployments must set a dedicated `web.pcslRoot` outside tool/build output. |
 | Host tool | `codex.fs.host start --setting web.profile=ptcs-webshell ...` starts the product PTCS shell; default `start` still launches the ASP.NET control host. |
 | Boundary | The legacy ASP.NET `/chat` guard is not treated as product chat. The product path is the PTCS Suave `/chat` server returned by `HostWebShell`. |
 
@@ -1672,6 +1672,17 @@ Verifier: `misc/verifyNoStandaloneChatProductPath.fsx`; passed 2026-07-05 13:03 
 | WebSocket caveat | `ptcs-webshell` currently serves the classic shell and HTTP fallback APIs; `/sync/ws` returned 503 in WEBR-006 browser evidence. HTTP fallback still allowed page create, add-key and append, but production UX should fix the WebSocket route before high-volume interactive use. |
 
 Verifier: `misc/verifyAiIntentControls.fsx`; passed 2026-07-05 14:58 +08:00 after `dotnet build .\codex.fs.slnx --no-restore`, full `codex.fs.Tests`, and Playwright evidence on `http://10.28.112.93:18488/page/webr006-ai8`.
+
+`E2E-004` implementation result:
+
+| Area | Implemented contract |
+| --- | --- |
+| Foreman actor loop | `HostWebShell.startForemanRuntimeLoop` spawns `agent.codexfs.foreman` through PTCS `RunningServer.ActorFabric` and asks it to run bounded `ActorFabricBinding.RunRuntimeCycle` loops against the same `CommSpaMessageFabric` used by `/chat`. |
+| Disabled actor profile | `web.actorFabric=disabled` still starts the PTCS shell and MessageFabric but intentionally has no Foreman actor/loop; tests assert this as a regression boundary. |
+| Browser E2E | `misc/verifyPtcsAiChatE2E.fsx` opens real PTCS classic `/chat`, selects Foreman, types a prompt in `[data-testid='chat-draft']`, clicks `[data-testid='chat-send']`, waits for `codexfs-artifact-reply`, and verifies manifest/final/note files under `.codex.fs/e2e004-artifacts/`. |
+| Evidence | Passed run used host `http://10.28.112.93:14091`, prompt token `CODEXFS_E2E004_25765348a165`, screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png`, and artifact root `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165`. |
+
+Production caveat: this E2E proves the real PTCS auto-local ActorFabric path. Crash-durable sharded replay, actor passivation recovery and durable task admission remain future durability hardening.
 
 ## 15. Testing design preview
 

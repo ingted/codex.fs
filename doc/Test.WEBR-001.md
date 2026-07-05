@@ -19,7 +19,7 @@ UpdatedAt：2026-07-05 15:20 +08:00
 | T-WEBR-006 | WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence | Browser/Integration | Real PTCS shell extension controls | Passed on 2026-07-05 15:05 +08:00; target/perspective/engine/model/reasoning/invocation controls emit normalized `codex.fs.web.ai-intent.v1` metadata through PTCS append APIs; browser never renders CLI argv | Pass |
 | T-WEBR-007 | WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Browser/E2E | Real worker run artifact refs | Passed on 2026-07-05 14:18 +08:00; PTCS shell renders redacted reply, run id, manifest/final/note refs from real ACTOR-003 artifacts; screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png` | Pass |
 | T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | Passed on 2026-07-05 13:03 +08:00; verifier builds/runs `codex.fs.Tests` and asserts control-only `/chat` guard has no composer/form/PTCS manifest, diagnostics is diagnostic-only and product path guidance points to `web.profile=ptcs-webshell` | Pass |
-| T-E2E-004 | E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | Browser/E2E | Real PTCS shell + ActorFabric + MessageFabric + headless engine | Human sends prompt in `/chat`, Foreman actor runs engine, artifacts are stored, reply appears with refs | Planned |
+| T-E2E-004 | E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | Browser/E2E | Real PTCS shell + ActorFabric + MessageFabric + headless engine | Passed on 2026-07-05 14:15 +08:00; Playwright sent a prompt from PTCS `/chat` composer to Foreman, Foreman actor consumed it through MessageFabric, ran installed Agy, persisted manifest/final/note artifacts, and rendered `codexfs-artifact-reply` in the same PTCS thread; screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png` | Pass |
 
 ## Hard Gates
 
@@ -49,3 +49,11 @@ WEBR-007 evidence:
 - Real actor manifest: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\manifest.json`
 - Real actor final: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\final.md`
 - Real actor note: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\note.md`
+
+E2E-004 evidence:
+
+- Browser screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png`
+- Prompt token: `CODEXFS_E2E004_25765348a165`
+- Real Foreman manifest: `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\manifest.json`
+- Real Foreman final: `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\final.md`
+- Real Foreman note: `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165\sessions\foreman\runs\run-20260705060552217-1daa3715\note.md`

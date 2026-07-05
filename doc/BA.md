@@ -44,7 +44,15 @@ Acceptance business statement：
 
 > Foreman/Worker 產生的 real actor artifact refs 經由 MessageFabric reply 進入 PTCS classic `/chat` 後，browser 能顯示 redacted summary、run id、manifest/final/note refs，且 raw artifacts 仍留在 private artifact root。
 
-## 6. Non-goals
+## 6. E2E-004 business slice
+
+`E2E-004` 的 business value 是把「看得到 refs」推進到「人真的能在 PTCS `/chat` 交辦包工頭並收到完成回覆」。操作員不用知道 session id、不用複製 terminal history，也不用離開 PTCS classic chat room。
+
+Acceptance business statement：
+
+> 使用者在 PTCS classic `/chat` 選 Foreman、輸入 prompt、按 Send 後，Foreman actor 會透過 MessageFabric 消費該訊息、呼叫 headless engine、保存 note/artifacts，並把 artifact refs 回覆到同一個 PTCS thread。
+
+## 7. Non-goals
 
 - 不以 standalone diagnostics form 作為產品 chat。
 - 不把 raw artifacts 放進 public chat body。
