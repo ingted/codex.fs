@@ -262,3 +262,9 @@
 - WebSharper on Windows can leave `websharper.log` locked through `wsfscservice`; `wsconfig.json` sets `buildService=false` and `buildServiceLogging=false`, and generated `websharper.log` is ignored from Git.
 - `src/codex.fs.web/wwwroot/js/` is tracked package content, matching `PulseTrade.Comm.Spa.Dynamic`; nupkg assets live under `content/wwwroot/js`.
 - `misc/verifyCodexFsWebBundle.fsx` is the real verifier for this slice; it uses FAkka.Argu, runs `dotnet build`, checks generated bundle files, checks nupkg content assets and forbids hand-written JavaScript outside generated/build output.
+
+## 2026-07-05 WEBR-004 useAIChat Registration Contract
+
+- `tests/codex.fs.Tests` now references `src/codex.fs.web`; the product test runner exercises `CommHub.useAIChat()` against a real PTCS `CommHub`.
+- The verified contract covers extension manifest `codex-fs-ai-chat`, generated WebSharper script assets, runtime script asset, metadata JSON handler `/client-extensions/codexfs-ai-chat/metadata`, and append-page template `codexfs-ai-chat`.
+- `misc/verifyUseAIChatRegistration.fsx` is the WBS verifier; it uses `FAkka.Argu` and `ParseLine.fsx`, then runs real `dotnet build` and `dotnet run` for `codex.fs.Tests`.

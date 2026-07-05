@@ -291,3 +291,10 @@
 - Package content: generated `wwwroot/js` is tracked and packed as `content/wwwroot/js`, matching `PulseTrade.Comm.Spa.Dynamic`.
 - Verification: `dotnet fsi --exec .\misc\verifyCodexFsWebBundle.fsx`, `dotnet build .\codex.fs.slnx`, and `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed.
 - Traceability: updated WBS/Test detail and stock rows, SD §14.3, `RFC_Project_Planing.md`, README and KM.
+
+## 2026-07-05 11:40 +08:00 WEBR-004 useAIChat registration contract
+
+- Scope: moved `useAIChat(...)` from bundle scaffold seam into compiled integration coverage against real PTCS `CommHub` APIs.
+- Implementation: `tests/codex.fs.Tests` now references `src/codex.fs.web`; `Program.fs` asserts `CommHub.useAIChat()` extension manifest, generated script assets, WebSharper runtime asset, metadata JSON handler and append-page shape template.
+- Verifier: added `misc/verifyUseAIChatRegistration.fsx` using `FAkka.Argu` and `ParseLine.fsx`; command `dotnet fsi --exec .\misc\verifyUseAIChatRegistration.fsx` passed on 2026-07-05 11:37 +08:00.
+- Traceability: updated WBS/Test detail and stock rows, SD §14.3, README/project planning and KM. `WEBR-005` is now unblocked for product PTCS classic `/chat` host composition.

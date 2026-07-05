@@ -1504,6 +1504,18 @@ Verifier: `misc/verifyPtcsClassicShellInventory.fsx`; detail: `doc/WEBR-002.PTCS
 
 Verifier: `misc/verifyCodexFsWebBundle.fsx`; passed 2026-07-05 11:07 +08:00 and checks nupkg `content/wwwroot/js` assets. Regression build/test also passed: `dotnet build .\codex.fs.slnx`; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`.
 
+`WEBR-004` implementation result:
+
+| Area | Implemented contract |
+| --- | --- |
+| Test binding | `tests/codex.fs.Tests` references `src/codex.fs.web/codex.fs.web.fsproj`, so `useAIChat()` is compiled and exercised with the rest of the product tests. |
+| Extension manifest | `CommHub.useAIChat()` registers `codex-fs-ai-chat`, display name `codex.fs AI Chat`, metadata schema `codex.fs.web.ai-chat.v1`, and append shape `codexfs-ai-chat`. |
+| Script assets | Generated WebSharper head/main scripts and runtime script are registered through PTCS `RegisterClientExtensionScriptAsset` and can be read back via `TryGetClientExtensionScriptAsset`. |
+| Fixed JSON handler | Metadata endpoint `/client-extensions/codexfs-ai-chat/metadata` is registered through `RegisterClientExtensionJsonPostHandler` and dispatches through `TryHandleClientExtensionJsonPost`. |
+| Append page template | `codexfs-ai-chat` template carries `agent.codexfs.foreman` default/key placeholder, prompt metadata placeholder and tags `codex.fs`, `ai-chat`, `agent`. |
+
+Verifier: `misc/verifyUseAIChatRegistration.fsx`; passed 2026-07-05 11:37 +08:00 and runs real `dotnet build` plus full `codex.fs.Tests`. This unblocks `WEBR-005` host composition against PTCS classic `/chat`.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

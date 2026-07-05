@@ -15,6 +15,8 @@ open CodexFs.Domain
 open CodexFs.ProcessRunner
 open CodexFs.PromptAssembly
 open CodexFs.Ptcs
+open CodexFs.Web
+open CodexFs.Web.Server
 
 let assertTrue name condition =
     if not condition then
@@ -238,6 +240,83 @@ assertContains "message fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" 
 assertContains "actor fabric options type" "PulseTrade.Comm.Spa.CommSpaActorFabricOptions" PtcsReference.actorFabricOptionsType.FullName
 
 printfn "TC-PTCS-001 PTCS restore/reference passed"
+
+let aiChatHub = PulseTrade.Comm.Spa.CommHub.createEmpty()
+let aiChatRegisteredHub = aiChatHub.useAIChat()
+
+assertTrue "ai chat useAIChat returns same hub" (Object.ReferenceEquals(aiChatHub, aiChatRegisteredHub))
+
+let aiChatExtensions = aiChatHub.ListClientExtensions()
+let aiChatExtension =
+    aiChatExtensions
+    |> List.tryFind (fun extension -> extension.ExtensionId = Package.extensionId)
+    |> Option.defaultWith (fun () -> failwith $"Expected {Package.extensionId} client extension registration.")
+
+assertEqual "ai chat extension id" Package.extensionId aiChatExtension.ExtensionId
+assertEqual "ai chat display name" (Some "codex.fs AI Chat") aiChatExtension.DisplayName
+assertEqual "ai chat metadata" (Some AIChatExtensionOptions.defaultMetadataJson) aiChatExtension.MetadataJson
+assertTrue "ai chat scripts registered" (aiChatExtension.ScriptUrls.Length >= 2)
+assertTrue "ai chat head script registered" (aiChatExtension.ScriptUrls |> List.exists (fun url -> url.EndsWith("CodexFs.Web.head.js", StringComparison.OrdinalIgnoreCase)))
+assertTrue "ai chat main script registered" (aiChatExtension.ScriptUrls |> List.exists (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase)))
+assertEqual "ai chat append shape count" 1 aiChatExtension.AppendPageShapes.Length
+assertEqual "ai chat append shape" "codexfs-ai-chat" aiChatExtension.AppendPageShapes.Head.Shape
+assertEqual "ai chat append shape label" (Some "AI Chat") aiChatExtension.AppendPageShapes.Head.Label
+assertEqual "ai chat append shape badge" (Some "ai") aiChatExtension.AppendPageShapes.Head.Badge
+assertContains "ai chat metadata schema" Package.metadataSchema AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat metadata target" "\"defaultTarget\":\"foreman\"" AIChatExtensionOptions.defaultMetadataJson
+
+aiChatExtension.ScriptUrls
+|> List.iter (fun url ->
+    let asset =
+        aiChatHub.TryGetClientExtensionScriptAsset url
+        |> Option.defaultWith (fun () -> failwith $"Expected registered script asset for {url}.")
+
+    assertEqual $"ai chat asset url {url}" url asset.Url
+    assertContains $"ai chat asset content type {url}" "javascript" asset.ContentType
+    assertTrue $"ai chat asset content {url}" (asset.Content.Length > 0))
+
+let aiChatMainUrl =
+    aiChatExtension.ScriptUrls
+    |> List.tryFind (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase))
+    |> Option.defaultWith (fun () -> failwith "Expected CodexFs.Web.js in AI chat manifest scripts.")
+
+let aiChatMainAsset =
+    aiChatHub.TryGetClientExtensionScriptAsset aiChatMainUrl
+    |> Option.defaultWith (fun () -> failwith $"Expected registered main script asset for {aiChatMainUrl}.")
+
+assertTrue "ai chat main bundle content" (aiChatMainAsset.Content.Length > 100)
+
+let aiChatRuntimeUrl =
+    AIChatAssets.assetUrl AIChatExtensionOptions.defaultAssetRoutePrefix "WebSharper.Core.JavaScript/Runtime.js"
+
+let aiChatRuntimeAsset =
+    aiChatHub.TryGetClientExtensionScriptAsset aiChatRuntimeUrl
+    |> Option.defaultWith (fun () -> failwith $"Expected registered runtime script asset for {aiChatRuntimeUrl}.")
+
+assertContains "ai chat runtime content type" "javascript" aiChatRuntimeAsset.ContentType
+assertTrue "ai chat runtime content" (aiChatRuntimeAsset.Content.Length > 100)
+
+let aiChatMetadataReply =
+    aiChatHub.TryHandleClientExtensionJsonPost("/client-extensions/codexfs-ai-chat/metadata", "{}")
+    |> Option.defaultWith (fun () -> failwith "Expected AI chat metadata JSON POST handler.")
+
+assertEqual "ai chat metadata handler" AIChatExtensionOptions.defaultMetadataJson aiChatMetadataReply
+
+let aiChatTemplates = aiChatHub.ListAppendPageShapeTemplates()
+let aiChatTemplate =
+    aiChatHub.TryFindAppendPageShapeTemplate "codexfs-ai-chat"
+    |> Option.defaultWith (fun () -> failwith "Expected AI chat append page shape template.")
+
+assertTrue "ai chat template listed" (aiChatTemplates |> List.exists (fun template -> template.Shape = "codexfs-ai-chat"))
+assertEqual "ai chat template shape" "codexfs-ai-chat" aiChatTemplate.Shape
+assertEqual "ai chat template default key" (Some "\"agent.codexfs.foreman\"") aiChatTemplate.DefaultKey
+assertEqual "ai chat template key placeholder" (Some "\"agent.codexfs.foreman\"") aiChatTemplate.KeyPlaceholder
+assertEqual "ai chat template value placeholder" (Some "Prompt or intent metadata") aiChatTemplate.ValuePlaceholder
+assertTrue "ai chat template tag codex" (aiChatTemplate.Tags |> List.contains "codex.fs")
+assertTrue "ai chat template tag ai-chat" (aiChatTemplate.Tags |> List.contains "ai-chat")
+assertTrue "ai chat template tag agent" (aiChatTemplate.Tags |> List.contains "agent")
+
+printfn "TC-WEBR-004 useAIChat registration passed"
 
 let fakeGithubToken = "ghp_" + String.replicate 24 "a"
 
