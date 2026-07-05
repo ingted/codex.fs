@@ -2,6 +2,7 @@ namespace CodexFs
 
 open System
 open System.Diagnostics
+open System.Text
 open System.Threading
 open System.Threading.Tasks
 
@@ -111,6 +112,11 @@ module ProcessRunner =
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
         psi.CreateNoWindow <- true
+        // Explicit UTF-8 decoding prevents mojibake on Windows systems
+        // where the default codepage (e.g. Big5/Windows-950) corrupts
+        // non-ASCII stdout/stderr from child engine processes.
+        psi.StandardOutputEncoding <- UTF8Encoding(false)
+        psi.StandardErrorEncoding <- UTF8Encoding(false)
 
         command.Arguments
         |> List.iter (fun argument -> psi.ArgumentList.Add argument)
