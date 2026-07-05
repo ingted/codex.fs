@@ -9,6 +9,7 @@
 | Verifier | WBS/Test | Purpose | Scope | Mutating | Secret handling | Revision |
 | --- | --- | --- | --- | --- | --- | --- |
 | `misc/verifyMessageToEngineReply.fsx` | `E2E-002` / `T-E2E-002` | 驗證 participant -> real PTCS MessageFabric -> host single-cycle runner -> real Agy engine -> artifacts -> PTCS reply。 | Local workstation with built Debug assemblies and installed `agy` headless CLI. | Yes: writes `.codex.fs/e2e002-artifacts/` and sends in-process PTCS messages. | Does not read secret files or print secret values; invokes the installed CLI using the current user's existing CLI auth/session. | `rev-20260704-001` |
+| `misc/verifyActorRuntimeArtifactProvider.fsx` | `ACTOR-003` / `T-ACTOR-003` | 驗證 WorkerActor 透過 real PTCS ActorFabric/MessageFabric 呼叫 shared runtime cycle，執行 installed Agy，產生 artifacts 並回覆 refs。 | Local workstation with built Debug assemblies and installed `agy` headless CLI. | Yes: writes `.codex.fs/actor003-artifacts/` and sends in-process PTCS messages. | Does not read secret files or print secret values; invokes the installed CLI using the current user's existing CLI auth/session. | `rev-20260705-001` |
 
 ## Notes
 

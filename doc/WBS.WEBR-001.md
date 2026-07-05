@@ -4,7 +4,7 @@ WBS ID：`WEBR-001`
 狀態：Done for RFC/reset slice  
 Progress：100  
 StartTime：2026-07-05 10:30 +08:00  
-UpdatedAt：2026-07-05 14:25 +08:00
+UpdatedAt：2026-07-05 15:20 +08:00
 Previous：`WEB-001`, `ACTOR-001`, `PERSIST-001`  
 SD：`SD §9`, `SD §14.1`, `SD §14.3`  
 Test：`T-WEBR-001`
@@ -31,10 +31,11 @@ Test：`T-WEBR-001`
 | WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 100 | Done | None | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` |
 | RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 100 | Done | None | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` |
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 100 | Done | None | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
+| ACTOR-003 | WorkerActor invokes PTCS runtime artifact provider | ACTOR-002;RUNTIME-002;WEBR-006 | 100 | Done | None | SD §11.2, §11.3, §12, §14.3 | T-ACTOR-003 | `misc/verifyActorRuntimeArtifactProvider.fsx` |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence |
-| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
+| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 0 | Planned | None | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
-| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;WEBR-007;ACTOR-002 | 0 | Planned | all implementation slices | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
+| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | WEBR-007 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
 
 ## Cut / Rewrite Notes
 
@@ -140,3 +141,27 @@ UpdatedAt：2026-07-05 15:05 +08:00
 - Verification passed: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyAiIntentControls.fsx -- --no-restore`.
 - Known upstream/package caveats recorded in SD/DEVOP: PTCS `Server` static initialization can touch default AppContext `pcsl` before explicit hub injection, and `/sync/ws` returned 503 in this host composition while HTTP fallback APIs remained functional.
 - `WEBR-007` remains blocked until runtime artifact/note refs are produced by the worker execution path; `E2E-004` still waits for artifact refs plus actor-invoked runtime execution.
+
+## ACTOR-003 Start
+
+UpdatedAt：2026-07-05 15:18 +08:00
+
+- Added `RFC-ACTOR-0002` to remove the host-only runtime-cycle mismatch. The concrete interpreter will move into `CodexFs.Ptcs.RuntimeMessageFabricCycle`; `CodexFs.Host.SessionEngineCycle` becomes a wrapper over that shared path.
+- `CodexWorkerActor` will gain a `RunRuntimeCycle` command and return `RuntimeCycleCompleted` after real MessageFabric -> Agy -> artifact -> reply -> ack work.
+- `WEBR-007` blocker is now the concrete `ACTOR-003` implementation rather than a vague runtime artifact provider.
+
+## ACTOR-003 Closeout
+
+UpdatedAt：2026-07-05 15:20 +08:00
+
+- Added `CodexFs.Ptcs.RuntimeMessageFabricCycle` as the shared PTCS runtime cycle adapter. It registers participants, polls MessageFabric, calls `RuntimePromptLoop`, writes prompt/batch/request/rendered argv/stdout/stderr/final/result/manifest artifacts, sends a PTCS reply, writes `session-boundary.json`, then acks the cursor.
+- Refactored `CodexFs.Host.SessionEngineCycle` into a host config wrapper over `RuntimeMessageFabricCycle`; host no longer owns prompt-loop sequencing.
+- Extended `CodexFs.Ptcs.ActorFabricBinding.CodexWorkerActor` with `RunRuntimeCycle` and `RuntimeCycleCompleted`.
+- Added compiled coverage in `tests/codex.fs.Tests/Program.fs` for `TC-ACTOR-003 actor runtime artifact provider passed`.
+- Added verifier `misc/verifyActorRuntimeArtifactProvider.fsx` using `FAkka.Argu` and `ParseLine.fsx`.
+- Verification passed: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyActorRuntimeArtifactProvider.fsx -- --no-restore`.
+- Verifier evidence:
+  - manifest: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\manifest.json`
+  - boundary: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\session-boundary.json`
+  - final: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\final.md`
+- `WEBR-007` is unblocked for rendering the real worker reply/run refs in the PTCS shell. Production sharded crash-durable delivery remains future hardening.

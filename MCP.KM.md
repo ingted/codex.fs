@@ -307,3 +307,12 @@
 - Use `web.pcslRoot=<dedicated service data path>` for product PTCS webshell state. PTCS `Server` static initialization can still touch default AppContext `pcsl` before explicit hub injection, so corrupted build-output `pcsl` can fail startup before codex.fs config runs.
 - WEBR-006 browser evidence shows `/sync/ws` returning 503 in the current host composition while HTTP fallback APIs succeed for register-page, add-key and append. Production should fix WebSocket routing before high-volume usage.
 - Responsive renderer rule: controls use a white, scrollable, auto-fit grid. Desktop evidence has all controls visible; mobile evidence has no horizontal overflow and the controls panel scrolls within PTCS' constrained append region.
+
+## 2026-07-05 ACTOR-003 WorkerActor Runtime Artifact Provider
+
+- `CodexFs.Ptcs.RuntimeMessageFabricCycle` is now the shared concrete PTCS runtime adapter for bounded single-cycle work. It owns real MessageFabric poll, `RuntimePromptLoop`, Agy process execution, artifact writes, MessageFabric reply, `session-boundary.json`, and ack ordering.
+- `CodexFs.Host.SessionEngineCycle` is a wrapper over `RuntimeMessageFabricCycle`; do not reintroduce prompt assembly, `ProcessRunner.runAsync`, manifest write, reply or ack sequencing there.
+- `CodexWorkerActor` handles `RunRuntimeCycle` and replies with `RuntimeCycleCompleted`. The actor registers its PTCS participant first, then calls the shared runtime adapter against the same `CommSpaMessageFabric`.
+- A WorkerActor self-reply can appear in the actor participant inbox after ack; tests should verify the consumed user prompt id is not replayed, not require the inbox to be globally empty.
+- `misc/verifyActorRuntimeArtifactProvider.fsx` is the real ACTOR-003 verifier. It uses FAkka.Argu, checks source/docs, builds/runs `codex.fs.Tests`, and verifies manifest/boundary/final artifact paths under ignored `.codex.fs/actor003-artifacts`.
+- This slice unblocks WEBR-007 artifact/note ref rendering. It does not satisfy production sharded crash-durable delivery replay.

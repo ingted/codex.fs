@@ -30,6 +30,7 @@
     <Compile Include="PtcsReference.fs" />
     <Compile Include="MessageFabricBinding.fs" />
     <Compile Include="DurableMessageFabricBinding.fs" />
+    <Compile Include="RuntimeMessageFabricCycle.fs" />
     <Compile Include="ActorFabricBinding.fs" />
   </ItemGroup>
 

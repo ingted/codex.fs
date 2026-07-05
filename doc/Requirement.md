@@ -180,6 +180,7 @@ Current WEBR-006 status:
 - AI target/perspective/engine/model/reasoning/invocation/approval controls are implemented in the PTCS append renderer and verified through real browser evidence.
 - Product E2E remains incomplete until WorkerActor invokes runtime and browser reply rendering includes artifact/note refs.
 - `ptcs-webshell` deployments must set a dedicated `web.pcslRoot` and serve PTCS package `build/**` assets from host outputs.
+- `ACTOR-003` owns the next non-fake artifact provider slice: WorkerActor must invoke the shared PTCS runtime cycle and produce real manifest/final/boundary refs before WEBR-007 may render them.
 
 ### R-002 CLI client
 
@@ -211,6 +212,8 @@ Session worker / runtime 必須支援：
 - reply 以 MessageFabric envelope 或 result-vault reference 傳回。
 
 Prompt assembly 不應由 `codex.fs.host` HTTP route handler 實作；host 只能呼叫 runtime/session worker contract 並暴露 control/docs/health。
+
+`ACTOR-003` 要求 actor 與 host 共用同一個 PTCS runtime cycle interpreter。`codex.fs.host` 可以從 host config 映射 options，但不可獨占 MessageFabric polling、prompt assembly、engine invocation、artifact persistence、reply 與 ack sequencing。
 
 ### R-004 Artifact capture
 
@@ -293,6 +296,7 @@ host 必須支援 local compaction policy：
 | `codex.fs` | Core engine contracts、domain models、policy vocabulary。 |
 | `codex.fs.runtime` | Planned reusable prompt loop、headless invocation、stdio/notes/artifacts、local compact 與 recovery boundary；拆出前以清楚 module 邊界暫留 core/host。 |
 | `codex.fs.actor` | Planned PTCS ActorFabric adapter，包含 `WorkerActor` / specialized `SessionActor` protocol、spawn/register/route 與 durable delivery。 |
+| `codex.fs.ptcs` | Current PTCS integration package；在 runtime/actor physical packages 拆出前，承載 MessageFabric binding、ActorFabric worker shell、PTCS runtime cycle adapter。 |
 | `codex.fs.host` | PTCS fabric consumer host package；composition/control/OpenAPI/Swagger/deployment boundary，不直接擁有 prompt semantics。 |
 | `codex.fs.host.tool` | Standalone dotnet tool command `codex.fs.host`，包裝 host package。 |
 | `codex.fs.cli` | Terminal client dotnet tool package；installed command `codex.fs.cli`。 |

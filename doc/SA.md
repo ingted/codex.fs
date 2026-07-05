@@ -130,6 +130,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `WEBR-006` completes the first PTCS shell AI control surface: browser controls append `codex.fs.web.ai-intent.v1` values through PTCS page APIs, default to Foreman `agent.codexfs.foreman`, and do not render CLI argv. Remaining product E2E work is actor-invoked runtime execution plus artifact/note ref rendering. `ptcs-webshell` deployments need a dedicated `web.pcslRoot`; current host composition uses HTTP fallback APIs successfully while `/sync/ws` still needs production hardening.
 
+`ACTOR-003` is the required bridge from visible actor participants to real work. The concrete PTCS MessageFabric -> runtime prompt-loop -> Agy process -> artifact store -> MessageFabric reply -> ack interpreter moves from host-only ownership into `codex.fs.ptcs`, so WorkerActor and host wrappers call the same path. This unblocks Web artifact ref rendering without inventing fake refs.
+
 ## 4. Runtime components
 
 | Component | Responsibility |
@@ -138,6 +140,7 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 | Runtime Orchestrator | 組合 MessageFabric batch、history、compaction、engine request、artifact/note persistence 與 reply intent。 |
 | PTCS MessageFabric | canonical chat/mailbox fabric，負責 send/poll/ack/wait/drain。 |
 | PTCS ActorFabric | actor/sharding runtime，負責 region/proxy/health/reality metadata。 |
+| PTCS Runtime Cycle Adapter | 在 `codex.fs.ptcs` 中解釋單輪 MessageFabric inbox 到 engine/artifact/reply/ack 的 real path，供 host wrapper 與 WorkerActor 共用。 |
 | DurableIngress | durable task admission、task ticket、deadline/reality checks。 |
 | WorkerActor | 共通 agent actor capability：register participant、consume work、call runtime、reply and coordinate children。 |
 | SessionActor | Specialized WorkerActor / Foreman participant，負責 session mailbox、spawn/coordinate workers 與預設人機對話入口。 |

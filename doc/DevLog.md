@@ -338,3 +338,12 @@
 - Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyAiIntentControls.fsx -- --no-restore` passed. Browser evidence is under `G:\codex.fs\log\20260705\webr006-host8-*`.
 - Caveats: `/sync/ws` returns 503 in current host composition while HTTP fallback APIs pass; PTCS `Server` static initialization can touch default AppContext `pcsl` before explicit hub injection, so deployments must use a dedicated `web.pcslRoot`.
 - Traceability: updated SD, WBS, Test, DEVOP, README and KM. `WEBR-007` remains blocked until runtime artifact/note refs exist.
+
+## 2026-07-05 15:20 +08:00 ACTOR-003 WorkerActor runtime artifact provider
+
+- Scope: completed the non-fake actor/runtime artifact provider slice that unblocks WEBR-007.
+- Implementation: added `CodexFs.Ptcs.RuntimeMessageFabricCycle`; refactored `CodexFs.Host.SessionEngineCycle` into a wrapper; added `RunRuntimeCycle` and `RuntimeCycleCompleted` to `CodexFs.Ptcs.ActorFabricBinding.CodexWorkerActor`.
+- Behavior: WorkerActor now consumes a real PTCS MessageFabric inbox, invokes installed Agy through the shared runtime cycle, writes prompt/batch/request/rendered argv/stdout/stderr/final/result/manifest/boundary artifacts, sends a PTCS reply and acks the consumed prompt cursor.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyActorRuntimeArtifactProvider.fsx -- --no-restore` passed.
+- Evidence: manifest `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\manifest.json`; boundary `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\session-boundary.json`.
+- Boundary: this is real ActorFabric/MessageFabric/engine/artifact evidence but not production sharded crash-durable replay. `WEBR-007` is unblocked for browser rendering of real worker refs.

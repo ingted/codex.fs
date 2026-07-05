@@ -1007,6 +1007,70 @@ Implemented ACTOR-002 ActorFabric proof:
 - `spawnWorker` is the direct actor spawn seam used by tests and future host composition; the test starts real `CommSpaActorFabric` with LAN `ClusterHost`, not a loopback-only HTTP shortcut.
 - This proof is intentionally limited to participant visibility over real PTCS ActorFabric/MessageFabric. Durable sharded delivery, passivation/recovery and invoking `RuntimePromptLoop` from actor delivery handlers remain future implementation hardening.
 
+Implemented design target for ACTOR-003 actor runtime artifact provider:
+
+- `CodexFs.Ptcs.RuntimeMessageFabricCycle` becomes the concrete PTCS runtime cycle adapter. It owns the bounded side-effect ordering that was previously host-only: register participants, poll MessageFabric, call `RuntimePromptLoop`, write prompt/batch/request/rendered argv/stdout/stderr/final/result/manifest artifacts, send a PTCS direct reply, write `session-boundary.json`, then ack the selected cursor.
+- `CodexFs.Host.SessionEngineCycle` remains public host API but is reduced to a config wrapper over `RuntimeMessageFabricCycle`. Host config may choose engine/executable/artifact root/timeout/session prefix/reply participant; host no longer owns prompt-loop sequencing.
+- `CodexFs.Ptcs.ActorFabricBinding.CodexWorkerActor` handles `RunRuntimeCycle` by registering its PTCS participant and invoking `RuntimeMessageFabricCycle.runSingleCycleAsync` against the shared `CommSpaMessageFabric`.
+- This slice is real-path but non-production-durable: it uses PTCS ActorFabric and MessageFabric, the installed `agy` headless CLI and the file artifact store, but does not yet claim sharded crash-durable delivery replay.
+
+Preferred ACTOR-003 contract:
+
+```fsharp
+module CodexFs.Ptcs.RuntimeMessageFabricCycle
+
+type RuntimeCycleOptions =
+    { SessionId: string
+      SessionParticipantId: string
+      ReplyParticipantId: string option
+      Engine: EngineKind
+      ExecutablePath: string
+      WorkingDirectory: string
+      ArtifactRoot: string
+      Timeout: TimeSpan
+      SystemInstruction: string option
+      AdditionalDirectories: string list
+      InboxLimit: int }
+
+type RuntimeCycleResult =
+    { Status: string
+      SessionId: string
+      SessionParticipantId: string
+      RunId: string
+      ConsumedMessageCount: int
+      AckCursor: string
+      Outcome: string
+      ExitCode: string
+      ArtifactManifestPath: string
+      PersistenceBoundaryPath: string
+      FinalMessagePath: string
+      ReplyMessageId: string
+      ReplyBody: string }
+
+val runSingleCycleAsync :
+    CommSpaMessageFabric -> RuntimeCycleOptions -> CancellationToken -> Task<RuntimeCycleResult>
+
+module CodexFs.Ptcs.ActorFabricBinding
+
+type RunRuntimeCycle =
+    { SessionId: string
+      SessionParticipantId: string option
+      ReplyParticipantId: string option
+      Engine: EngineKind option
+      ExecutablePath: string option
+      WorkingDirectory: string option
+      ArtifactRoot: string
+      Timeout: TimeSpan option
+      SystemInstruction: string option
+      AdditionalDirectories: string list }
+
+type RuntimeCycleCompleted =
+    { ParticipantId: string
+      ActorPath: string
+      NodeAddress: string
+      Result: RuntimeMessageFabricCycle.RuntimeCycleResult }
+```
+
 ## 12. Artifact manifest design
 
 ```fsharp
@@ -1302,7 +1366,7 @@ Rules:
 - CLI read commands use the host advertised URI and never bypass host-owned MessageFabric binding.
 - `Transcript` is terminal-oriented output for early CLI usability; durable artifacts and engine replies remain E2E scope.
 
-Implemented E2E single-cycle runner:
+Implemented E2E single-cycle runner before ACTOR-003:
 
 ```fsharp
 module CodexFs.Host.SessionEngineCycle
@@ -1337,7 +1401,7 @@ val runSingleCycleAsync : HostRuntime -> SingleCycleOptions -> CancellationToken
 
 Rules:
 
-- `runSingleCycleAsync` is a bounded package helper for `E2E-002`; it is not the durable sharded actor loop.
+- `runSingleCycleAsync` is a bounded package helper for `E2E-002`; ACTOR-003 refactors it into a host wrapper over `CodexFs.Ptcs.RuntimeMessageFabricCycle`.
 - The function polls the session inbox once, assembles a prompt, invokes the selected installed engine, persists artifacts, sends a PTCS reply, writes a ready-to-ack session boundary, then acknowledges the inbox cursor.
 - Current real engine implementation is Agy `1.0.x --print`; Agy flags must render before `--print`, and the prompt text is the final positional argument.
 - Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON, manifest JSON, and `session-boundary.json`.

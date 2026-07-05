@@ -93,10 +93,11 @@ Status 值：
 | WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 100 | Done | None | 2026-07-05 12:06 +08:00 | 2026-07-05 12:32 +08:00 | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 100 | Done | None | 2026-07-05 13:23 +08:00 | 2026-07-05 13:59 +08:00 | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 100 | Done | None | 2026-07-05 14:10 +08:00 | 2026-07-05 14:25 +08:00 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| ACTOR-003 | WorkerActor invokes PTCS runtime artifact provider | ACTOR-002;RUNTIME-002;WEBR-006 | 100 | Done | None | 2026-07-05 15:10 +08:00 | 2026-07-05 15:20 +08:00 | SD §11.2, §11.3, §12, §14.3 | T-ACTOR-003 | `misc/verifyActorRuntimeArtifactProvider.fsx` | [@ACTOR-003](WBS.ACTOR-003.md); [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | 2026-07-05 15:05 +08:00 | 2026-07-05 14:40 +08:00 | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence | [@WEBR-001](WBS.WEBR-001.md) |
-| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | - | 2026-07-05 10:30 +08:00 | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 0 | Planned | None | - | 2026-07-05 15:20 +08:00 | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | 2026-07-05 12:55 +08:00 | 2026-07-05 13:03 +08:00 | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
-| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;WEBR-007;ACTOR-002 | 0 | Planned | all implementation slices | - | 2026-07-05 10:30 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | WEBR-007 | - | 2026-07-05 15:20 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 
 ## 3. Roll-up / Detail Files
 
@@ -134,6 +135,7 @@ Status 值：
 | [@PRODUCT-001](WBS.PRODUCT-001.md) | Product reset distinguishes PTCS Host, codex.fs.host, runtime, actor, CLI, Web and persistence boundaries before further implementation. |
 | [@RUNTIME-001](WBS.RUNTIME-001.md) | Runtime prompt-loop boundary owns orchestration and side-effect ordering; host/actor/PTCS/CLI/Web remain adapters. |
 | [@ACTOR-001](WBS.ACTOR-001.md) | Actor RFC defines WorkerActor / specialized SessionActor, Foreman participant, MessageFabric scopes and delivery/ack ordering. |
+| [@ACTOR-003](WBS.ACTOR-003.md) | WorkerActor invokes the shared PTCS runtime cycle and produces real artifact/reply refs over ActorFabric/MessageFabric. |
 | [@WEB-001](WBS.WEB-001.md) | PTCS AI chat bundle RFC defines `codex.fs.web` / `useAIChat(...)` as a WebSharper extension over PTCS MessageFabric, with Foreman/worker/public/group targets, authorized perspective and artifact refs. |
 | [@PERSIST-001](WBS.PERSIST-001.md) | Transcript/note/artifact policy defines private raw run evidence, public redacted export, note summaries, compact refs and ready-to-ack boundary requirements. |
 | [@WEBR-001](WBS.WEBR-001.md) | Reset/rewrite backlog: product Web must be PTCS classic chat shell plus codex.fs WebSharper Bundle and ActorFabric-backed AI workers; standalone diagnostics/guard pages are cut from product acceptance. |

@@ -2,7 +2,7 @@
 
 Test Group：`WEBR-001`  
 狀態：Accepted for RFC/reset slice  
-UpdatedAt：2026-07-05 15:05 +08:00
+UpdatedAt：2026-07-05 15:20 +08:00
 
 ## Test Matrix
 
@@ -15,6 +15,7 @@ UpdatedAt：2026-07-05 15:05 +08:00
 | T-WEBR-005 | WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` | Browser/Integration | Real host profile serving PTCS classic shell | Passed on 2026-07-05 12:32 +08:00; verifier builds/runs `codex.fs.Tests`, starts real PTCS webshell on LAN IP, verifies `/chat` manifest, `codex-fs-ai-chat`, generated script asset, `/healthz`, non-guard page and host tool bounded start | Pass |
 | T-RUNTIME-002 | RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` | Unit/Integration | Real runtime modules, no host route mock | Passed on 2026-07-05 13:59 +08:00; verifier checks `RuntimePromptLoop`, builds/runs `codex.fs.Tests` for `TC-RUNTIME-002`, then delegates to real MessageFabric -> Agy -> artifact -> reply evidence under `G:\codex.fs\src\codex.fs\.codex.fs\runtime002-artifacts` | Pass |
 | T-ACTOR-002 | ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | Integration/Actor | Real PTCS `CommSpaActorFabric` and MessageFabric | Passed on 2026-07-05 14:25 +08:00; verifier checks `ActorFabricBinding`, builds/runs `codex.fs.Tests`, starts real PTCS ActorFabric on LAN host, spawns Foreman/Worker actors and confirms both appear as `agent` participants through MessageFabric listing | Pass |
+| T-ACTOR-003 | ACTOR-003 | `misc/verifyActorRuntimeArtifactProvider.fsx` | Integration/Actor/E2E | Real PTCS `CommSpaActorFabric`, MessageFabric, installed Agy and file artifact store | Passed on 2026-07-05 15:20 +08:00; WorkerActor invokes shared PTCS runtime cycle, writes artifacts, sends reply with manifest/final refs and returns `RuntimeCycleCompleted` | Pass |
 | T-WEBR-006 | WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence | Browser/Integration | Real PTCS shell extension controls | Passed on 2026-07-05 15:05 +08:00; target/perspective/engine/model/reasoning/invocation controls emit normalized `codex.fs.web.ai-intent.v1` metadata through PTCS append APIs; browser never renders CLI argv | Pass |
 | T-WEBR-007 | WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Browser/E2E | Real worker run artifact refs | PTCS shell renders redacted reply, run id, manifest ref and note ref | Planned |
 | T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | Passed on 2026-07-05 13:03 +08:00; verifier builds/runs `codex.fs.Tests` and asserts control-only `/chat` guard has no composer/form/PTCS manifest, diagnostics is diagnostic-only and product path guidance points to `web.profile=ptcs-webshell` | Pass |
@@ -25,6 +26,7 @@ UpdatedAt：2026-07-05 15:05 +08:00
 - Browser tests must use real Playwright/Chrome against a real host profile.
 - UI acceptance must inspect visible PTCS classic shell elements, including tabs, participant list, thread area and composer.
 - Actor tests must use PTCS ActorFabric/MessageFabric, not a fake mailbox.
+- ACTOR-003 must invoke the runtime cycle from a WorkerActor, not call host-only helper code directly from the verifier.
 - No test in this group may use standalone `GET/POST /diagnostics/session-send` as product chat acceptance.
 - No test in this group may write raw prompt/stdout/stderr into public chat body.
 

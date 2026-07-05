@@ -1,9 +1,12 @@
 namespace CodexFs.Ptcs
 
 open System
+open System.IO
 open System.Text
+open System.Threading
 open System.Threading.Tasks
 open Akka.Actor
+open CodexFs.Domain
 open PulseTrade.Comm.Spa
 
 /// PTCS ActorFabric-backed worker shell helpers.
@@ -56,6 +59,40 @@ module ActorFabricBinding =
           /// Registered child worker metadata.
           Worker: WorkerParticipantRegistered }
 
+    /// Command asking a WorkerActor to consume its PTCS inbox and run one runtime cycle.
+    type RunRuntimeCycle =
+        { /// Target session id used for artifact paths and prompt identity.
+          SessionId: string
+          /// PTCS participant id whose inbox should be consumed. Defaults to the actor participant.
+          SessionParticipantId: string option
+          /// Optional participant id used when sending replies.
+          ReplyParticipantId: string option
+          /// Engine family override; defaults to Agy.
+          Engine: EngineKind option
+          /// Executable path or command; defaults to `agy`.
+          ExecutablePath: string option
+          /// Working directory used by the engine process; defaults to current directory.
+          WorkingDirectory: string option
+          /// Artifact root for private run evidence.
+          ArtifactRoot: string
+          /// Engine timeout; defaults to 20 minutes.
+          Timeout: TimeSpan option
+          /// Optional instruction prepended to the assembled prompt.
+          SystemInstruction: string option
+          /// Additional directories exposed to the engine.
+          AdditionalDirectories: string list }
+
+    /// Result returned after a WorkerActor completes one runtime cycle.
+    type RuntimeCycleCompleted =
+        { /// PTCS participant id of the actor that ran the cycle.
+          ParticipantId: string
+          /// Actor path that ran the cycle.
+          ActorPath: string
+          /// ActorSystem node address from the owning PTCS ActorFabric.
+          NodeAddress: string
+          /// Runtime cycle result.
+          Result: RuntimeMessageFabricCycle.RuntimeCycleResult }
+
     let textOr fallback value =
         if String.IsNullOrWhiteSpace value then fallback else value.Trim()
 
@@ -106,6 +143,8 @@ module ActorFabricBinding =
 
             this.Receive<SpawnWorkerParticipant>(Action<SpawnWorkerParticipant>(fun command -> this.HandleSpawnWorker command))
 
+            this.Receive<RunRuntimeCycle>(Action<RunRuntimeCycle>(fun command -> this.HandleRunRuntimeCycle command))
+
         member _.ActorCtx: IActorContext = ActorBase.Context
 
         member this.RegisterAsync() =
@@ -129,6 +168,40 @@ module ActorFabricBinding =
                       ActorPath = this.ActorCtx.Self.Path.ToStringWithoutAddress()
                       NodeAddress = nodeAddress }
             }
+
+        member this.RuntimeOptions(command: RunRuntimeCycle) : RuntimeMessageFabricCycle.RuntimeCycleOptions =
+            let sessionParticipantId =
+                command.SessionParticipantId
+                |> Option.filter (String.IsNullOrWhiteSpace >> not)
+                |> Option.map _.Trim()
+                |> Option.defaultValue spec.ParticipantId
+
+            let engine = command.Engine |> Option.defaultValue Agy
+            let executablePath =
+                command.ExecutablePath
+                |> Option.filter (String.IsNullOrWhiteSpace >> not)
+                |> Option.defaultValue (RuntimeMessageFabricCycle.defaultExecutable engine)
+
+            let workingDirectory =
+                command.WorkingDirectory
+                |> Option.filter (String.IsNullOrWhiteSpace >> not)
+                |> Option.defaultValue (Directory.GetCurrentDirectory())
+                |> Path.GetFullPath
+
+            let artifactRoot = Path.GetFullPath command.ArtifactRoot
+            let timeout = command.Timeout |> Option.defaultValue (TimeSpan.FromMinutes 20.0)
+
+            { SessionId = textOr "foreman" command.SessionId
+              SessionParticipantId = sessionParticipantId
+              ReplyParticipantId = command.ReplyParticipantId
+              Engine = engine
+              ExecutablePath = executablePath
+              WorkingDirectory = workingDirectory
+              ArtifactRoot = artifactRoot
+              Timeout = timeout
+              SystemInstruction = command.SystemInstruction
+              AdditionalDirectories = command.AdditionalDirectories
+              InboxLimit = MessageFabricBinding.defaultInboxLimit }
 
         member this.HandleEnsureRegistered() =
             let replyTo = this.ActorCtx.Sender
@@ -166,6 +239,28 @@ module ActorFabricBinding =
                     replyTo.Tell(
                         { ForemanParticipantId = spec.ParticipantId
                           Worker = registered },
+                        selfRef
+                    )
+                with ex ->
+                    replyTo.Tell(Status.Failure ex, selfRef)
+            }
+            |> ignore
+
+        member this.HandleRunRuntimeCycle(command: RunRuntimeCycle) =
+            let replyTo = this.ActorCtx.Sender
+            let selfRef = this.ActorCtx.Self
+
+            task {
+                try
+                    let! registered = this.RegisterAsync()
+                    let runtimeOptions = this.RuntimeOptions command
+                    let! result = RuntimeMessageFabricCycle.runSingleCycleAsync messageFabric runtimeOptions CancellationToken.None
+
+                    replyTo.Tell(
+                        { ParticipantId = registered.ParticipantId
+                          ActorPath = registered.ActorPath
+                          NodeAddress = registered.NodeAddress
+                          Result = result },
                         selfRef
                     )
                 with ex ->

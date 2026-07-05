@@ -1310,6 +1310,119 @@ try
         (actor002Agents |> List.exists (fun participant -> participant.ParticipantId = actor002WorkerSpec.ParticipantId))
 
     printfn "TC-ACTOR-002 PTCS ActorFabric Foreman/Worker participants passed"
+
+    let actor003ShortSuffix = actor002Suffix.Substring(0, 12)
+    let actor003SessionId = $"actor003-{actor003ShortSuffix}"
+    let actor003ArtifactRoot = Path.GetFullPath(Path.Combine(".codex.fs", "actor003-artifacts", actor003SessionId))
+    Directory.CreateDirectory actor003ArtifactRoot |> ignore
+
+    let actor003UserId = $"user.codexfs.actor003.{actor003ShortSuffix}"
+    let actor003UserBinding = MessageFabricBinding.defaultBinding actor003UserId
+
+    runTask
+        (MessageFabricBinding.registerParticipantAsync
+            actor002MessageFabric
+            actor003UserBinding
+            { MessageFabricBinding.defaultRegistration with
+                DisplayName = Some actor003UserId
+                Kind = Some "user"
+                Labels = Some [ "codex.fs"; "actor003"; "user" ] })
+    |> ignore
+
+    let actor003Token = $"CODEXFS_ACTOR003_{actor003ShortSuffix}"
+
+    let actor003Envelope =
+        runTask
+            (MessageFabricBinding.sendAsync
+                actor002MessageFabric
+                { FromParticipantId = actor003UserId
+                  Scope = PulseTrade.Comm.Spa.MessageFabricScope.Direct actor002ForemanSpec.ParticipantId
+                  Body = $"Reply exactly: {actor003Token}"
+                  Tags = [ "codex.fs"; "actor003"; "verify" ]
+                  CorrelationId = Some $"actor003-{actor003ShortSuffix}"
+                  CreatedAtUtc = None })
+
+    assertEqual "actor003 prompt target" (Some actor002ForemanSpec.ParticipantId) (MessageFabricBinding.envelopeToMessageRef actor003Envelope).ToParticipantId
+
+    let actor003Command: ActorFabricBinding.RunRuntimeCycle =
+        { SessionId = actor003SessionId
+          SessionParticipantId = Some actor002ForemanSpec.ParticipantId
+          ReplyParticipantId = None
+          Engine = Some Agy
+          ExecutablePath = Some "agy"
+          WorkingDirectory = Some(Path.GetFullPath ".")
+          ArtifactRoot = actor003ArtifactRoot
+          Timeout = Some(TimeSpan.FromMinutes 2.0)
+          SystemInstruction =
+            Some "This is a codex.fs ACTOR-003 verifier. Find the latest PTCS message body and reply with exactly the requested token, with no explanation."
+          AdditionalDirectories = [] }
+
+    let actor003Completed =
+        runTask
+            (actor002Foreman.Ask<ActorFabricBinding.RuntimeCycleCompleted>(
+                actor003Command,
+                TimeSpan.FromMinutes 3.0
+            ))
+
+    let actor003Result = actor003Completed.Result
+
+    assertEqual "actor003 actor participant" actor002ForemanSpec.ParticipantId actor003Completed.ParticipantId
+    assertEqual "actor003 node address" actor002Fabric.NodeAddress actor003Completed.NodeAddress
+    assertEqual "actor003 status" "completed" actor003Result.Status
+    assertEqual "actor003 session participant" actor002ForemanSpec.ParticipantId actor003Result.SessionParticipantId
+    assertTrue "actor003 consumed message" (actor003Result.ConsumedMessageCount >= 1)
+    assertTrue "actor003 run id" (actor003Result.RunId.StartsWith("run-", StringComparison.Ordinal))
+    assertTrue "actor003 ack cursor" (not (String.IsNullOrWhiteSpace actor003Result.AckCursor))
+    assertTrue "actor003 manifest ref" (not (String.IsNullOrWhiteSpace actor003Result.ArtifactManifestPath))
+    assertTrue "actor003 boundary ref" (not (String.IsNullOrWhiteSpace actor003Result.PersistenceBoundaryPath))
+    assertTrue "actor003 final ref" (not (String.IsNullOrWhiteSpace actor003Result.FinalMessagePath))
+    assertTrue "actor003 reply id" (not (String.IsNullOrWhiteSpace actor003Result.ReplyMessageId))
+    assertContains "actor003 reply manifest" actor003Result.ArtifactManifestPath actor003Result.ReplyBody
+
+    let actor003ManifestPath = Path.Combine(actor003ArtifactRoot, actor003Result.ArtifactManifestPath)
+    let actor003BoundaryPath = Path.Combine(actor003ArtifactRoot, actor003Result.PersistenceBoundaryPath)
+    let actor003FinalPath = Path.Combine(actor003ArtifactRoot, actor003Result.FinalMessagePath)
+
+    assertTrue "actor003 manifest exists" (File.Exists actor003ManifestPath)
+    assertTrue "actor003 boundary exists" (File.Exists actor003BoundaryPath)
+    assertTrue "actor003 final exists" (File.Exists actor003FinalPath)
+
+    let actor003StrictUtf8 = System.Text.UTF8Encoding(false, true)
+    let actor003BoundaryText = File.ReadAllText(actor003BoundaryPath, actor003StrictUtf8)
+    let actor003FinalText = File.ReadAllText(actor003FinalPath, actor003StrictUtf8)
+
+    assertContains "actor003 boundary ready" "ready-to-ack" actor003BoundaryText
+    assertContains "actor003 boundary reply id" actor003Result.ReplyMessageId actor003BoundaryText
+    assertContains "actor003 boundary cursor" actor003Result.AckCursor actor003BoundaryText
+    assertContains "actor003 final token" actor003Token actor003FinalText
+
+    let actor003ReplyBatch =
+        runTask
+            (MessageFabricBinding.waitInboxAsync
+                actor002MessageFabric
+                actor003UserBinding
+                None
+                (TimeSpan.FromSeconds 10.0)
+                (TimeSpan.FromMilliseconds 100.0)
+                (Some CancellationToken.None))
+
+    assertTrue
+        "actor003 user inbox reply"
+        (actor003ReplyBatch.Messages |> List.exists (fun message -> message.MessageId = actor003Result.ReplyMessageId))
+
+    let actor003AfterAck =
+        runTask (MessageFabricBinding.pollInboxAsync actor002MessageFabric (MessageFabricBinding.defaultBinding actor002ForemanSpec.ParticipantId) None)
+
+    assertTrue
+        "actor003 prompt not replayed after ack"
+        (actor003AfterAck.Messages |> List.exists (fun message -> message.MessageId = actor003Envelope.MessageId) |> not)
+
+    printfn "TC-ACTOR-003 actor runtime artifact provider passed"
+    printfn "actor003ArtifactRoot=%s" actor003ArtifactRoot
+    printfn "actor003Manifest=%s" actor003ManifestPath
+    printfn "actor003Boundary=%s" actor003BoundaryPath
+    printfn "actor003Final=%s" actor003FinalPath
+    printfn "actor003ReplyMessageId=%s" actor003Result.ReplyMessageId
 finally
     actor002Fabric.Stop()
 
