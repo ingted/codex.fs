@@ -61,6 +61,15 @@ module AIChatClient =
         { valueText: string
           keyJson: string }
 
+    [<JavaScript>]
+    type ArtifactReplyDto =
+        { runId: string
+          outcome: string
+          manifestPath: string
+          finalPath: string
+          notePath: string
+          summary: string }
+
     let doc = JS.Document
 
     let asText (value: string) =
@@ -161,6 +170,119 @@ module AIChatClient =
         |> ignore
         append wrapper [| caption :> Node; control |] |> ignore
         wrapper
+
+    let valueBetweenMarkerAndNextSeparator (marker: string) (text: string) =
+        let source = asText text
+        let index = source.IndexOf(marker)
+
+        if index < 0 then
+            ""
+        else
+            let start = index + marker.Length
+            let next = source.IndexOf("; ", start)
+            let value =
+                if next < 0 then
+                    source.Substring start
+                else
+                    source.Substring(start, next - start)
+
+            value.Trim()
+
+    let valueAfterMarker (marker: string) (text: string) =
+        let source = asText text
+        let index = source.IndexOf(marker)
+
+        if index < 0 then
+            ""
+        else
+            source.Substring(index + marker.Length).Trim()
+
+    let parseArtifactReply (text: string) =
+        let source = asText text |> _.Trim()
+
+        if not (source.StartsWith("run ")) then
+            None
+        else
+            let headerEnd = source.IndexOf(";")
+            let header =
+                if headerEnd < 0 then
+                    source
+                else
+                    source.Substring(0, headerEnd)
+
+            let parts = header.Split([| ' ' |], StringSplitOptions.RemoveEmptyEntries)
+            let manifestPath = valueBetweenMarkerAndNextSeparator "manifest=" source
+
+            if parts.Length < 3 || isBlank manifestPath then
+                None
+            else
+                Some
+                    { runId = parts[1]
+                      outcome = parts[2]
+                      manifestPath = manifestPath
+                      finalPath = valueBetweenMarkerAndNextSeparator "final=" source
+                      notePath = valueBetweenMarkerAndNextSeparator "note=" source
+                      summary = valueAfterMarker "summary=" source }
+
+    let artifactRow testId labelText value =
+        let row =
+            element "div" "codexfs-artifact-row" null
+            |> setStyle "display:grid;grid-template-columns:74px minmax(0,1fr);gap:8px;align-items:start;min-width:0;"
+            |> setTestId testId
+
+        let labelNode =
+            element "span" "codexfs-artifact-label" labelText
+            |> setStyle "font-weight:600;color:#3d4852;white-space:nowrap;"
+
+        let valueNode =
+            element "code" "codexfs-artifact-value" (asText value)
+            |> setStyle "font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;color:#172033;"
+
+        valueNode.SetAttribute("title", asText value)
+        append row [| labelNode :> Node; valueNode :> Node |] |> ignore
+        row
+
+    let renderArtifactReply (text: string) =
+        match parseArtifactReply text with
+        | None -> None
+        | Some reply ->
+            let root =
+                element "section" "codexfs-artifact-reply message-body" null
+                |> setStyle "display:flex;flex-direction:column;gap:7px;box-sizing:border-box;width:100%;white-space:normal;background:#f7fbff;border:1px solid #b8d7ef;border-radius:6px;padding:10px 12px;color:#172033;max-height:none;overflow:visible;"
+                |> setTestId "codexfs-artifact-reply"
+
+            root.SetAttribute("data-run-id", reply.runId)
+            root.SetAttribute("data-outcome", reply.outcome)
+            root.SetAttribute("data-manifest-path", reply.manifestPath)
+            root.SetAttribute("data-final-path", reply.finalPath)
+            root.SetAttribute("data-note-path", reply.notePath)
+
+            let header =
+                element "div" "codexfs-artifact-header" null
+                |> setStyle "display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;font-weight:700;"
+
+            append
+                header
+                [| element "span" "" "codex.fs artifact refs" :> Node |]
+            |> ignore
+
+            let summary =
+                element "div" "codexfs-artifact-summary" (asText reply.summary)
+                |> setStyle "font-size:13px;line-height:1.45;overflow-wrap:anywhere;"
+                |> setTestId "codexfs-artifact-summary"
+
+            append
+                root
+                [| header :> Node
+                   summary :> Node
+                   artifactRow "codexfs-artifact-run" "run" reply.runId :> Node
+                   artifactRow "codexfs-artifact-outcome" "outcome" reply.outcome :> Node
+                   artifactRow "codexfs-artifact-manifest" "manifest" reply.manifestPath :> Node
+                   artifactRow "codexfs-artifact-final" "final" reply.finalPath :> Node
+                   artifactRow "codexfs-artifact-note" "note" reply.notePath :> Node |]
+            |> ignore
+
+            Some(root :> Node)
 
     let targetScope mode =
         match asText mode with
@@ -357,9 +479,37 @@ module AIChatClient =
         if JS.TypeOf register = JS.Kind.Function then
             JS.Inline("window.PulseTradeRegisterAppendInputRenderer($0, $1, $2)", name, priority, renderer)
 
+    let registerMessageRenderer name priority renderer =
+        let register = JS.Global?PulseTradeRegisterRenderer
+        if JS.TypeOf register = JS.Kind.Function then
+            JS.Inline("window.PulseTradeRegisterRenderer($0, $1, $2)", name, priority, renderer)
+
+    let enhanceMessageBody (node: Element) =
+        if isNull (box node) then
+            ()
+        else
+            node.SetAttribute("data-codexfs-artifact-scanned", "1")
+
+            match renderArtifactReply node.TextContent with
+            | None -> ()
+            | Some rendered ->
+                let parent = node.ParentNode
+
+                if not (isNull (box parent)) then
+                    parent.ReplaceChild(rendered, node) |> ignore
+
+    let enhanceExistingMessageBodies () =
+        let nodes =
+            JS.Inline<Element[]>("Array.prototype.slice.call(document.querySelectorAll('pre.message-body:not([data-codexfs-artifact-scanned])'))")
+
+        nodes |> Array.iter enhanceMessageBody
+
     let register () =
         JS.Inline("window[$0] = true", loadedMarkerName)
         registerAppendInputRenderer "codexfs-ai-chat-append-input" 120 renderAppendInput
+        registerMessageRenderer "codexfs-artifact-reply" 140 renderArtifactReply
+        enhanceExistingMessageBodies ()
+        JS.Window.SetInterval((fun () -> enhanceExistingMessageBodies ()), 1000) |> ignore
 
     /// WebSharper bundle entrypoint. Registers PTCS append-page controls for codex.fs AI chat.
     [<SPAEntryPoint>]

@@ -53,6 +53,8 @@ module SessionEngineCycle =
           PersistenceBoundaryPath: string
           /// Final message artifact path relative to artifact root.
           FinalMessagePath: string
+          /// Redacted run note artifact path relative to artifact root.
+          RunNotePath: string
           /// PTCS reply message id.
           ReplyMessageId: string
           /// Reply body sent through MessageFabric.
@@ -101,6 +103,7 @@ module SessionEngineCycle =
           ArtifactManifestPath = result.ArtifactManifestPath
           PersistenceBoundaryPath = result.PersistenceBoundaryPath
           FinalMessagePath = result.FinalMessagePath
+          RunNotePath = result.RunNotePath
           ReplyMessageId = result.ReplyMessageId
           ReplyBody = result.ReplyBody }
 

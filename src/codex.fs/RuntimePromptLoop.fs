@@ -105,8 +105,35 @@ module RuntimePromptLoop =
           ArtifactManifestPath: string
           /// Final message path relative to artifact root.
           FinalMessagePath: string
+          /// Run note path relative to artifact root.
+          RunNotePath: string
           /// True when boundary is written before acking MessageFabric.
           PersistedBeforeAck: bool }
+
+    /// Input for redacted human-readable run note generation.
+    type RuntimeRunNoteInput =
+        { /// Session identity.
+          SessionId: SessionId
+          /// Run identity.
+          RunId: RunId
+          /// Engine family used by the run.
+          Engine: EngineKind
+          /// Concrete engine surface id.
+          SurfaceId: string option
+          /// Terminal run outcome.
+          Outcome: RunOutcome
+          /// Manifest path relative to artifact root.
+          ManifestPath: string
+          /// Final message path relative to artifact root.
+          FinalMessagePath: string
+          /// Consumed PTCS message ids.
+          ConsumedMessageIds: string list
+          /// Redacted one-line final/failure summary.
+          Summary: string
+          /// UTC run start.
+          StartedUtc: DateTimeOffset
+          /// UTC run completion.
+          CompletedUtc: DateTimeOffset option }
 
     let jsonOptions =
         JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true)
@@ -297,11 +324,58 @@ module RuntimePromptLoop =
         Redaction.redactHighRisk candidate
         |> fun result -> truncate 240 result.Text
 
+    /// Build the redacted run note used by Web, CLI and compaction previews.
+    let runNoteText (input: RuntimeRunNoteInput) =
+        let (SessionId sessionIdText) = input.SessionId
+        let (RunId runIdText) = input.RunId
+
+        let consumed =
+            match input.ConsumedMessageIds with
+            | [] -> "- none"
+            | ids -> ids |> List.map (fun id -> "- " + id) |> String.concat Environment.NewLine
+
+        let surfaceIdText = input.SurfaceId |> Option.defaultValue ""
+
+        let completedUtcText =
+            input.CompletedUtc
+            |> Option.map (fun value -> value.ToString("O"))
+            |> Option.defaultValue ""
+
+        [ "# codex.fs run note"
+          ""
+          "## Run"
+          ""
+          $"- sessionId: {sessionIdText}"
+          $"- runId: {runIdText}"
+          $"- engine: {engineText input.Engine}"
+          $"- surfaceId: {surfaceIdText}"
+          $"- outcome: {outcomeText input.Outcome}"
+          $"- startedUtc: {input.StartedUtc:O}"
+          $"- completedUtc: {completedUtcText}"
+          ""
+          "## Summary"
+          ""
+          input.Summary
+          ""
+          "## Consumed PTCS Messages"
+          ""
+          consumed
+          ""
+          "## Artifact Refs"
+          ""
+          $"- manifest: {input.ManifestPath}"
+          $"- final: {input.FinalMessagePath}"
+          ""
+          "Raw prompt, stdout and stderr artifacts may be private/local and are not repeated in this note." ]
+        |> String.concat Environment.NewLine
+        |> fun text -> text + Environment.NewLine
+
     /// Build the redacted reply intent for MessageFabric.
-    let replyIntent runId outcome manifestRelativePath finalPath targetParticipantId stdout stderr =
+    let replyIntent runId outcome manifestRelativePath finalPath notePath targetParticipantId stdout stderr =
         let (RunId runIdText) = runId
+
         let body =
-            $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; summary={redactedSummary stdout stderr}"
+            $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; note={notePath}; summary={redactedSummary stdout stderr}"
 
         { TargetParticipantId = targetParticipantId
           Body = body
@@ -323,4 +397,5 @@ module RuntimePromptLoop =
                replyBody = boundary.Reply.Body
                artifactManifestPath = boundary.ArtifactManifestPath
                finalMessagePath = boundary.FinalMessagePath
+               runNotePath = boundary.RunNotePath
                persistedBeforeAck = boundary.PersistedBeforeAck |}

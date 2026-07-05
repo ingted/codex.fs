@@ -1044,6 +1044,7 @@ type RuntimeCycleResult =
       ArtifactManifestPath: string
       PersistenceBoundaryPath: string
       FinalMessagePath: string
+      RunNotePath: string
       ReplyMessageId: string
       ReplyBody: string }
 
@@ -1110,6 +1111,14 @@ type ArtifactManifest =
 ```
 
 `RFC-PERSIST-0001` defines the transcript/note/artifact policy used by future runtime/actor work.
+
+Implemented WEBR-007 note/ref contract:
+
+- `RuntimeMessageFabricCycle` writes `note.md` as `RunNoteMarkdown`.
+- `manifest.json` includes the note artifact ref.
+- MessageFabric reply body includes `manifest=...; final=...; note=...; summary=...`.
+- `session-boundary.json` includes `runNotePath` alongside manifest/final path and reply evidence.
+- `RuntimeCycleResult.RunNotePath` exposes the note path to host, actor and verifier callers.
 
 Preferred private file layout:
 
@@ -1393,6 +1402,7 @@ type SingleCycleResult =
       ArtifactManifestPath: string
       PersistenceBoundaryPath: string
       FinalMessagePath: string
+      RunNotePath: string
       ReplyMessageId: string
       ReplyBody: string }
 
@@ -1404,8 +1414,8 @@ Rules:
 - `runSingleCycleAsync` is a bounded package helper for `E2E-002`; ACTOR-003 refactors it into a host wrapper over `CodexFs.Ptcs.RuntimeMessageFabricCycle`.
 - The function polls the session inbox once, assembles a prompt, invokes the selected installed engine, persists artifacts, sends a PTCS reply, writes a ready-to-ack session boundary, then acknowledges the inbox cursor.
 - Current real engine implementation is Agy `1.0.x --print`; Agy flags must render before `--print`, and the prompt text is the final positional argument.
-- Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON, manifest JSON, and `session-boundary.json`.
-- `session-boundary.json` records phase `ready-to-ack`, selected cursor, consumed PTCS message ids, reply message id/body, manifest path and final message path. It must be written after reply evidence and before MessageFabric ack.
+- Persisted artifacts include prompt markdown, PTCS message batch JSONL, normalized request JSON, rendered argv JSON, stdout, stderr, final markdown, result JSON, note markdown, manifest JSON, and `session-boundary.json`.
+- `session-boundary.json` records phase `ready-to-ack`, selected cursor, consumed PTCS message ids, reply message id/body, manifest path, final message path and run note path. It must be written after reply evidence and before MessageFabric ack.
 - Reply body contains a redacted/truncated summary plus artifact references; it must not contain the raw prompt transcript.
 - `OPS-002` proves bounded single-cycle ack-after-artifact-and-reply-boundary ordering. Crash restart rehydration and sharded provider replay remain future worker-loop/provider scope.
 
@@ -1455,6 +1465,32 @@ AppendPageShapes =
 ```
 
 The bundle must be generated from WebSharper/F# and must not require hand-written JavaScript. Same-origin JSON handlers are limited to registered allow-list operations such as metadata, participant capabilities, host health or artifact summary lookups; they are not generic proxies and do not become MessageFabric.
+
+Implemented WEBR-007 PTCS artifact renderer:
+
+```text
+MessageFabric reply body
+  -> PTCS classic chat thread
+  -> codex.fs.web PulseTradeRegisterRenderer
+  -> fallback bridge scans PTCS pre.message-body nodes
+  -> codexfs-artifact-reply card
+```
+
+Renderer card contract:
+
+| Test id | Meaning |
+| --- | --- |
+| `codexfs-artifact-reply` | Root card for a codex.fs worker run reply. |
+| `codexfs-artifact-run` | Run id row. |
+| `codexfs-artifact-outcome` | Outcome row. |
+| `codexfs-artifact-manifest` | Manifest path relative to artifact root. |
+| `codexfs-artifact-final` | Final message path relative to artifact root. |
+| `codexfs-artifact-note` | Run note path relative to artifact root. |
+| `codexfs-artifact-summary` | Redacted summary text. |
+
+The fallback bridge exists because current PTCS classic chat appends raw `<pre class="message-body">` nodes and does not call the registered message renderer in that path. The bridge only upgrades PTCS-rendered message bodies that match the codex.fs reply grammar; it does not create a parallel chat store or change MessageFabric.
+
+`HostWebShell.registeredHub` registers default `agent.codexfs.foreman` so the PTCS participant list has a first-use Foreman target. This is a product participant identity, not test data; actor-backed execution still owns actual work.
 
 ### 14.2 Interactive CLI and AI chat bundle target
 

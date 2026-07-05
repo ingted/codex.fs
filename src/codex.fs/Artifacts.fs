@@ -24,6 +24,8 @@ module Artifacts =
         | EventJsonl
         /// Final engine message markdown.
         | FinalMarkdown
+        /// Redacted human-readable run note markdown.
+        | RunNoteMarkdown
         /// Normalized run result JSON.
         | ResultJson
         /// Session persistence boundary written after reply evidence and before inbox ack.

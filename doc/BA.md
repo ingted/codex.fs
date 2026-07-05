@@ -15,6 +15,7 @@
 | 降低人工複製 terminal history | 每次 runtime cycle 自動保存 prompt、request、argv、stdout、stderr、final、manifest、ready-to-ack boundary。 |
 | 讓人與 agents 使用同一套 chat truth | PTCS MessageFabric participant/direct/public/group message 是唯一 user/agent 溝通來源。 |
 | 讓包工頭/worker 能協作 | Foreman/SessionActor 與 child WorkerActor 都註冊成 PTCS `agent` participant。 |
+| 讓 Web 使用者看懂 worker 結果 | PTCS classic `/chat` thread 顯示 redacted summary、run id、manifest/final/note refs，不需要複製 terminal output。 |
 | 保持輕量可嵌入 | `codex.fs` 消費 PTCS packages，不重寫 ActorFabric、MessageFabric 或 Web chat shell。 |
 
 ## 3. Stakeholders
@@ -35,7 +36,15 @@ Acceptance business statement：
 
 > 一個使用者 participant 發送 prompt 給 Foreman/Worker participant 後，WorkerActor 能在 PTCS ActorFabric 上呼叫 runtime cycle，產生 private artifacts，透過 MessageFabric 回覆 redacted summary + manifest/final refs，並在 reply evidence 後 ack 消費的 inbox cursor。
 
-## 5. Non-goals
+## 5. WEBR-007 business slice
+
+`WEBR-007` 的 business value 是把「worker 留下證據」推進到「人能在 PTCS Web 看到可追溯 refs」。使用者不必開 terminal 或人工找 artifact path；PTCS chat card 直接呈現 run/outcome/manifest/final/note。
+
+Acceptance business statement：
+
+> Foreman/Worker 產生的 real actor artifact refs 經由 MessageFabric reply 進入 PTCS classic `/chat` 後，browser 能顯示 redacted summary、run id、manifest/final/note refs，且 raw artifacts 仍留在 private artifact root。
+
+## 6. Non-goals
 
 - 不以 standalone diagnostics form 作為產品 chat。
 - 不把 raw artifacts 放進 public chat body。

@@ -10,6 +10,9 @@ function Main(){
 function register(){
   globalThis.CodexFsAiChatLoaded=true;
   registerAppendInputRenderer("codexfs-ai-chat-append-input", 120, renderAppendInput);
+  registerMessageRenderer("codexfs-artifact-reply", 140, renderArtifactReply);
+  enhanceExistingMessageBodies();
+  globalThis.setInterval(enhanceExistingMessageBodies, 1000);
 }
 function registerAppendInputRenderer(name, priority, renderer){
   if(Equals(typeof globalThis.PulseTradeRegisterAppendInputRenderer, "function"))globalThis.PulseTradeRegisterAppendInputRenderer(name, priority, renderer);
@@ -51,6 +54,31 @@ function renderAppendInput(ctx){
     append(root, [field("Target", targetMode), field("Target id", targetValue), field("Perspective", perspectiveMode), field("Perspective id", perspectiveValue), field("Engine", engine), field("Model", model), field("Reasoning", reasoning), field("Invocation", invocationMode), field("Approval", approval), prompt, send, status]);
     return Some(root);
   }
+}
+function registerMessageRenderer(name, priority, renderer){
+  if(Equals(typeof globalThis.PulseTradeRegisterRenderer, "function"))globalThis.PulseTradeRegisterRenderer(name, priority, renderer);
+}
+function renderArtifactReply(text){
+  const m=parseArtifactReply(text);
+  if(m!=null&&m.$==1){
+    const reply=m.$0;
+    const root=setTestId("codexfs-artifact-reply", setStyle("display:flex;flex-direction:column;gap:7px;box-sizing:border-box;width:100%;white-space:normal;background:#f7fbff;border:1px solid #b8d7ef;border-radius:6px;padding:10px 12px;color:#172033;max-height:none;overflow:visible;", element("section", "codexfs-artifact-reply message-body", null)));
+    root.setAttribute("data-run-id", reply.runId);
+    root.setAttribute("data-outcome", reply.outcome);
+    root.setAttribute("data-manifest-path", reply.manifestPath);
+    root.setAttribute("data-final-path", reply.finalPath);
+    root.setAttribute("data-note-path", reply.notePath);
+    const header=setStyle("display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;font-weight:700;", element("div", "codexfs-artifact-header", null));
+    append(header, [element("span", "", "codex.fs artifact refs")]);
+    append(root, [header, setTestId("codexfs-artifact-summary", setStyle("font-size:13px;line-height:1.45;overflow-wrap:anywhere;", element("div", "codexfs-artifact-summary", asText(reply.summary)))), artifactRow("codexfs-artifact-run", "run", reply.runId), artifactRow("codexfs-artifact-outcome", "outcome", reply.outcome), artifactRow("codexfs-artifact-manifest", "manifest", reply.manifestPath), artifactRow("codexfs-artifact-final", "final", reply.finalPath), artifactRow("codexfs-artifact-note", "note", reply.notePath)]);
+    return Some(root);
+  }
+  else return null;
+}
+function enhanceExistingMessageBodies(){
+  iter((n) => {
+    enhanceMessageBody(n);
+  }, Array.prototype.slice.call(document.querySelectorAll("pre.message-body:not([data-codexfs-artifact-scanned])")));
 }
 function sameTextInvariant(left, right){
   return asText(left).toLowerCase()==asText(right).toLowerCase();
@@ -122,7 +150,7 @@ function isBlank(value){
   return IsNullOrWhiteSpace(asText(value));
 }
 function buildIntentJson(targetMode, targetValue, perspectiveMode, perspectiveValue, engine, model, reasoning, invocationMode, approval, prompt){
-  return JSON.stringify(New_35("codex.fs.web.ai-intent.v1", New_36(targetMode, targetScope(targetMode), targetParticipantId(targetMode, targetValue), targetGroupId(targetMode, targetValue)), New_37(perspectiveMode, sameTextInvariant(perspectiveMode, "participant-readonly")?Trim(asText(perspectiveValue)):"", perspectivePolicy(perspectiveMode)), New_38(engine, model, reasoning), New_39(invocationMode, approval), prompt, ["codex.fs", "ai-chat", "intent"]));
+  return JSON.stringify(New_36("codex.fs.web.ai-intent.v1", New_37(targetMode, targetScope(targetMode), targetParticipantId(targetMode, targetValue), targetGroupId(targetMode, targetValue)), New_38(perspectiveMode, sameTextInvariant(perspectiveMode, "participant-readonly")?Trim(asText(perspectiveValue)):"", perspectivePolicy(perspectiveMode)), New_39(engine, model, reasoning), New_40(invocationMode, approval), prompt, ["codex.fs", "ai-chat", "intent"]));
 }
 function append(parent, children){
   iter((child) => {
@@ -136,6 +164,37 @@ function field(labelText, control){
   setStyle("display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", caption);
   append(wrapper, [caption, control]);
   return wrapper;
+}
+function parseArtifactReply(text){
+  const source=Trim(asText(text));
+  if(!StartsWith(source, "run "))return null;
+  else {
+    const headerEnd=source.indexOf(";");
+    const parts=SplitChars(headerEnd<0?source:Substring(source, 0, headerEnd), [" "], 1);
+    const manifestPath=valueBetweenMarkerAndNextSeparator("manifest=", source);
+    return length(parts)<3||isBlank(manifestPath)?null:Some(New_30(get(parts, 1), get(parts, 2), manifestPath, valueBetweenMarkerAndNextSeparator("final=", source), valueBetweenMarkerAndNextSeparator("note=", source), valueAfterMarker("summary=", source)));
+  }
+}
+function artifactRow(testId, labelText, value){
+  const row=setTestId(testId, setStyle("display:grid;grid-template-columns:74px minmax(0,1fr);gap:8px;align-items:start;min-width:0;", element("div", "codexfs-artifact-row", null)));
+  const labelNode=setStyle("font-weight:600;color:#3d4852;white-space:nowrap;", element("span", "codexfs-artifact-label", labelText));
+  const valueNode=setStyle("font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;color:#172033;", element("code", "codexfs-artifact-value", asText(value)));
+  valueNode.setAttribute("title", asText(value));
+  append(row, [labelNode, valueNode]);
+  return row;
+}
+function enhanceMessageBody(node){
+  if(node==null){ }
+  else {
+    node.setAttribute("data-codexfs-artifact-scanned", "1");
+    const m=renderArtifactReply(node.textContent);
+    if(m!=null&&m.$==1){
+      const rendered=m.$0;
+      const parent=node.parentNode;
+      if(!(parent==null))parent.replaceChild(rendered, node);
+    }
+    else void 0;
+  }
 }
 function doc(){
   return _c_1.doc;
@@ -162,6 +221,21 @@ function targetGroupId(mode, value){
 }
 function perspectivePolicy(mode){
   return sameTextInvariant(mode, "participant-readonly")?"read-only":"current-user";
+}
+function valueBetweenMarkerAndNextSeparator(marker, text){
+  const source=asText(text);
+  const index=source.indexOf(marker);
+  if(index<0)return"";
+  else {
+    const start=index+marker.length;
+    const next=source.indexOf("; ", start);
+    return Trim(next<0?source.substring(start):Substring(source, start, next-start));
+  }
+}
+function valueAfterMarker(marker, text){
+  const source=asText(text);
+  const index=source.indexOf(marker);
+  return index<0?"":Trim(source.substring(index+marker.length));
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
@@ -2776,7 +2850,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_32(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_33(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_1(request.userName)||isBlank_1(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -2806,7 +2880,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_1(node.textContent)?New_31("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_1(node.textContent)?New_32("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_1(value)?fallback:value;
@@ -3403,7 +3477,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_1(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_34(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_35(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson("/pages/api/register-page", request, (reply) => {
@@ -3621,10 +3695,10 @@ function hasTag(tag, tags){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_1(userNode.textContent))return New_33("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  if(userNode==null||isBlank_1(userNode.textContent))return New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_1(user.participantId)?New_33("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_1(user.participantId)?New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
 }
 function fcellValueModeLabel(mode, tags){
@@ -3807,7 +3881,7 @@ function registeredRenderers(){
   return _c.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_30(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_31(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -4625,6 +4699,18 @@ function TrimStartWS(s){
 function IsNullOrWhiteSpace(x){
   return x==null||(new RegExp("^\\s*$")).test(x);
 }
+function SplitChars(s, sep, opts){
+  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
+}
+function Split(s, pat, opts){
+  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
+}
+function RegexEscape(s){
+  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
+}
+function SplitWith(str, pat){
+  return str.split(pat);
+}
 function NewFromSeq(fields){
   let _1;
   const r={};
@@ -5195,7 +5281,17 @@ function New_28(fromId, toId, body, tags){
 function New_29(valueText, keyJson){
   return{valueText:valueText, keyJson:keyJson};
 }
-function New_30(shape, label, badge, className){
+function New_30(runId, outcome, manifestPath, finalPath, notePath, summary){
+  return{
+    runId:runId,
+    outcome:outcome,
+    manifestPath:manifestPath,
+    finalPath:finalPath,
+    notePath:notePath,
+    summary:summary
+  };
+}
+function New_31(shape, label, badge, className){
   return{
     shape:shape, 
     label:label, 
@@ -5203,7 +5299,7 @@ function New_30(shape, label, badge, className){
     className:className
   };
 }
-function New_31(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_32(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -5217,7 +5313,7 @@ function New_31(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_32(userName, password, returnUrl, keepSession){
+function New_33(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -5225,7 +5321,7 @@ function New_32(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_33(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_34(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
     participantId:participantId, 
     displayName:displayName, 
@@ -5279,7 +5375,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_34(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_35(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -5378,7 +5474,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_40(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_41(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -5435,7 +5531,7 @@ function mapiInPlace(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
   return arr;
 }
-function New_35(schema, target, perspective, engine, invocation, body, tags){
+function New_36(schema, target, perspective, engine, invocation, body, tags){
   return{
     schema:schema, 
     target:target, 
@@ -5446,7 +5542,7 @@ function New_35(schema, target, perspective, engine, invocation, body, tags){
     tags:tags
   };
 }
-function New_36(mode, scope, participantId, groupId){
+function New_37(mode, scope, participantId, groupId){
   return{
     mode:mode, 
     scope:scope, 
@@ -5454,21 +5550,21 @@ function New_36(mode, scope, participantId, groupId){
     groupId:groupId
   };
 }
-function New_37(mode, participantId, senderPolicy){
+function New_38(mode, participantId, senderPolicy){
   return{
     mode:mode, 
     participantId:participantId, 
     senderPolicy:senderPolicy
   };
 }
-function New_38(engine, model, reasoning){
+function New_39(engine, model, reasoning){
   return{
     engine:engine, 
     model:model, 
     reasoning:reasoning
   };
 }
-function New_39(mode, approval){
+function New_40(mode, approval){
   return{mode:mode, approval:approval};
 }
 class Exception extends Object_1 { }
@@ -5568,7 +5664,7 @@ let _c_1=Lazy((_i) => class $StartupCode_AIChatClient {
     this.doc=globalThis.document;
   }
 });
-function New_40(Node_1, Left, Right, Height, Count){
+function New_41(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 

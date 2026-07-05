@@ -204,14 +204,34 @@ let runtimeReplyIntent =
         Completed
         "sessions/sess-002/runs/run-002/manifest.json"
         "sessions/sess-002/runs/run-002/final.md"
+        "sessions/sess-002/runs/run-002/note.md"
         "user.alice"
         "runtime final output"
         ""
 
 assertEqual "runtime reply target" "user.alice" runtimeReplyIntent.TargetParticipantId
 assertContains "runtime reply manifest" "manifest=sessions/sess-002/runs/run-002/manifest.json" runtimeReplyIntent.Body
+assertContains "runtime reply note" "note=sessions/sess-002/runs/run-002/note.md" runtimeReplyIntent.Body
 assertContains "runtime reply summary" "summary=runtime final output" runtimeReplyIntent.Body
 assertEqual "runtime reply correlation" (Some "run-002") runtimeReplyIntent.CorrelationId
+
+let runtimeNoteText =
+    CodexFs.RuntimePromptLoop.runNoteText
+        { SessionId = input.SessionId
+          RunId = input.RunId
+          Engine = input.Engine
+          SurfaceId = input.SurfaceId
+          Outcome = Completed
+          ManifestPath = "sessions/sess-002/runs/run-002/manifest.json"
+          FinalMessagePath = "sessions/sess-002/runs/run-002/final.md"
+          ConsumedMessageIds = runtimePromptPlan.Prompt.MessageRefs |> List.map _.MessageId
+          Summary = "runtime final output"
+          StartedUtc = DateTimeOffset.Parse("2026-07-04T12:00:00Z")
+          CompletedUtc = Some(DateTimeOffset.Parse("2026-07-04T12:00:05Z")) }
+
+assertContains "runtime note title" "# codex.fs run note" runtimeNoteText
+assertContains "runtime note manifest" "- manifest: sessions/sess-002/runs/run-002/manifest.json" runtimeNoteText
+assertContains "runtime note consumed message" "- msg-001" runtimeNoteText
 
 let runtimeBoundaryText =
     CodexFs.RuntimePromptLoop.readyToAckBoundaryText
@@ -224,11 +244,13 @@ let runtimeBoundaryText =
               Body = runtimeReplyIntent.Body }
           ArtifactManifestPath = "sessions/sess-002/runs/run-002/manifest.json"
           FinalMessagePath = "sessions/sess-002/runs/run-002/final.md"
+          RunNotePath = "sessions/sess-002/runs/run-002/note.md"
           PersistedBeforeAck = true }
 
 assertContains "runtime boundary phase" "\"phase\": \"ready-to-ack\"" runtimeBoundaryText
 assertContains "runtime boundary reply id" "\"replyMessageId\": \"reply-002\"" runtimeBoundaryText
 assertContains "runtime boundary cursor" "\"selectedCursor\": \"cursor-002\"" runtimeBoundaryText
+assertContains "runtime boundary note" "\"runNotePath\": \"sessions/sess-002/runs/run-002/note.md\"" runtimeBoundaryText
 assertContains "runtime boundary persisted before ack" "\"persistedBeforeAck\": true" runtimeBoundaryText
 
 printfn "TC-RUNTIME-002 runtime prompt-loop plan passed"
@@ -373,7 +395,9 @@ let aiChatMainAsset =
 
 assertTrue "ai chat main bundle content" (aiChatMainAsset.Content.Length > 100)
 assertContains "ai chat append input renderer hook" "PulseTradeRegisterAppendInputRenderer" aiChatMainAsset.Content
+assertContains "ai chat message renderer hook" "PulseTradeRegisterRenderer" aiChatMainAsset.Content
 assertContains "ai chat controls test id" "codexfs-ai-controls" aiChatMainAsset.Content
+assertContains "ai chat artifact reply test id" "codexfs-artifact-reply" aiChatMainAsset.Content
 assertContains "ai chat target control test id" "codexfs-ai-target-mode" aiChatMainAsset.Content
 assertContains "ai chat perspective control test id" "codexfs-ai-perspective-mode" aiChatMainAsset.Content
 assertContains "ai chat reasoning control test id" "codexfs-ai-reasoning" aiChatMainAsset.Content
@@ -601,6 +625,9 @@ try
     assertTrue "web shell not guard page" (not (webShellChatHtml.Contains("Use PTCS chat", StringComparison.OrdinalIgnoreCase)))
     assertTrue "web shell not diagnostics page" (not (webShellChatHtml.Contains("diagnostics session send", StringComparison.OrdinalIgnoreCase)))
 
+    let webShellAgentsJson = runTask (webShellHttp.GetStringAsync(webShellServer.Contract.AdvertiseUri.TrimEnd('/') + "/chat/api/agents"))
+    assertContains "web shell default foreman participant" "agent.codexfs.foreman" webShellAgentsJson
+
     let webShellMainScript =
         webShellServer.Contract.ScriptUrls
         |> List.find (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase))
@@ -610,6 +637,8 @@ try
     assertContains "web shell main controls" "codexfs-ai-controls" webShellMainScriptText
     assertContains "web shell main target control" "codexfs-ai-target-mode" webShellMainScriptText
     assertContains "web shell main renderer hook" "PulseTradeRegisterAppendInputRenderer" webShellMainScriptText
+    assertContains "web shell artifact renderer hook" "PulseTradeRegisterRenderer" webShellMainScriptText
+    assertContains "web shell artifact reply test id" "codexfs-artifact-reply" webShellMainScriptText
 
     let webShellHealth = runTask (webShellHttp.GetStringAsync webShellServer.Contract.HealthUri)
     assertContains "web shell health service" "PulseTrade.Comm.Spa" webShellHealth
@@ -1376,25 +1405,37 @@ try
     assertTrue "actor003 manifest ref" (not (String.IsNullOrWhiteSpace actor003Result.ArtifactManifestPath))
     assertTrue "actor003 boundary ref" (not (String.IsNullOrWhiteSpace actor003Result.PersistenceBoundaryPath))
     assertTrue "actor003 final ref" (not (String.IsNullOrWhiteSpace actor003Result.FinalMessagePath))
+    assertTrue "actor003 note ref" (not (String.IsNullOrWhiteSpace actor003Result.RunNotePath))
     assertTrue "actor003 reply id" (not (String.IsNullOrWhiteSpace actor003Result.ReplyMessageId))
     assertContains "actor003 reply manifest" actor003Result.ArtifactManifestPath actor003Result.ReplyBody
+    assertContains "actor003 reply note" actor003Result.RunNotePath actor003Result.ReplyBody
 
     let actor003ManifestPath = Path.Combine(actor003ArtifactRoot, actor003Result.ArtifactManifestPath)
     let actor003BoundaryPath = Path.Combine(actor003ArtifactRoot, actor003Result.PersistenceBoundaryPath)
     let actor003FinalPath = Path.Combine(actor003ArtifactRoot, actor003Result.FinalMessagePath)
+    let actor003NotePath = Path.Combine(actor003ArtifactRoot, actor003Result.RunNotePath)
 
     assertTrue "actor003 manifest exists" (File.Exists actor003ManifestPath)
     assertTrue "actor003 boundary exists" (File.Exists actor003BoundaryPath)
     assertTrue "actor003 final exists" (File.Exists actor003FinalPath)
+    assertTrue "actor003 note exists" (File.Exists actor003NotePath)
 
     let actor003StrictUtf8 = System.Text.UTF8Encoding(false, true)
+    let actor003ManifestText = File.ReadAllText(actor003ManifestPath, actor003StrictUtf8)
     let actor003BoundaryText = File.ReadAllText(actor003BoundaryPath, actor003StrictUtf8)
     let actor003FinalText = File.ReadAllText(actor003FinalPath, actor003StrictUtf8)
+    let actor003NoteText = File.ReadAllText(actor003NotePath, actor003StrictUtf8)
 
     assertContains "actor003 boundary ready" "ready-to-ack" actor003BoundaryText
     assertContains "actor003 boundary reply id" actor003Result.ReplyMessageId actor003BoundaryText
     assertContains "actor003 boundary cursor" actor003Result.AckCursor actor003BoundaryText
+    assertContains "actor003 boundary note field" "\"runNotePath\"" actor003BoundaryText
+    assertContains "actor003 boundary note file" "note.md" actor003BoundaryText
+    assertContains "actor003 manifest note kind" "RunNoteMarkdown" actor003ManifestText
+    assertContains "actor003 manifest note file" "note.md" actor003ManifestText
     assertContains "actor003 final token" actor003Token actor003FinalText
+    assertContains "actor003 note title" "# codex.fs run note" actor003NoteText
+    assertContains "actor003 note manifest" actor003Result.ArtifactManifestPath actor003NoteText
 
     let actor003ReplyBatch =
         runTask
@@ -1422,6 +1463,7 @@ try
     printfn "actor003Manifest=%s" actor003ManifestPath
     printfn "actor003Boundary=%s" actor003BoundaryPath
     printfn "actor003Final=%s" actor003FinalPath
+    printfn "actor003Note=%s" actor003NotePath
     printfn "actor003ReplyMessageId=%s" actor003Result.ReplyMessageId
 finally
     actor002Fabric.Stop()

@@ -347,3 +347,12 @@
 - Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyActorRuntimeArtifactProvider.fsx -- --no-restore` passed.
 - Evidence: manifest `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\manifest.json`; boundary `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\session-boundary.json`.
 - Boundary: this is real ActorFabric/MessageFabric/engine/artifact evidence but not production sharded crash-durable replay. `WEBR-007` is unblocked for browser rendering of real worker refs.
+
+## 2026-07-05 13:55 +08:00 WEBR-007 PTCS artifact ref rendering
+
+- Scope: added RFC-WEB-0003 and completed the PTCS classic `/chat` artifact-reference rendering slice for real worker replies.
+- Runtime: added `RunNoteMarkdown`, `note.md`, `RuntimeReadyToAckBoundary.RunNotePath`, reply `note=` refs and runtime-cycle manifest/boundary persistence so CLI stdio/prompt history can be found without manual terminal copy.
+- Host/Web: `codex.fs.host` now registers default Foreman participant `agent.codexfs.foreman` for first-use chat targeting; `CodexFs.Web.Client.AIChatClient` registers a PTCS reply renderer and a minimal bridge that turns codex.fs artifact reply text into an artifact card inside the PTCS message body.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyArtifactRefsInPtcsShell.fsx -- --no-restore` passed.
+- Evidence: browser screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`; manifest `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\manifest.json`; note `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\note.md`.
+- Boundary: this renders refs inside PTCS classic chat and preserves artifact/note traceability. It is not yet the production durable sharded replay path; `E2E-004` remains the next end-to-end durable workflow item.

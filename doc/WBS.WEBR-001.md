@@ -33,9 +33,9 @@ Test：`T-WEBR-001`
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 100 | Done | None | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
 | ACTOR-003 | WorkerActor invokes PTCS runtime artifact provider | ACTOR-002;RUNTIME-002;WEBR-006 | 100 | Done | None | SD §11.2, §11.3, §12, §14.3 | T-ACTOR-003 | `misc/verifyActorRuntimeArtifactProvider.fsx` |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence |
-| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 0 | Planned | None | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
+| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 100 | Done | None | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
-| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | WEBR-007 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
+| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | None | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
 
 ## Cut / Rewrite Notes
 
@@ -165,3 +165,19 @@ UpdatedAt：2026-07-05 15:20 +08:00
   - boundary: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\session-boundary.json`
   - final: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-5d73330172b7\sessions\actor003-5d73330172b7\runs\run-20260705051932302-0f5dc2e5\final.md`
 - `WEBR-007` is unblocked for rendering the real worker reply/run refs in the PTCS shell. Production sharded crash-durable delivery remains future hardening.
+
+## WEBR-007 Closeout
+
+UpdatedAt：2026-07-05 14:18 +08:00
+
+- Added `RFC-WEB-0003` for PTCS artifact ref rendering.
+- Runtime now writes `note.md` as `RunNoteMarkdown`; manifest, reply body, `session-boundary.json` and `RuntimeCycleResult` include the note ref.
+- `HostWebShell.registeredHub` registers default Foreman participant `agent.codexfs.foreman` so PTCS `/chat` has a first-use包工頭 target.
+- `codex.fs.web` registers an artifact reply renderer and a minimal bridge for PTCS `pre.message-body` fallback nodes.
+- Added verifier `misc/verifyArtifactRefsInPtcsShell.fsx`; it builds, runs compiled tests, starts real PTCS webshell, sends real actor artifact refs through `/chat/api/send`, and verifies the rendered card with Playwright.
+- Evidence:
+  - manifest: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\manifest.json`
+  - final: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\final.md`
+  - note: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\note.md`
+  - screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`
+- `E2E-004` is unblocked for full browser prompt -> Foreman actor -> runtime -> artifact reply loop.

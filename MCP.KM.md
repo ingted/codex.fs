@@ -316,3 +316,13 @@
 - A WorkerActor self-reply can appear in the actor participant inbox after ack; tests should verify the consumed user prompt id is not replayed, not require the inbox to be globally empty.
 - `misc/verifyActorRuntimeArtifactProvider.fsx` is the real ACTOR-003 verifier. It uses FAkka.Argu, checks source/docs, builds/runs `codex.fs.Tests`, and verifies manifest/boundary/final artifact paths under ignored `.codex.fs/actor003-artifacts`.
 - This slice unblocks WEBR-007 artifact/note ref rendering. It does not satisfy production sharded crash-durable delivery replay.
+
+## 2026-07-05 WEBR-007 PTCS Artifact Ref Rendering
+
+- `RunNoteMarkdown` is the current artifact kind for the human-readable run note. Runtime adapters should write it as `note.md`, include it in `manifest.json`, store it in `session-boundary.json` as `runNotePath`, and include `note=<path>` in the PTCS reply intent.
+- `CodexFs.RuntimePromptLoop.RuntimeReadyToAckBoundary.RunNotePath` is the contract that links the durable ack boundary to the note artifact. Tests should assert the note file exists and the boundary JSON preserves the exact path.
+- `CodexFs.Web.Client.AIChatClient` owns the PTCS reply renderer for codex.fs artifact replies. It registers `codexfs-artifact-reply` rendering and bridges existing PTCS `pre.message-body` content so classic `/chat` can display artifact cards without replacing the PTCS hub.
+- Stable artifact-card selectors for UI verification are `codexfs-artifact-reply`, `codexfs-artifact-run`, `codexfs-artifact-outcome`, `codexfs-artifact-manifest`, `codexfs-artifact-final`, `codexfs-artifact-note`, and `codexfs-artifact-summary`.
+- `codex.fs.host` should register default Foreman `agent.codexfs.foreman` into MessageFabric before serving `/chat`; this gives first-use users a visible top-level participant without asking them to invent a session id.
+- `misc/verifyArtifactRefsInPtcsShell.fsx` is the WEBR-007 real-path verifier. It builds the solution, runs compiled tests to produce real ACTOR-003 artifacts, starts the host on LAN IP, sends the artifact reply through PTCS `/chat/api/send`, opens `/chat` with Playwright, selects Foreman and validates artifact-card selectors plus screenshot.
+- Browser evidence for the completed slice is `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`. Runtime artifact evidence remains under ignored `.codex.fs/actor003-artifacts` and must not be committed.

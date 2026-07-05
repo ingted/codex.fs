@@ -95,9 +95,9 @@ Status 值：
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 100 | Done | None | 2026-07-05 14:10 +08:00 | 2026-07-05 14:25 +08:00 | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | ACTOR-003 | WorkerActor invokes PTCS runtime artifact provider | ACTOR-002;RUNTIME-002;WEBR-006 | 100 | Done | None | 2026-07-05 15:10 +08:00 | 2026-07-05 15:20 +08:00 | SD §11.2, §11.3, §12, §14.3 | T-ACTOR-003 | `misc/verifyActorRuntimeArtifactProvider.fsx` | [@ACTOR-003](WBS.ACTOR-003.md); [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | 2026-07-05 15:05 +08:00 | 2026-07-05 14:40 +08:00 | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence | [@WEBR-001](WBS.WEBR-001.md) |
-| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 0 | Planned | None | - | 2026-07-05 15:20 +08:00 | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 100 | Done | None | 2026-07-05 13:26 +08:00 | 2026-07-05 14:18 +08:00 | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | 2026-07-05 12:55 +08:00 | 2026-07-05 13:03 +08:00 | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
-| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | WEBR-007 | - | 2026-07-05 15:20 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
+| E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 0 | Planned | None | - | 2026-07-05 14:18 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 
 ## 3. Roll-up / Detail Files
 

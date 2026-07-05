@@ -59,6 +59,7 @@ PTCS 已定義：
 - codex.fs Web UI 應作為 PTCS WebSharper extension/bundle，例如 `useAIChat(...)` 類型的客製 bundle，提供 participant perspective、engine/model/reasoning/invocation controls；不得用 standalone host `/chat` 取代 PTCS chat room。
 - `RFC-WEB-0001` 接受此 Web bundle boundary：browser 使用 PTCS MessageFabric public/direct/group scopes 與 Foreman/worker participants 溝通，只送 invocation intent metadata，artifact/note 顯示遵循 redacted refs policy。
 - `RFC-WEB-0002` 進一步重設 Web implementation：產品 Web 必須呈現 PTCS classic `/chat` shell，也就是上方 tabs/nav、左側 participant list、右側 chat thread/session/composer；`codex.fs.host` control-only/diagnostics web 不可再被稱為產品 UI。
+- `RFC-WEB-0003` 補齊 artifact ref rendering：PTCS classic chat thread 以 codex.fs WebSharper bundle 顯示 worker reply 的 run、outcome、manifest、final、note refs 與 redacted summary。
 
 ## 3. 目標
 
@@ -182,6 +183,13 @@ Current WEBR-006 status:
 - `ptcs-webshell` deployments must set a dedicated `web.pcslRoot` and serve PTCS package `build/**` assets from host outputs.
 - `ACTOR-003` owns the next non-fake artifact provider slice: WorkerActor must invoke the shared PTCS runtime cycle and produce real manifest/final/boundary refs before WEBR-007 may render them.
 
+Current WEBR-007 status:
+
+- Runtime cycle now writes `note.md` as `RunNoteMarkdown`, includes note refs in manifest, MessageFabric reply and `session-boundary.json`.
+- `ptcs-webshell` registers default Foreman participant `agent.codexfs.foreman` so users can select the包工頭 without knowing a session id.
+- `codex.fs.web` renders artifact replies in real PTCS classic `/chat` using `codexfs-artifact-reply` with run/outcome/manifest/final/note rows.
+- Browser evidence is produced by `misc/verifyArtifactRefsInPtcsShell.fsx` against real host, real PTCS chat APIs and real actor artifacts.
+
 ### R-002 CLI client
 
 `codex.fs.cli` package 安裝後提供 `codex.fs.cli` command，`codex.fs.tool` package 提供相同 CLI surface 的 `codex.fs` short alias。兩者必須能在 terminal 中：
@@ -301,7 +309,7 @@ host 必須支援 local compaction policy：
 | `codex.fs.host.tool` | Standalone dotnet tool command `codex.fs.host`，包裝 host package。 |
 | `codex.fs.cli` | Terminal client dotnet tool package；installed command `codex.fs.cli`。 |
 | `codex.fs.tool` | Short alias dotnet tool package；installed command `codex.fs`。 |
-| `codex.fs.web` | Planned PTCS WebSharper AI chat extension/bundle，提供 participant perspective 與 engine controls。 |
+| `codex.fs.web` | Current PTCS WebSharper AI chat extension/bundle，提供 participant perspective、engine controls 與 artifact/note ref rendering。 |
 | `codex.fs.persistence` | Planned transcript/note/artifact provider boundary。 |
 | `codex.fs.engine.codex` | Codex CLI adapter。 |
 | `codex.fs.engine.agy` | Agy CLI adapter。 |

@@ -17,7 +17,7 @@ UpdatedAt：2026-07-05 15:20 +08:00
 | T-ACTOR-002 | ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` | Integration/Actor | Real PTCS `CommSpaActorFabric` and MessageFabric | Passed on 2026-07-05 14:25 +08:00; verifier checks `ActorFabricBinding`, builds/runs `codex.fs.Tests`, starts real PTCS ActorFabric on LAN host, spawns Foreman/Worker actors and confirms both appear as `agent` participants through MessageFabric listing | Pass |
 | T-ACTOR-003 | ACTOR-003 | `misc/verifyActorRuntimeArtifactProvider.fsx` | Integration/Actor/E2E | Real PTCS `CommSpaActorFabric`, MessageFabric, installed Agy and file artifact store | Passed on 2026-07-05 15:20 +08:00; WorkerActor invokes shared PTCS runtime cycle, writes artifacts, sends reply with manifest/final refs and returns `RuntimeCycleCompleted` | Pass |
 | T-WEBR-006 | WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence | Browser/Integration | Real PTCS shell extension controls | Passed on 2026-07-05 15:05 +08:00; target/perspective/engine/model/reasoning/invocation controls emit normalized `codex.fs.web.ai-intent.v1` metadata through PTCS append APIs; browser never renders CLI argv | Pass |
-| T-WEBR-007 | WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Browser/E2E | Real worker run artifact refs | PTCS shell renders redacted reply, run id, manifest ref and note ref | Planned |
+| T-WEBR-007 | WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` | Browser/E2E | Real worker run artifact refs | Passed on 2026-07-05 14:18 +08:00; PTCS shell renders redacted reply, run id, manifest/final/note refs from real ACTOR-003 artifacts; screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png` | Pass |
 | T-WEBR-008 | WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` | Regression/Browser | Real host routes | Passed on 2026-07-05 13:03 +08:00; verifier builds/runs `codex.fs.Tests` and asserts control-only `/chat` guard has no composer/form/PTCS manifest, diagnostics is diagnostic-only and product path guidance points to `web.profile=ptcs-webshell` | Pass |
 | T-E2E-004 | E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | Browser/E2E | Real PTCS shell + ActorFabric + MessageFabric + headless engine | Human sends prompt in `/chat`, Foreman actor runs engine, artifacts are stored, reply appears with refs | Planned |
 
@@ -42,3 +42,10 @@ WEBR-006 evidence:
 - Mobile geometry: `G:\codex.fs\log\20260705\webr006-host8-mobile-geometry.json`
 - Append request body: `G:\codex.fs\log\20260705\webr006-host8-append-request-186.body.json`
 - Console/network summaries: `G:\codex.fs\log\20260705\webr006-host8-console-all.md`, `G:\codex.fs\log\20260705\webr006-host8-network-after-send.md`
+
+WEBR-007 evidence:
+
+- Browser screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\webr007\webr007-artifact-refs.png`
+- Real actor manifest: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\manifest.json`
+- Real actor final: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\final.md`
+- Real actor note: `G:\codex.fs\src\codex.fs\.codex.fs\actor003-artifacts\actor003-a4ab9da1154c\sessions\actor003-a4ab9da1154c\runs\run-20260705054839745-bb6f3f50\note.md`

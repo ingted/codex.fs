@@ -132,6 +132,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `ACTOR-003` is the required bridge from visible actor participants to real work. The concrete PTCS MessageFabric -> runtime prompt-loop -> Agy process -> artifact store -> MessageFabric reply -> ack interpreter moves from host-only ownership into `codex.fs.ptcs`, so WorkerActor and host wrappers call the same path. This unblocks Web artifact ref rendering without inventing fake refs.
 
+`WEBR-007` completes the first artifact ref browser slice. Runtime writes `note.md`, MessageFabric replies include manifest/final/note refs, and `codex.fs.web` renders those refs inside PTCS classic `/chat` as a WebSharper extension. Because the current PTCS chat append path still falls back to `pre.message-body`, codex.fs adds a minimal DOM bridge that applies the same registered renderer to existing PTCS message-body nodes. This remains a PTCS shell extension, not a standalone chat implementation.
+
 ## 4. Runtime components
 
 | Component | Responsibility |
@@ -148,6 +150,7 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 | Engine Registry | 根據 engine kind/version/capability 選 adapter。 |
 | Process Runner | 啟動外部 CLI、capture stdout/stderr、處理 timeout/cancel。 |
 | Artifact Store | 保存 prompt/output/event/final/result/manifest。 |
+| Web Artifact Renderer | `codex.fs.web` renderer，將 redacted worker reply body 轉成 PTCS chat card，顯示 run/outcome/manifest/final/note refs。 |
 | Compactor | 在 history 過大時產生 compacted context。 |
 | CLI Client | terminal interface，透過 host 與 PTCS MessageFabric 互動。 |
 

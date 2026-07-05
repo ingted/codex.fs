@@ -179,9 +179,13 @@ if String.IsNullOrWhiteSpace cycleResult.PersistenceBoundaryPath then
 if String.IsNullOrWhiteSpace cycleResult.FinalMessagePath then
     failwith "Expected final message artifact path."
 
+if String.IsNullOrWhiteSpace cycleResult.RunNotePath then
+    failwith "Expected run note artifact path."
+
 let manifestPath = Path.Combine(absoluteArtifactRoot, cycleResult.ArtifactManifestPath)
 let boundaryPath = Path.Combine(absoluteArtifactRoot, cycleResult.PersistenceBoundaryPath)
 let finalPath = Path.Combine(absoluteArtifactRoot, cycleResult.FinalMessagePath)
+let notePath = Path.Combine(absoluteArtifactRoot, cycleResult.RunNotePath)
 
 if not (File.Exists manifestPath) then
     failwith $"Manifest not found: {manifestPath}"
@@ -192,8 +196,13 @@ if not (File.Exists boundaryPath) then
 if not (File.Exists finalPath) then
     failwith $"Final message not found: {finalPath}"
 
+if not (File.Exists notePath) then
+    failwith $"Run note not found: {notePath}"
+
+let manifestText = File.ReadAllText(manifestPath, UTF8Encoding(false, true))
 let boundaryText = File.ReadAllText(boundaryPath, UTF8Encoding(false, true))
 let finalText = File.ReadAllText(finalPath, UTF8Encoding(false, true))
+let noteText = File.ReadAllText(notePath, UTF8Encoding(false, true))
 
 if not (boundaryText.Contains("ready-to-ack", StringComparison.Ordinal)) then
     failwith "Session persistence boundary did not record ready-to-ack phase."
@@ -204,8 +213,17 @@ if not (boundaryText.Contains(cycleResult.ReplyMessageId, StringComparison.Ordin
 if not (boundaryText.Contains(cycleResult.AckCursor, StringComparison.Ordinal)) then
     failwith "Session persistence boundary did not record selected ack cursor."
 
+if not (boundaryText.Contains("\"runNotePath\"", StringComparison.Ordinal) && boundaryText.Contains("note.md", StringComparison.Ordinal)) then
+    failwith "Session persistence boundary did not record run note path."
+
+if not (manifestText.Contains("RunNoteMarkdown", StringComparison.Ordinal) && manifestText.Contains("note.md", StringComparison.Ordinal)) then
+    failwith "Manifest did not record run note artifact."
+
 if not (finalText.Contains(verifierToken, StringComparison.Ordinal)) then
     failwith $"Final message did not contain verifier token. finalPath={finalPath}"
+
+if not (noteText.Contains(cycleResult.ArtifactManifestPath, StringComparison.Ordinal)) then
+    failwith "Run note did not contain manifest reference."
 
 let replyBatch =
     runTask
@@ -224,6 +242,9 @@ let reply =
 
 if not (reply.Body.Contains(cycleResult.ArtifactManifestPath, StringComparison.Ordinal)) then
     failwith "Reply body did not contain artifact manifest reference."
+
+if not (reply.Body.Contains(cycleResult.RunNotePath, StringComparison.Ordinal)) then
+    failwith "Reply body did not contain run note reference."
 
 let afterAck = runTask (MessageFabricBinding.pollInboxAsync fabric sessionBinding None)
 
@@ -244,3 +265,4 @@ printfn "artifactRoot=%s" absoluteArtifactRoot
 printfn "manifest=%s" manifestPath
 printfn "boundary=%s" boundaryPath
 printfn "final=%s" finalPath
+printfn "note=%s" notePath

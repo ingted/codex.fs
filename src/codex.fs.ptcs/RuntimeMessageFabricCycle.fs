@@ -62,6 +62,8 @@ module RuntimeMessageFabricCycle =
           PersistenceBoundaryPath: string
           /// Final message artifact path relative to artifact root.
           FinalMessagePath: string
+          /// Redacted run note artifact path relative to artifact root.
+          RunNotePath: string
           /// PTCS reply message id.
           ReplyMessageId: string
           /// Reply body sent through MessageFabric.
@@ -114,6 +116,7 @@ module RuntimeMessageFabricCycle =
           ArtifactManifestPath = String.Empty
           PersistenceBoundaryPath = String.Empty
           FinalMessagePath = String.Empty
+          RunNotePath = String.Empty
           ReplyMessageId = String.Empty
           ReplyBody = String.Empty }
 
@@ -262,6 +265,29 @@ module RuntimeMessageFabricCycle =
                 let resultArtifact =
                     FileArtifactStore.writeText storeConfig sessionId runId ResultJson "result.json" (RuntimePromptLoop.runResultText runResult) processResult.CompletedUtc
 
+                let finalPath = runResult.FinalMessagePath |> Option.defaultValue String.Empty
+
+                let noteArtifact =
+                    FileArtifactStore.writeText
+                        storeConfig
+                        sessionId
+                        runId
+                        RunNoteMarkdown
+                        "note.md"
+                        (RuntimePromptLoop.runNoteText
+                            { SessionId = sessionId
+                              RunId = runId
+                              Engine = options.Engine
+                              SurfaceId = Some Engine.Agy.V1_0.Print.SurfaceId
+                              Outcome = outcome
+                              ManifestPath = manifestRelativePath
+                              FinalMessagePath = finalPath
+                              ConsumedMessageIds = promptMessages |> List.map _.Ref.MessageId
+                              Summary = RuntimePromptLoop.redactedSummary processResult.Stdout processResult.Stderr
+                              StartedUtc = processResult.StartedUtc
+                              CompletedUtc = Some processResult.CompletedUtc })
+                        processResult.CompletedUtc
+
                 let manifest =
                     { outputMapping.Manifest with
                         Artifacts =
@@ -274,7 +300,8 @@ module RuntimeMessageFabricCycle =
                               match outputMapping.FinalMessage with
                               | Some finalMessage -> finalMessage.Reference
                               | None -> ()
-                              resultArtifact.Reference ] }
+                              resultArtifact.Reference
+                              noteArtifact.Reference ] }
 
                 let manifestPath = Path.Combine(FileArtifactStore.artifactRoot storeConfig, manifestRelativePath)
                 let manifestDirectory = Path.GetDirectoryName manifestPath
@@ -285,11 +312,10 @@ module RuntimeMessageFabricCycle =
                 Directory.CreateDirectory manifestDirectory |> ignore
                 File.WriteAllText(manifestPath, RuntimePromptLoop.manifestText manifest, UTF8Encoding(false, true))
 
-                let finalPath = runResult.FinalMessagePath |> Option.defaultValue String.Empty
                 let targetParticipantId = batch.Messages.Head.FromParticipantId
 
                 let replyIntent =
-                    RuntimePromptLoop.replyIntent runId outcome manifestRelativePath finalPath targetParticipantId processResult.Stdout processResult.Stderr
+                    RuntimePromptLoop.replyIntent runId outcome manifestRelativePath finalPath noteArtifact.Reference.Path targetParticipantId processResult.Stdout processResult.Stderr
 
                 let! reply =
                     MessageFabricBinding.sendDirectReplyAsync
@@ -317,6 +343,7 @@ module RuntimeMessageFabricCycle =
                                   Body = reply.Body }
                               ArtifactManifestPath = manifestRelativePath
                               FinalMessagePath = finalPath
+                              RunNotePath = noteArtifact.Reference.Path
                               PersistedBeforeAck = true })
                         DateTimeOffset.UtcNow
 
@@ -334,6 +361,7 @@ module RuntimeMessageFabricCycle =
                       ArtifactManifestPath = manifestRelativePath
                       PersistenceBoundaryPath = boundaryArtifact.Reference.Path
                       FinalMessagePath = finalPath
+                      RunNotePath = noteArtifact.Reference.Path
                       ReplyMessageId = reply.MessageId
                       ReplyBody = replyIntent.Body }
         }

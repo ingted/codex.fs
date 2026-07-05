@@ -15,6 +15,10 @@ Desktop.ini
 
 # Local codex.fs verifier artifacts
 .codex.fs/
+.playwright-mcp/
+
+# Local headless CLI operation logs
+op_log/
 
 # WebSharper generated artifacts
 **/websharper.log

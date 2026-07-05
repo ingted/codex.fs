@@ -108,6 +108,14 @@ module HostWebShell =
         | "disabled" -> Server.withoutActorFabric options
         | _ -> options
 
+    let registerDefaultForeman (hub: CommHub) =
+        hub.RegisterParticipant
+            { ParticipantId = "agent.codexfs.foreman"
+              DisplayName = Some "codex.fs Foreman"
+              Kind = Some "agent"
+              Labels = Some [ "codex.fs"; "foreman"; "session-worker" ] }
+        |> ignore
+
     let registeredHub (config: HostConfig.HostConfig) =
         let hub =
             match config.WebShell.PcslRoot with
@@ -118,6 +126,7 @@ module HostWebShell =
             | None -> CommHub.createEmpty()
 
         hub.useAIChat() |> ignore
+        registerDefaultForeman hub
         hub
 
     /// Start PTCS classic `/chat` using the codex.fs AI chat extension and a shared MessageFabric hub.

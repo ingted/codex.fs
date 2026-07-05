@@ -152,6 +152,7 @@ requireAll
       "RuntimePromptLoop.planAgyPrintExecution"
       "ProcessRunner.runAsync"
       "MessageFabricBinding.sendDirectReplyAsync"
+      "RunNoteMarkdown"
       "RuntimePromptLoop.readyToAckBoundaryText"
       "MessageFabricBinding.ackInboxAsync" ]
 
@@ -179,6 +180,7 @@ requireAll
       "actor003Manifest="
       "actor003Boundary="
       "actor003Final="
+      "actor003Note="
       "actor003ReplyMessageId=" ]
 
 requireAll
@@ -215,15 +217,19 @@ requireContains "dotnet run tests stdout" runStdout "TC-ACTOR-003 actor runtime 
 let manifestPath = valueAfterPrefix "actor003Manifest=" runStdout
 let boundaryPath = valueAfterPrefix "actor003Boundary=" runStdout
 let finalPath = valueAfterPrefix "actor003Final=" runStdout
+let notePath = valueAfterPrefix "actor003Note=" runStdout
 let replyMessageId = valueAfterPrefix "actor003ReplyMessageId=" runStdout
 
-for label, path in [ "manifest", manifestPath; "boundary", boundaryPath; "final", finalPath ] do
+for label, path in [ "manifest", manifestPath; "boundary", boundaryPath; "final", finalPath; "note", notePath ] do
     if not (File.Exists path) then
         failwith $"{label} artifact not found: {path}"
 
 let boundaryText = File.ReadAllText(boundaryPath, strictUtf8)
+let noteText = File.ReadAllText(notePath, strictUtf8)
 requireContains "actor003 boundary" boundaryText "ready-to-ack"
 requireContains "actor003 boundary" boundaryText replyMessageId
+requireContains "actor003 boundary" boundaryText "note.md"
+requireContains "actor003 note" noteText "codex.fs run note"
 
 printfn "TC-ACTOR-003 actor runtime artifact provider verifier passed"
 printfn "repoRoot=%s" repoRoot
@@ -232,6 +238,7 @@ printfn "actorBinding=%s" actorBinding
 printfn "manifest=%s" manifestPath
 printfn "boundary=%s" boundaryPath
 printfn "final=%s" finalPath
+printfn "note=%s" notePath
 printfn "replyMessageId=%s" replyMessageId
 printfn "buildStdoutBytes=%d buildStderrBytes=%d" buildStdout.Length buildStderr.Length
 printfn "runStdoutBytes=%d runStderrBytes=%d" runStdout.Length runStderr.Length
