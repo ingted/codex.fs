@@ -153,7 +153,10 @@ let hostPort = if requestedHostPort <= 0 then reserveTcpPort () else requestedHo
 let hostUrl = $"http://{hostAddress}:{hostPort}"
 let runSuffix = Guid.NewGuid().ToString("N").Substring(0, 12)
 let verifierToken = "CODEXFS_BRIDGE_" + runSuffix
-let promptText = "Reply exactly: " + verifierToken
+let expectedDate = DateTimeOffset.Now.ToString("yyyy-MM-dd")
+let promptText =
+    $"hi 請用 powershell 執行 Get-Date -Format yyyy-MM-dd 取日期時間，最後只回覆 token {verifierToken} 與日期 {expectedDate}。"
+
 let artifactRoot = Path.Combine(repoRoot, ".codex.fs", "webr009-artifacts", "webr009-" + runSuffix)
 let pcslRoot = Path.Combine(repoRoot, ".codex.fs", "webr009-pcsl", "pcsl-" + runSuffix)
 
@@ -248,7 +251,7 @@ let aiIntentJson () =
     + "\"schema\":" + jsonString "codex.fs.web.ai-intent.v1" + ","
     + "\"target\":{\"mode\":\"foreman\",\"scope\":\"direct\",\"participantId\":\"agent.codexfs.foreman\",\"groupId\":\"\"},"
     + "\"perspective\":{\"mode\":\"self\",\"participantId\":\"\",\"senderPolicy\":\"current-user\"},"
-    + "\"engine\":{\"engine\":\"agy\",\"model\":\"default\",\"reasoning\":\"high\"},"
+    + "\"engine\":{\"engine\":\"codex\",\"model\":\"gpt-5-codex\",\"reasoning\":\"medium\"},"
     + "\"invocation\":{\"mode\":\"exec\",\"approval\":\"never\"},"
     + "\"body\":" + jsonString promptText + ","
     + "\"tags\":" + tags
@@ -286,16 +289,32 @@ let waitForFinalArtifact () =
             found <-
                 files
                 |> Array.sortByDescending File.GetLastWriteTimeUtc
-                |> Array.tryFind (fun path -> File.ReadAllText(path, strictUtf8).Contains(verifierToken, StringComparison.Ordinal))
+                |> Array.tryFind (fun path ->
+                    let text = File.ReadAllText(path, strictUtf8)
+                    text.Contains(verifierToken, StringComparison.Ordinal)
+                    && text.Contains(expectedDate, StringComparison.Ordinal))
 
         if found.IsNone then
             Thread.Sleep 1000
 
-    found |> Option.defaultWith (fun () -> failwith $"Timed out waiting for final artifact containing {verifierToken}.")
+    found |> Option.defaultWith (fun () -> failwith $"Timed out waiting for final artifact containing {verifierToken} and {expectedDate}.")
 
 let requireContains label (content: string) (needle: string) =
     if not (content.Contains(needle, StringComparison.Ordinal)) then
         failwith $"{label} missing required text: {needle}"
+
+let renderedArguments (renderedText: string) =
+    use document = JsonDocument.Parse(renderedText)
+    let root = document.RootElement
+    let fileName = root.GetProperty("fileName").GetString()
+
+    let arguments =
+        root.GetProperty("arguments").EnumerateArray()
+        |> Seq.map (fun item -> item.GetString())
+        |> Seq.map (fun value -> if isNull value then "" else value)
+        |> Seq.toList
+
+    fileName, arguments
 
 let httpClient = new HttpClient()
 httpClient.Timeout <- TimeSpan.FromSeconds 10.0
@@ -311,15 +330,36 @@ try
     let finalPath = waitForFinalArtifact ()
     let finalText = File.ReadAllText(finalPath, strictUtf8)
     requireContains "final artifact token" finalText verifierToken
+    requireContains "final artifact date" finalText expectedDate
 
     let runDirectory = Path.GetDirectoryName finalPath
     let renderedPath = Path.Combine(runDirectory, "rendered-argv.json")
     let renderedText = File.ReadAllText(renderedPath, strictUtf8)
-    requireContains "rendered argv danger flag" renderedText "--dangerously-skip-permissions"
+    let renderedFileName, arguments = renderedArguments renderedText
+
+    let renderedExecutableName = Path.GetFileName(renderedFileName)
+
+    if not (String.Equals(renderedExecutableName, "codex", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(renderedExecutableName, "codex.exe", StringComparison.OrdinalIgnoreCase)) then
+        failwith $"Expected codex executable; actual={renderedFileName}"
+
+    if arguments |> List.tryHead <> Some "exec" then
+        let renderedArgsText = String.concat " " arguments
+        failwith $"Expected codex exec argv; actual={renderedArgsText}"
+
+    if not (arguments |> List.exists ((=) "--dangerously-bypass-approvals-and-sandbox")) then
+        failwith "Expected codex approval/sandbox bypass flag."
+
+    if arguments |> List.exists ((=) "--model") then
+        failwith "Expected unsupported subscription model gpt-5-codex to be normalized to Codex CLI default."
+
+    if not (arguments |> List.exists ((=) "--output-last-message")) then
+        failwith "Expected codex output-last-message argv."
 
     printfn "TC-WEBR-009 AI intent bridge passed"
     printfn "hostUrl=%s" hostUrl
     printfn "verifierToken=%s" verifierToken
+    printfn "expectedDate=%s" expectedDate
     printfn "artifactRoot=%s" artifactRoot
     printfn "final=%s" finalPath
     printfn "renderedArgv=%s" renderedPath

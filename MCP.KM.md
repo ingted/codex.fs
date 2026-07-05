@@ -343,3 +343,13 @@
 - `HostWebShell.foremanRuntimeCommand` sets `AgyDangerouslySkipPermissions = Some true` for the product Foreman loop so prompts such as `hi 請用 powershell 取日期時間` can use local tools. Default host/session wrappers still default to false.
 - `HostWebShell` registers default append page `codexfs-ai-chat` and bridges `codex.fs.web.ai-intent.v1` append-page set values into `CommSpaMessageFabric` from sender `user.codexfs.web.ai-intent`. This keeps append pages as observable UI intent and MessageFabric as delivery truth.
 - Verifiers: `misc/verifyAiIntentBridge.fsx` posts a real `/pages/api/append` value and waits for Foreman artifacts; `misc/verifyForemanPowershellDate.fsx` uses Playwright on PTCS `/chat` and verifies final/note/rendered-argv artifacts. Evidence screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e005\e2e005-foreman-powershell-date.png`.
+
+## 2026-07-05 WEBR-009 Codex Intent Execution Correction
+
+- `codex.fs.web.ai-intent.v1` metadata is semantic input, not UI decoration. The bridge must preserve `engine`, `model`, `reasoning`, `invocation` and `approval` as MessageFabric tags so runtime selection can honor the user's requested engine.
+- `RuntimeMessageFabricCycle` is no longer Agy-only. It selects an effective engine from the latest prompt tags, then calls `RuntimePromptLoop.planAgyPrintExecution` or `RuntimePromptLoop.planCodexExecExecution`.
+- On Windows, `ProcessStartInfo` should use the native npm-installed Codex binary when available: `%APPDATA%\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-x64\vendor\x86_64-pc-windows-msvc\bin\codex.exe`. The `codex` PowerShell/npm shim is not a reliable `UseShellExecute=false` executable.
+- Codex exec prompt text must be sent as UTF-8 redirected stdin with prompt marker `-`; positional prompt arguments can fail in non-TTY headless runs.
+- Local `codex-cli 0.142.4` with ChatGPT subscription rejects `--model gpt-5-codex`; normalize `default` and `gpt-5-codex` to no `--model` unless a compatible explicit model is intentionally supplied.
+- Foreman runtime cycles must ignore self-authored MessageFabric replies to avoid treating artifact replies as new user prompts.
+- Regression evidence: `misc/verifyAiIntentBridge.fsx` passed with token `CODEXFS_BRIDGE_c5a847a2698c`; final artifact `G:\codex.fs\src\codex.fs\.codex.fs\webr009-artifacts\webr009-c5a847a2698c\sessions\foreman\runs\run-20260705135834033-f0d6b35d\final.md`.

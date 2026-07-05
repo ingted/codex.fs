@@ -156,13 +156,16 @@ let cycleResult =
             { SessionId = sessionId
               Engine = Some Agy
               ExecutablePath = Some executable
+              EngineExecutableOverrides = None
               WorkingDirectory = Some absoluteWorkdir
               ArtifactRoot = Some absoluteArtifactRoot
               Timeout = Some timeout
               SystemInstruction =
                 Some "This is a codex.fs verifier. Find the latest PTCS message body and reply with exactly the requested token, with no explanation."
               AdditionalDirectories = []
-              AgyDangerouslySkipPermissions = None }
+              AgyDangerouslySkipPermissions = None
+              CodexModel = None
+              CodexDangerouslyBypassApprovalsAndSandbox = None }
             CancellationToken.None)
 
 if cycleResult.Status <> "completed" then

@@ -29,7 +29,7 @@ function renderAppendInput(ctx){
     const perspectiveMode=select("codexfs-ai-perspective-mode", [["self", "My view"], ["participant-readonly", "Participant view"]], "self");
     const perspectiveValue=input("text", "codexfs-ai-perspective-value", "participant id for read-only perspective", "");
     const engine=select("codexfs-ai-engine", [["agy", "Agy"], ["codex", "Codex"]], "agy");
-    const model=select("codexfs-ai-model", [["default", "Default"], ["gpt-5-codex", "GPT-5 Codex"]], "default");
+    const model=select("codexfs-ai-model", [["default", "Default"]], "default");
     const reasoning=select("codexfs-ai-reasoning", [["medium", "Medium"], ["high", "High"], ["xhigh", "XHigh"]], "high");
     const invocationMode=select("codexfs-ai-invocation-mode", [["exec", "Exec"], ["print", "Print"]], "exec");
     const approval=select("codexfs-ai-approval", [["never", "Never"], ["on-request", "On request"]], "never");

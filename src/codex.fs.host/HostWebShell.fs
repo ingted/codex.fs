@@ -179,6 +179,7 @@ module HostWebShell =
           ReplyParticipantId = config.Ptcs.ReplyParticipantId
           Engine = Some engine
           ExecutablePath = Some(engineExecutable config engine)
+          EngineExecutableOverrides = Some config.EngineExecutableOverrides
           WorkingDirectory = Some(Directory.GetCurrentDirectory())
           ArtifactRoot = config.ArtifactRoot
           Timeout = Some config.DefaultTimeout
@@ -186,7 +187,9 @@ module HostWebShell =
             Some
                 "You are codex.fs Foreman. Reply concisely to the latest PTCS chat prompt. If the user asks you to use PowerShell or another local tool, use the available command tool and report the observed result."
           AdditionalDirectories = []
-          AgyDangerouslySkipPermissions = Some true }
+          AgyDangerouslySkipPermissions = Some true
+          CodexModel = None
+          CodexDangerouslyBypassApprovalsAndSandbox = Some true }
 
     type AiIntentTarget =
         { Mode: string
@@ -194,8 +197,19 @@ module HostWebShell =
           ParticipantId: string
           GroupId: string }
 
+    type AiIntentEngine =
+        { Engine: string
+          Model: string
+          Reasoning: string }
+
+    type AiIntentInvocation =
+        { Mode: string
+          Approval: string }
+
     type AiIntent =
         { Target: AiIntentTarget
+          Engine: AiIntentEngine option
+          Invocation: AiIntentInvocation option
           Body: string
           Tags: string list }
 
@@ -236,6 +250,10 @@ module HostWebShell =
                 [])
         |> Option.defaultValue []
 
+    let objectProperty name (element: JsonElement) =
+        tryGetProperty name element
+        |> Option.filter (fun value -> value.ValueKind = JsonValueKind.Object)
+
     let tryParseAiIntent (rawValue: string) =
         if String.IsNullOrWhiteSpace rawValue then
             None
@@ -257,12 +275,27 @@ module HostWebShell =
                             tryGetProperty "target" root
                             |> Option.defaultValue Unchecked.defaultof<JsonElement>
 
+                        let engine =
+                            objectProperty "engine" root
+                            |> Option.map (fun engineElement ->
+                                { Engine = stringProperty "engine" engineElement
+                                  Model = stringProperty "model" engineElement
+                                  Reasoning = stringProperty "reasoning" engineElement })
+
+                        let invocation =
+                            objectProperty "invocation" root
+                            |> Option.map (fun invocationElement ->
+                                { Mode = stringProperty "mode" invocationElement
+                                  Approval = stringProperty "approval" invocationElement })
+
                         Some
                             { Target =
                                 { Mode = stringProperty "mode" targetElement
                                   Scope = stringProperty "scope" targetElement
                                   ParticipantId = stringProperty "participantId" targetElement
                                   GroupId = stringProperty "groupId" targetElement }
+                              Engine = engine
+                              Invocation = invocation
                               Body = body
                               Tags = stringArrayProperty "tags" root }
             with _ ->
@@ -293,6 +326,27 @@ module HostWebShell =
 
             Some(MessageFabricScope.Direct participantId)
         | _ -> Some(MessageFabricScope.Direct "agent.codexfs.foreman")
+
+    let optionalTag prefix value =
+        let text = textOrEmpty value
+
+        if String.IsNullOrWhiteSpace text then
+            []
+        else
+            [ prefix + text ]
+
+    let aiIntentRuntimeTags (intent: AiIntent) =
+        [ match intent.Engine with
+          | Some engine ->
+              yield! optionalTag "engine:" engine.Engine
+              yield! optionalTag "model:" engine.Model
+              yield! optionalTag "reasoning:" engine.Reasoning
+          | None -> ()
+          match intent.Invocation with
+          | Some invocation ->
+              yield! optionalTag "invocation:" invocation.Mode
+              yield! optionalTag "approval:" invocation.Approval
+          | None -> () ]
 
     let ensureAiIntentBridgeParticipantAsync (fabric: CommSpaMessageFabric) =
         let binding = MessageFabricBinding.defaultBinding aiIntentBridgeParticipantId
@@ -335,6 +389,7 @@ module HostWebShell =
                             | Some scope ->
                                 let tags =
                                     [ yield! intent.Tags
+                                      yield! aiIntentRuntimeTags intent
                                       "codex.fs"
                                       "ai-intent-bridge"
                                       "source:" + value.ValueId ]

@@ -17,6 +17,8 @@ module ProcessRunner =
           Arguments: string list
           /// Optional working directory.
           WorkingDirectory: string option
+          /// Optional standard input text written after process start.
+          StandardInput: string option
           /// Environment variable overlay; `None` means remove the variable.
           Environment: Map<string, string option> }
 
@@ -111,12 +113,16 @@ module ProcessRunner =
         psi.UseShellExecute <- false
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
+        psi.RedirectStandardInput <- command.StandardInput.IsSome
         psi.CreateNoWindow <- true
         // Explicit UTF-8 decoding prevents mojibake on Windows systems
         // where the default codepage (e.g. Big5/Windows-950) corrupts
         // non-ASCII stdout/stderr from child engine processes.
         psi.StandardOutputEncoding <- UTF8Encoding(false)
         psi.StandardErrorEncoding <- UTF8Encoding(false)
+
+        if command.StandardInput.IsSome then
+            psi.StandardInputEncoding <- UTF8Encoding(false)
 
         command.Arguments
         |> List.iter (fun argument -> psi.ArgumentList.Add argument)
@@ -279,8 +285,14 @@ module ProcessRunner =
                           StartedUtc = startedUtc
                           CompletedUtc = DateTimeOffset.UtcNow
                           Stdout = String.Empty
-                          Stderr = String.Empty }
+                          Stderr = "Process.Start returned false." }
                 else
+                    match command.StandardInput with
+                    | Some input ->
+                        do! proc.StandardInput.WriteAsync(input)
+                        proc.StandardInput.Close()
+                    | None -> ()
+
                     let stdoutTask = proc.StandardOutput.ReadToEndAsync()
                     let stderrTask = proc.StandardError.ReadToEndAsync()
 
@@ -331,5 +343,5 @@ module ProcessRunner =
                       StartedUtc = startedUtc
                       CompletedUtc = DateTimeOffset.UtcNow
                       Stdout = String.Empty
-                      Stderr = String.Empty }
+                      Stderr = ex.Message }
         }

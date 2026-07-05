@@ -1,6 +1,7 @@
 namespace CodexFs
 
 open System
+open System.IO
 open System.Text.Json
 open CodexFs.Artifacts
 open CodexFs.Domain
@@ -57,6 +58,33 @@ module RuntimePromptLoop =
           AdditionalDirectories: string list
           /// Render Agy permission auto-approval for bounded Foreman/tool execution.
           DangerouslySkipPermissions: bool
+          /// Non-secret metadata attached to the run request.
+          Metadata: Map<string, string> }
+
+    /// Input for Codex exec execution planning.
+    type CodexExecExecutionInput =
+        { /// Prompt-side plan produced before writing the prompt artifact.
+          PromptPlan: RuntimePromptPlan
+          /// Session identity.
+          SessionId: SessionId
+          /// Run identity.
+          RunId: RunId
+          /// Codex executable path or command.
+          ExecutablePath: string
+          /// Engine working directory.
+          WorkingDirectory: string
+          /// Stored prompt artifact path recorded in the run request.
+          PromptPath: string
+          /// Artifact directory for this run.
+          ArtifactDirectory: string
+          /// Engine timeout enforced by ProcessRunner.
+          Timeout: TimeSpan
+          /// Additional directories exposed to the engine.
+          AdditionalDirectories: string list
+          /// Optional model passed to `codex exec --model`.
+          Model: string option
+          /// Render Codex approval/sandbox bypass for bounded Foreman/tool execution.
+          DangerouslyBypassApprovalsAndSandbox: bool
           /// Non-secret metadata attached to the run request.
           Metadata: Map<string, string> }
 
@@ -272,11 +300,39 @@ module RuntimePromptLoop =
 
         Engine.Agy.V1_0.Print.renderCommand executablePath workingDirectory agyArgs
 
+    /// Normalize Codex CLI model selection for ChatGPT subscription compatible headless runs.
+    let codexCliModelOverride (model: string option) =
+        model
+        |> Option.bind (fun value ->
+            let trimmed = value.Trim()
+
+            if String.IsNullOrWhiteSpace trimmed
+               || trimmed.Equals("default", StringComparison.OrdinalIgnoreCase)
+               || trimmed.Equals("gpt-5-codex", StringComparison.OrdinalIgnoreCase) then
+                None
+            else
+                Some trimmed)
+
+    /// Build a Codex exec command for the assembled prompt.
+    let buildCodexExecCommand executablePath workingDirectory additionalDirectories (model: string option) dangerouslyBypassApprovalsAndSandbox outputLastMessagePath =
+        let codexArgs =
+            { Engine.Codex.V0_142.Exec.emptyArgs with
+                Prompt = Some "-"
+                Model = codexCliModelOverride model
+                Cd = Some workingDirectory
+                AddDirs = additionalDirectories
+                DangerouslyBypassApprovalsAndSandbox = dangerouslyBypassApprovalsAndSandbox
+                OutputLastMessage = Some outputLastMessagePath
+                Color = Some Engine.Codex.V0_142.Exec.Never }
+
+        Engine.Codex.V0_142.Exec.renderCommand executablePath workingDirectory codexArgs
+
     /// Convert a rendered command to a process runner command.
-    let processCommand (rendered: Engine.RenderedCommand) : ProcessRunner.ProcessCommand =
+    let processCommand (rendered: Engine.RenderedCommand) standardInput : ProcessRunner.ProcessCommand =
         { FileName = rendered.FileName
           Arguments = rendered.Arguments
           WorkingDirectory = Some rendered.WorkingDirectory
+          StandardInput = standardInput
           Environment = rendered.Environment }
 
     /// Plan normalized request and rendered argv for an Agy print-mode run.
@@ -307,7 +363,47 @@ module RuntimePromptLoop =
           RequestJson = requestText request
           RenderedCommand = rendered
           RenderedCommandJson = renderedCommandText rendered
-          ProcessCommand = processCommand rendered }
+          ProcessCommand = processCommand rendered None }
+
+    /// Plan normalized request and rendered argv for a Codex exec run.
+    let planCodexExecExecution (input: CodexExecExecutionInput) =
+        let outputLastMessagePath = Path.Combine(input.ArtifactDirectory, "codex-last-message.md")
+        let modelOverride = codexCliModelOverride input.Model
+
+        let request =
+            { RunId = input.RunId
+              SessionId = input.SessionId
+              Engine = Codex
+              SurfaceId = Some Engine.Codex.V0_142.Exec.SurfaceId
+              WorkingDirectory = input.WorkingDirectory
+              PromptPath = input.PromptPath
+              ArtifactDirectory = input.ArtifactDirectory
+              Timeout = input.Timeout
+              AdditionalDirectories = input.AdditionalDirectories
+              PtcsMessages = input.PromptPlan.Prompt.MessageRefs
+              PtcsTask = None
+              Metadata =
+                input.Metadata
+                |> Map.add "codex.outputLastMessagePath" outputLastMessagePath
+                |> fun metadata ->
+                    match modelOverride with
+                    | Some model when not (String.IsNullOrWhiteSpace model) -> metadata |> Map.add "codex.model" model
+                    | _ -> metadata }
+
+        let rendered =
+            buildCodexExecCommand
+                input.ExecutablePath
+                input.WorkingDirectory
+                input.AdditionalDirectories
+                input.Model
+                input.DangerouslyBypassApprovalsAndSandbox
+                outputLastMessagePath
+
+        { Request = request
+          RequestJson = requestText request
+          RenderedCommand = rendered
+          RenderedCommandJson = renderedCommandText rendered
+          ProcessCommand = processCommand rendered (Some input.PromptPlan.Prompt.Markdown) }
 
     let truncate chars (text: string) =
         let safeText =
@@ -331,6 +427,20 @@ module RuntimePromptLoop =
 
         Redaction.redactHighRisk candidate
         |> fun result -> truncate 240 result.Text
+
+    /// Produce a redacted reply body from final message text when available.
+    let redactedReplyText finalMessage stdout stderr =
+        let candidate =
+            match finalMessage with
+            | Some text when not (String.IsNullOrWhiteSpace text) -> text
+            | _ ->
+                if String.IsNullOrWhiteSpace stdout then
+                    stderr
+                else
+                    stdout
+
+        Redaction.redactHighRisk candidate
+        |> fun result -> truncate 4000 result.Text
 
     /// Build the redacted run note used by Web, CLI and compaction previews.
     let runNoteText (input: RuntimeRunNoteInput) =
@@ -379,11 +489,19 @@ module RuntimePromptLoop =
         |> fun text -> text + Environment.NewLine
 
     /// Build the redacted reply intent for MessageFabric.
-    let replyIntent runId outcome manifestRelativePath finalPath notePath targetParticipantId stdout stderr =
+    let replyIntent runId outcome manifestRelativePath finalPath notePath targetParticipantId stdout stderr finalMessage =
         let (RunId runIdText) = runId
 
+        let replyText = redactedReplyText finalMessage stdout stderr
+
         let body =
-            $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; note={notePath}; summary={redactedSummary stdout stderr}"
+            if String.IsNullOrWhiteSpace replyText then
+                $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; note={notePath}"
+            else
+                [ replyText
+                  ""
+                  $"[codex.fs run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; note={notePath}]" ]
+                |> String.concat Environment.NewLine
 
         { TargetParticipantId = targetParticipantId
           Body = body

@@ -100,7 +100,7 @@ Status 值：
 | E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 100 | Done | None | 2026-07-05 13:59 +08:00 | 2026-07-05 14:15 +08:00 | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` | [@WEBR-001](WBS.WEBR-001.md) |
 | FOREMAN-001 | Foreman control plane RFC/current-state sync | E2E-004 | 100 | Done | None | 2026-07-05 20:04 +08:00 | 2026-07-05 20:30 +08:00 | SD §14.4 | T-FOREMAN-001 | file trace | [@FOREMAN-001](WBS.FOREMAN-001.md) |
 | FOREMAN-002 | Agy Foreman execution policy and argv order | FOREMAN-001 | 100 | Done | None | 2026-07-05 20:24 +08:00 | 2026-07-05 20:30 +08:00 | SD §11.3, §14.4 | T-FOREMAN-002 | `tests/codex.fs.Tests`; `misc/verifyForemanPowershellDate.fsx` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
-| WEBR-009 | Bridge AI Chat append intent to MessageFabric | FOREMAN-001;WEBR-006;ACTOR-003 | 100 | Done | None | 2026-07-05 20:25 +08:00 | 2026-07-05 20:30 +08:00 | SD §14.4 | T-WEBR-009 | `misc/verifyAiIntentBridge.fsx` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
+| WEBR-009 | Bridge AI Chat append intent to MessageFabric and Codex exec | FOREMAN-001;WEBR-006;ACTOR-003 | 100 | Done | None | 2026-07-05 20:25 +08:00 | 2026-07-05 21:53 +08:00 | SD §14.4 | T-WEBR-009; T-WEBR-009-CODEX | `misc/verifyAiIntentBridge.fsx`; `tests/codex.fs.Tests` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
 | E2E-005 | Foreman handles PowerShell date prompt | FOREMAN-002;WEBR-009 | 100 | Done | None | 2026-07-05 20:26 +08:00 | 2026-07-05 20:30 +08:00 | SD §14.4 | T-E2E-005 | `misc/verifyForemanPowershellDate.fsx` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
 
 ## 3. Roll-up / Detail Files

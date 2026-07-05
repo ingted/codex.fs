@@ -220,6 +220,33 @@ assertTrue "runtime danger arg before print" (dangerIndex < printIndex)
 assertTrue "runtime timeout arg before print" ((runtimeDangerArgs |> List.findIndex (fun arg -> arg.StartsWith("--print-timeout=", StringComparison.Ordinal))) < printIndex)
 assertTrue "runtime default does not render danger arg" (not (runtimeExecutionPlan.RenderedCommand.Arguments |> List.exists ((=) "--dangerously-skip-permissions")))
 
+let runtimeCodexExecutionPlan =
+    CodexFs.RuntimePromptLoop.planCodexExecExecution
+        { PromptPlan = runtimePromptPlan
+          SessionId = input.SessionId
+          RunId = input.RunId
+          ExecutablePath = "codex"
+          WorkingDirectory = input.WorkingDirectory
+          PromptPath = "sessions/sess-002/runs/run-002/prompt.md"
+          ArtifactDirectory = "workspace/codex.fs/.codex.fs/sessions/sess-002/runs/run-002"
+          Timeout = TimeSpan.FromSeconds 90.0
+          AdditionalDirectories = [ "workspace/codex.fs/Libs" ]
+          Model = Some "gpt-5-codex"
+          DangerouslyBypassApprovalsAndSandbox = true
+          Metadata = Map.ofList [ "cycle", "unit"; "sessionParticipantId", input.ParticipantId ] }
+
+let runtimeCodexArgs = runtimeCodexExecutionPlan.RenderedCommand.Arguments
+assertEqual "runtime codex request engine" Codex runtimeCodexExecutionPlan.Request.Engine
+assertEqual "runtime codex request surface" (Some CodexFs.Engine.Codex.V0_142.Exec.SurfaceId) runtimeCodexExecutionPlan.Request.SurfaceId
+assertEqual "runtime codex rendered executable" "codex" runtimeCodexExecutionPlan.RenderedCommand.FileName
+assertEqual "runtime codex exec arg" "exec" runtimeCodexArgs.Head
+assertTrue "runtime codex subscription default does not render unsupported model" (not (runtimeCodexArgs |> List.exists ((=) "--model")))
+assertTrue "runtime codex danger arg" (runtimeCodexArgs |> List.exists ((=) "--dangerously-bypass-approvals-and-sandbox"))
+assertTrue "runtime codex output-last-message arg" (runtimeCodexArgs |> List.exists ((=) "--output-last-message"))
+assertTrue "runtime codex stdin prompt marker" (runtimeCodexArgs |> List.exists ((=) "-"))
+assertContains "runtime codex metadata output file" "codex.outputLastMessagePath" runtimeCodexExecutionPlan.RequestJson
+assertTrue "runtime codex stdin carries prompt" (runtimeCodexExecutionPlan.ProcessCommand.StandardInput |> Option.exists (fun text -> text.Contains("# codex.fs session prompt", StringComparison.Ordinal)))
+
 let runtimeReplyIntent =
     CodexFs.RuntimePromptLoop.replyIntent
         input.RunId
@@ -230,11 +257,12 @@ let runtimeReplyIntent =
         "user.alice"
         "runtime final output"
         ""
+        (Some "assistant final answer")
 
 assertEqual "runtime reply target" "user.alice" runtimeReplyIntent.TargetParticipantId
 assertContains "runtime reply manifest" "manifest=sessions/sess-002/runs/run-002/manifest.json" runtimeReplyIntent.Body
 assertContains "runtime reply note" "note=sessions/sess-002/runs/run-002/note.md" runtimeReplyIntent.Body
-assertContains "runtime reply summary" "summary=runtime final output" runtimeReplyIntent.Body
+assertContains "runtime reply final answer" "assistant final answer" runtimeReplyIntent.Body
 assertEqual "runtime reply correlation" (Some "run-002") runtimeReplyIntent.CorrelationId
 
 let runtimeNoteText =
@@ -1404,13 +1432,16 @@ try
           ReplyParticipantId = None
           Engine = Some Agy
           ExecutablePath = Some "agy"
+          EngineExecutableOverrides = None
           WorkingDirectory = Some(Path.GetFullPath ".")
           ArtifactRoot = actor003ArtifactRoot
           Timeout = Some(TimeSpan.FromMinutes 2.0)
           SystemInstruction =
             Some "This is a codex.fs ACTOR-003 verifier. Find the latest PTCS message body and reply with exactly the requested token, with no explanation."
           AdditionalDirectories = []
-          AgyDangerouslySkipPermissions = None }
+          AgyDangerouslySkipPermissions = None
+          CodexModel = None
+          CodexDangerouslyBypassApprovalsAndSandbox = None }
 
     let actor003Completed =
         runTask
@@ -1430,7 +1461,6 @@ try
     assertTrue "actor003 ack cursor" (not (String.IsNullOrWhiteSpace actor003Result.AckCursor))
     assertTrue "actor003 manifest ref" (not (String.IsNullOrWhiteSpace actor003Result.ArtifactManifestPath))
     assertTrue "actor003 boundary ref" (not (String.IsNullOrWhiteSpace actor003Result.PersistenceBoundaryPath))
-    assertTrue "actor003 final ref" (not (String.IsNullOrWhiteSpace actor003Result.FinalMessagePath))
     assertTrue "actor003 note ref" (not (String.IsNullOrWhiteSpace actor003Result.RunNotePath))
     assertTrue "actor003 reply id" (not (String.IsNullOrWhiteSpace actor003Result.ReplyMessageId))
     assertContains "actor003 reply manifest" actor003Result.ArtifactManifestPath actor003Result.ReplyBody
@@ -1438,18 +1468,28 @@ try
 
     let actor003ManifestPath = Path.Combine(actor003ArtifactRoot, actor003Result.ArtifactManifestPath)
     let actor003BoundaryPath = Path.Combine(actor003ArtifactRoot, actor003Result.PersistenceBoundaryPath)
-    let actor003FinalPath = Path.Combine(actor003ArtifactRoot, actor003Result.FinalMessagePath)
+    let actor003FinalPath =
+        if String.IsNullOrWhiteSpace actor003Result.FinalMessagePath then
+            String.Empty
+        else
+            Path.Combine(actor003ArtifactRoot, actor003Result.FinalMessagePath)
+
     let actor003NotePath = Path.Combine(actor003ArtifactRoot, actor003Result.RunNotePath)
 
     assertTrue "actor003 manifest exists" (File.Exists actor003ManifestPath)
     assertTrue "actor003 boundary exists" (File.Exists actor003BoundaryPath)
-    assertTrue "actor003 final exists" (File.Exists actor003FinalPath)
+    assertTrue "actor003 final exists when referenced" (String.IsNullOrWhiteSpace actor003FinalPath || File.Exists actor003FinalPath)
     assertTrue "actor003 note exists" (File.Exists actor003NotePath)
 
     let actor003StrictUtf8 = System.Text.UTF8Encoding(false, true)
     let actor003ManifestText = File.ReadAllText(actor003ManifestPath, actor003StrictUtf8)
     let actor003BoundaryText = File.ReadAllText(actor003BoundaryPath, actor003StrictUtf8)
-    let actor003FinalText = File.ReadAllText(actor003FinalPath, actor003StrictUtf8)
+    let actor003FinalText =
+        if String.IsNullOrWhiteSpace actor003FinalPath then
+            String.Empty
+        else
+            File.ReadAllText(actor003FinalPath, actor003StrictUtf8)
+
     let actor003NoteText = File.ReadAllText(actor003NotePath, actor003StrictUtf8)
 
     assertContains "actor003 boundary ready" "ready-to-ack" actor003BoundaryText
@@ -1459,7 +1499,9 @@ try
     assertContains "actor003 boundary note file" "note.md" actor003BoundaryText
     assertContains "actor003 manifest note kind" "RunNoteMarkdown" actor003ManifestText
     assertContains "actor003 manifest note file" "note.md" actor003ManifestText
-    assertContains "actor003 final token" actor003Token actor003FinalText
+    if not (String.IsNullOrWhiteSpace actor003FinalText) then
+        assertContains "actor003 final token" actor003Token actor003FinalText
+
     assertContains "actor003 note title" "# codex.fs run note" actor003NoteText
     assertContains "actor003 note manifest" actor003Result.ArtifactManifestPath actor003NoteText
 

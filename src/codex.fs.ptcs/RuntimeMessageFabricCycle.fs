@@ -25,6 +25,8 @@ module RuntimeMessageFabricCycle =
           Engine: EngineKind
           /// Executable path or command used by the engine process.
           ExecutablePath: string
+          /// Optional executable overrides keyed by engine family.
+          EngineExecutableOverrides: Map<EngineKind, string>
           /// Working directory used by the engine process.
           WorkingDirectory: string
           /// Artifact root for private run evidence.
@@ -37,6 +39,10 @@ module RuntimeMessageFabricCycle =
           AdditionalDirectories: string list
           /// Render Agy permission auto-approval for this bounded run.
           AgyDangerouslySkipPermissions: bool
+          /// Optional Codex model override used when no incoming intent tag supplies one.
+          CodexModel: string option
+          /// Render Codex approval/sandbox bypass for bounded Foreman/tool execution.
+          CodexDangerouslyBypassApprovalsAndSandbox: bool
           /// Maximum messages returned by one inbox poll.
           InboxLimit: int }
 
@@ -74,7 +80,27 @@ module RuntimeMessageFabricCycle =
     /// Default executable name for a supported engine kind.
     let defaultExecutable engine =
         match engine with
-        | Codex -> "codex"
+        | Codex ->
+            if OperatingSystem.IsWindows() then
+                let appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                let npmNativeCodex =
+                    Path.Combine(
+                        appData,
+                        "npm",
+                        "node_modules",
+                        "@openai",
+                        "codex",
+                        "node_modules",
+                        "@openai",
+                        "codex-win32-x64",
+                        "vendor",
+                        "x86_64-pc-windows-msvc",
+                        "bin",
+                        "codex.exe")
+
+                if File.Exists npmNativeCodex then npmNativeCodex else "codex"
+            else
+                "codex"
         | Agy -> "agy"
         | Custom name -> name
 
@@ -122,6 +148,91 @@ module RuntimeMessageFabricCycle =
           ReplyMessageId = String.Empty
           ReplyBody = String.Empty }
 
+    let emptyAckResult options ackCursor =
+        { emptyResult options with
+            AckCursor = ackCursor }
+
+    /// Effective engine settings selected for one concrete batch.
+    type EffectiveRuntimeSelection =
+        { Engine: EngineKind
+          SurfaceId: string
+          ExecutablePath: string
+          CodexModel: string option
+          CodexDangerouslyBypassApprovalsAndSandbox: bool }
+
+    /// Engine output artifacts normalized across supported surfaces.
+    type RuntimeOutputMapping =
+        { Stdout: FileArtifactStore.StoredArtifact
+          Stderr: FileArtifactStore.StoredArtifact
+          EventJsonl: FileArtifactStore.StoredArtifact option
+          FinalMessage: FileArtifactStore.StoredArtifact option
+          Manifest: ArtifactManifest
+          FinalMessageText: string option }
+
+    let surfaceIdFor engine =
+        match engine with
+        | Codex -> Engine.Codex.V0_142.Exec.SurfaceId
+        | Agy -> Engine.Agy.V1_0.Print.SurfaceId
+        | Custom name -> $"custom:{name}"
+
+    let tryParseEngineKind (text: string) =
+        if String.IsNullOrWhiteSpace text then
+            None
+        else
+            match text.Trim().ToLowerInvariant() with
+            | "codex" -> Some Codex
+            | "agy" -> Some Agy
+            | value when value.StartsWith("custom:", StringComparison.Ordinal) ->
+                let name = value.Substring("custom:".Length).Trim()
+
+                if String.IsNullOrWhiteSpace name then None else Some(Custom name)
+            | _ -> None
+
+    let tagValue (prefix: string) (tag: string) =
+        if isNull tag || not (tag.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) then
+            None
+        else
+            let value = tag.Substring(prefix.Length).Trim()
+
+            if String.IsNullOrWhiteSpace value then None else Some value
+
+    let latestTagValue prefix (messages: PromptMessage list) =
+        messages
+        |> List.rev
+        |> List.tryPick (fun message -> message.Tags |> List.tryPick (tagValue prefix))
+
+    let nonDefaultModel (value: string option) =
+        value
+        |> Option.bind (fun text ->
+            let trimmed = text.Trim()
+
+            if String.IsNullOrWhiteSpace trimmed || trimmed.Equals("default", StringComparison.OrdinalIgnoreCase) then
+                None
+            else
+                Some trimmed)
+
+    let executableFor (options: RuntimeCycleOptions) engine =
+        options.EngineExecutableOverrides
+        |> Map.tryFind engine
+        |> Option.orElseWith (fun () -> if engine = options.Engine then Some options.ExecutablePath else None)
+        |> Option.defaultValue (defaultExecutable engine)
+
+    let effectiveRuntimeSelection (options: RuntimeCycleOptions) (messages: PromptMessage list) =
+        let engine =
+            latestTagValue "engine:" messages
+            |> Option.bind tryParseEngineKind
+            |> Option.defaultValue options.Engine
+
+        let approvalNever =
+            latestTagValue "approval:" messages
+            |> Option.exists (fun value -> value.Equals("never", StringComparison.OrdinalIgnoreCase))
+
+        { Engine = engine
+          SurfaceId = surfaceIdFor engine
+          ExecutablePath = executableFor options engine
+          CodexModel = latestTagValue "model:" messages |> Option.orElse options.CodexModel |> nonDefaultModel
+          CodexDangerouslyBypassApprovalsAndSandbox = options.CodexDangerouslyBypassApprovalsAndSandbox || approvalNever }
+
     let validateOptions (options: RuntimeCycleOptions) =
         if String.IsNullOrWhiteSpace options.SessionId then
             invalidArg (nameof options.SessionId) "Session id is required."
@@ -141,8 +252,81 @@ module RuntimeMessageFabricCycle =
         if options.Timeout <= TimeSpan.Zero then
             invalidArg (nameof options.Timeout) "Timeout must be greater than zero."
 
-        if options.Engine <> Agy then
-            invalidOp $"PTCS runtime cycle currently supports agy only; requested {RuntimePromptLoop.engineText options.Engine}."
+        ()
+
+    let isSelfAuthoredMessage (options: RuntimeCycleOptions) (message: MessageFabricEnvelope) =
+        message.FromParticipantId.Equals(options.SessionParticipantId, StringComparison.OrdinalIgnoreCase)
+        || (options.ReplyParticipantId
+            |> Option.exists (fun participantId -> message.FromParticipantId.Equals(participantId, StringComparison.OrdinalIgnoreCase)))
+
+    let readCodexFinalMessage (executionPlan: RuntimePromptLoop.RuntimeExecutionPlan) =
+        executionPlan.Request.Metadata
+        |> Map.tryFind "codex.outputLastMessagePath"
+        |> Option.bind (fun path ->
+            if File.Exists path then
+                let text = File.ReadAllText(path, UTF8Encoding(false, true))
+
+                if String.IsNullOrWhiteSpace text then None else Some text
+            else
+                None)
+
+    let mapProcessOutputArtifacts
+        (storeConfig: FileArtifactStore.FileArtifactStoreConfig)
+        (executionPlan: RuntimePromptLoop.RuntimeExecutionPlan)
+        (processResult: ProcessRunner.ProcessRunResult)
+        outcome
+        : RuntimeOutputMapping =
+        match executionPlan.Request.Engine with
+        | Agy ->
+            let capture: Engine.Agy.V1_0.Print.OutputCapture =
+                { Stdout = processResult.Stdout
+                  Stderr = processResult.Stderr
+                  StartedUtc = processResult.StartedUtc
+                  CompletedUtc = Some processResult.CompletedUtc
+                  Outcome = outcome }
+
+            let mapping =
+                Engine.Agy.V1_0.Print.mapOutputArtifacts
+                    storeConfig
+                    executionPlan.Request
+                    capture
+
+            let finalMessageText =
+                mapping.FinalMessage
+                |> Option.map (fun artifact -> File.ReadAllText(artifact.Reference.Path, UTF8Encoding(false, true)))
+
+            { Stdout = mapping.Stdout
+              Stderr = mapping.Stderr
+              EventJsonl = None
+              FinalMessage = mapping.FinalMessage
+              Manifest = mapping.Manifest
+              FinalMessageText = finalMessageText }
+        | Codex ->
+            let finalMessageText = readCodexFinalMessage executionPlan
+
+            let capture: Engine.Codex.V0_142.Exec.OutputCapture =
+                { Stdout = processResult.Stdout
+                  Stderr = processResult.Stderr
+                  EventJsonl = None
+                  FinalMessage = finalMessageText
+                  StartedUtc = processResult.StartedUtc
+                  CompletedUtc = Some processResult.CompletedUtc
+                  Outcome = outcome }
+
+            let mapping =
+                Engine.Codex.V0_142.Exec.mapOutputArtifacts
+                    storeConfig
+                    executionPlan.Request
+                    capture
+
+            { Stdout = mapping.Stdout
+              Stderr = mapping.Stderr
+              EventJsonl = mapping.EventJsonl
+              FinalMessage = mapping.FinalMessage
+              Manifest = mapping.Manifest
+              FinalMessageText = finalMessageText }
+        | Custom name ->
+            invalidOp $"PTCS runtime cycle does not support custom engine execution yet: {name}."
 
     /// Run one bounded PTCS runtime cycle. It polls once, runs the selected engine for pending messages, replies, then acknowledges.
     let runSingleCycleAsync (fabric: CommSpaMessageFabric) (options: RuntimeCycleOptions) (cancellationToken: CancellationToken) =
@@ -180,191 +364,228 @@ module RuntimeMessageFabricCycle =
             if batch.Messages.IsEmpty then
                 return emptyResult options
             else
-                let startedUtc = DateTimeOffset.UtcNow
-                let runId = RuntimePromptLoop.newRunId startedUtc
-                let storeConfig = { FileArtifactStore.ArtifactRoot = artifactRoot }
-                let sessionId = SessionId options.SessionId
-                let promptMessages = batch.Messages |> List.map envelopeToPromptMessage
-                let (RunId runIdText) = runId
+                let processableMessages =
+                    batch.Messages
+                    |> List.filter (isSelfAuthoredMessage options >> not)
 
-                let promptPlan =
-                    RuntimePromptLoop.planPrompt
-                        { SessionId = sessionId
-                          RunId = runId
-                          ParticipantId = options.SessionParticipantId
-                          Engine = options.Engine
-                          SurfaceId = Some Engine.Agy.V1_0.Print.SurfaceId
-                          WorkingDirectory = workingDirectory
-                          Messages = promptMessages
-                          Policy =
-                            { PromptAssembly.defaultPolicy with
-                                SystemInstruction = options.SystemInstruction
-                                MaxMessageBodyChars = Some 8000
-                                AdditionalContext =
-                                    [ "cycle", "ptcs-runtime-cycle"
-                                      "adapter", "actor-or-host" ] } }
+                if processableMessages.IsEmpty then
+                    let! ack = MessageFabricBinding.ackInboxAsync fabric binding batch.NextCursor
+                    return emptyAckResult options (ack.Cursor |> Option.defaultValue String.Empty)
+                else
+                    let startedUtc = DateTimeOffset.UtcNow
+                    let runId = RuntimePromptLoop.newRunId startedUtc
+                    let storeConfig = { FileArtifactStore.ArtifactRoot = artifactRoot }
+                    let sessionId = SessionId options.SessionId
+                    let promptMessages = processableMessages |> List.map envelopeToPromptMessage
+                    let effective = effectiveRuntimeSelection options promptMessages
+                    let (RunId runIdText) = runId
 
-                let promptArtifact =
-                    FileArtifactStore.writeText storeConfig sessionId runId PromptMarkdown "prompt.md" promptPlan.Prompt.Markdown startedUtc
+                    let promptPlan =
+                        RuntimePromptLoop.planPrompt
+                            { SessionId = sessionId
+                              RunId = runId
+                              ParticipantId = options.SessionParticipantId
+                              Engine = effective.Engine
+                              SurfaceId = Some effective.SurfaceId
+                              WorkingDirectory = workingDirectory
+                              Messages = promptMessages
+                              Policy =
+                                { PromptAssembly.defaultPolicy with
+                                    SystemInstruction = options.SystemInstruction
+                                    MaxMessageBodyChars = Some 8000
+                                    AdditionalContext =
+                                        [ "cycle", "ptcs-runtime-cycle"
+                                          "adapter", "actor-or-host" ] } }
 
-                let ptcsBatchArtifact =
-                    FileArtifactStore.writeText storeConfig sessionId runId PtcsMessageBatchJsonl "ptcs-messages.jsonl" promptPlan.MessageBatchJsonl startedUtc
+                    let promptArtifact =
+                        FileArtifactStore.writeText storeConfig sessionId runId PromptMarkdown "prompt.md" promptPlan.Prompt.Markdown startedUtc
 
-                let executionPlan =
-                    RuntimePromptLoop.planAgyPrintExecution
-                        { PromptPlan = promptPlan
-                          SessionId = sessionId
-                          RunId = runId
-                          ExecutablePath = options.ExecutablePath
-                          WorkingDirectory = workingDirectory
-                          PromptPath = promptArtifact.Reference.Path
-                          ArtifactDirectory = FileArtifactStore.runDirectory storeConfig sessionId runId
-                          Timeout = options.Timeout
-                          AdditionalDirectories = options.AdditionalDirectories
-                          DangerouslySkipPermissions = options.AgyDangerouslySkipPermissions
-                          Metadata =
-                            Map.ofList
-                                [ "cycle", "single";
-                                  "adapter", "ptcs-runtime-messagefabric";
-                                  "sessionParticipantId", options.SessionParticipantId ] }
+                    let ptcsBatchArtifact =
+                        FileArtifactStore.writeText storeConfig sessionId runId PtcsMessageBatchJsonl "ptcs-messages.jsonl" promptPlan.MessageBatchJsonl startedUtc
 
-                let requestArtifact =
-                    FileArtifactStore.writeText storeConfig sessionId runId RequestJson "request.json" executionPlan.RequestJson startedUtc
+                    let baseMetadata =
+                        Map.ofList
+                            [ "cycle", "single"
+                              "adapter", "ptcs-runtime-messagefabric"
+                              "sessionParticipantId", options.SessionParticipantId
+                              "effectiveEngine", RuntimePromptLoop.engineText effective.Engine
+                              "effectiveSurfaceId", effective.SurfaceId ]
 
-                let renderedArtifact =
-                    FileArtifactStore.writeText storeConfig sessionId runId RenderedArgvJson "rendered-argv.json" executionPlan.RenderedCommandJson startedUtc
+                    let artifactDirectory = FileArtifactStore.runDirectory storeConfig sessionId runId
 
-                let! processResult =
-                    ProcessRunner.runAsync
-                        { Timeout = options.Timeout
-                          KillGracePeriod = TimeSpan.FromSeconds 5.0 }
-                        executionPlan.ProcessCommand
-                        cancellationToken
+                    let executionPlan =
+                        match effective.Engine with
+                        | Agy ->
+                            RuntimePromptLoop.planAgyPrintExecution
+                                { PromptPlan = promptPlan
+                                  SessionId = sessionId
+                                  RunId = runId
+                                  ExecutablePath = effective.ExecutablePath
+                                  WorkingDirectory = workingDirectory
+                                  PromptPath = promptArtifact.Reference.Path
+                                  ArtifactDirectory = artifactDirectory
+                                  Timeout = options.Timeout
+                                  AdditionalDirectories = options.AdditionalDirectories
+                                  DangerouslySkipPermissions = options.AgyDangerouslySkipPermissions
+                                  Metadata = baseMetadata }
+                        | Codex ->
+                            RuntimePromptLoop.planCodexExecExecution
+                                { PromptPlan = promptPlan
+                                  SessionId = sessionId
+                                  RunId = runId
+                                  ExecutablePath = effective.ExecutablePath
+                                  WorkingDirectory = workingDirectory
+                                  PromptPath = promptArtifact.Reference.Path
+                                  ArtifactDirectory = artifactDirectory
+                                  Timeout = options.Timeout
+                                  AdditionalDirectories = options.AdditionalDirectories
+                                  Model = effective.CodexModel
+                                  DangerouslyBypassApprovalsAndSandbox = effective.CodexDangerouslyBypassApprovalsAndSandbox
+                                  Metadata = baseMetadata }
+                        | Custom name ->
+                            invalidOp $"PTCS runtime cycle does not support custom engine execution yet: {name}."
 
-                let outcome = RuntimePromptLoop.processOutcome processResult
+                    let requestArtifact =
+                        FileArtifactStore.writeText storeConfig sessionId runId RequestJson "request.json" executionPlan.RequestJson startedUtc
 
-                let outputMapping =
-                    Engine.Agy.V1_0.Print.mapOutputArtifacts
-                        storeConfig
-                        executionPlan.Request
-                        { Stdout = processResult.Stdout
-                          Stderr = processResult.Stderr
+                    let renderedArtifact =
+                        FileArtifactStore.writeText storeConfig sessionId runId RenderedArgvJson "rendered-argv.json" executionPlan.RenderedCommandJson startedUtc
+
+                    let! processResult =
+                        ProcessRunner.runAsync
+                            { Timeout = options.Timeout
+                              KillGracePeriod = TimeSpan.FromSeconds 5.0 }
+                            executionPlan.ProcessCommand
+                            cancellationToken
+
+                    let outcome = RuntimePromptLoop.processOutcome processResult
+
+                    let outputMapping = mapProcessOutputArtifacts storeConfig executionPlan processResult outcome
+
+                    let manifestRelativePath =
+                        Path.Combine("sessions", options.SessionId, "runs", runIdText, "manifest.json")
+
+                    let runResult =
+                        { RunId = runId
+                          Outcome = outcome
+                          ExitCode = processResult.ExitCode
                           StartedUtc = processResult.StartedUtc
                           CompletedUtc = Some processResult.CompletedUtc
-                          Outcome = outcome }
+                          ArtifactManifestPath = manifestRelativePath
+                          FinalMessagePath = outputMapping.FinalMessage |> Option.map _.Reference.Path }
 
-                let manifestRelativePath =
-                    Path.Combine("sessions", options.SessionId, "runs", runIdText, "manifest.json")
+                    let resultArtifact =
+                        FileArtifactStore.writeText storeConfig sessionId runId ResultJson "result.json" (RuntimePromptLoop.runResultText runResult) processResult.CompletedUtc
 
-                let runResult =
-                    { RunId = runId
-                      Outcome = outcome
-                      ExitCode = processResult.ExitCode
-                      StartedUtc = processResult.StartedUtc
-                      CompletedUtc = Some processResult.CompletedUtc
-                      ArtifactManifestPath = manifestRelativePath
-                      FinalMessagePath = outputMapping.FinalMessage |> Option.map _.Reference.Path }
+                    let finalPath = runResult.FinalMessagePath |> Option.defaultValue String.Empty
 
-                let resultArtifact =
-                    FileArtifactStore.writeText storeConfig sessionId runId ResultJson "result.json" (RuntimePromptLoop.runResultText runResult) processResult.CompletedUtc
+                    let noteArtifact =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            sessionId
+                            runId
+                            RunNoteMarkdown
+                            "note.md"
+                            (RuntimePromptLoop.runNoteText
+                                { SessionId = sessionId
+                                  RunId = runId
+                                  Engine = effective.Engine
+                                  SurfaceId = Some effective.SurfaceId
+                                  Outcome = outcome
+                                  ManifestPath = manifestRelativePath
+                                  FinalMessagePath = finalPath
+                                  ConsumedMessageIds = promptMessages |> List.map _.Ref.MessageId
+                                  Summary = RuntimePromptLoop.redactedReplyText outputMapping.FinalMessageText processResult.Stdout processResult.Stderr |> RuntimePromptLoop.truncate 240
+                                  StartedUtc = processResult.StartedUtc
+                                  CompletedUtc = Some processResult.CompletedUtc })
+                            processResult.CompletedUtc
 
-                let finalPath = runResult.FinalMessagePath |> Option.defaultValue String.Empty
+                    let manifest =
+                        { outputMapping.Manifest with
+                            Artifacts =
+                                [ promptArtifact.Reference
+                                  ptcsBatchArtifact.Reference
+                                  requestArtifact.Reference
+                                  renderedArtifact.Reference
+                                  outputMapping.Stdout.Reference
+                                  outputMapping.Stderr.Reference
+                                  match outputMapping.EventJsonl with
+                                  | Some eventJsonl -> eventJsonl.Reference
+                                  | None -> ()
+                                  match outputMapping.FinalMessage with
+                                  | Some finalMessage -> finalMessage.Reference
+                                  | None -> ()
+                                  resultArtifact.Reference
+                                  noteArtifact.Reference ] }
 
-                let noteArtifact =
-                    FileArtifactStore.writeText
-                        storeConfig
-                        sessionId
-                        runId
-                        RunNoteMarkdown
-                        "note.md"
-                        (RuntimePromptLoop.runNoteText
-                            { SessionId = sessionId
-                              RunId = runId
-                              Engine = options.Engine
-                              SurfaceId = Some Engine.Agy.V1_0.Print.SurfaceId
-                              Outcome = outcome
-                              ManifestPath = manifestRelativePath
-                              FinalMessagePath = finalPath
-                              ConsumedMessageIds = promptMessages |> List.map _.Ref.MessageId
-                              Summary = RuntimePromptLoop.redactedSummary processResult.Stdout processResult.Stderr
-                              StartedUtc = processResult.StartedUtc
-                              CompletedUtc = Some processResult.CompletedUtc })
-                        processResult.CompletedUtc
+                    let manifestPath = Path.Combine(FileArtifactStore.artifactRoot storeConfig, manifestRelativePath)
+                    let manifestDirectory = Path.GetDirectoryName manifestPath
 
-                let manifest =
-                    { outputMapping.Manifest with
-                        Artifacts =
-                            [ promptArtifact.Reference
-                              ptcsBatchArtifact.Reference
-                              requestArtifact.Reference
-                              renderedArtifact.Reference
-                              outputMapping.Stdout.Reference
-                              outputMapping.Stderr.Reference
-                              match outputMapping.FinalMessage with
-                              | Some finalMessage -> finalMessage.Reference
-                              | None -> ()
-                              resultArtifact.Reference
-                              noteArtifact.Reference ] }
+                    if String.IsNullOrWhiteSpace manifestDirectory then
+                        invalidOp "Artifact manifest directory could not be resolved."
 
-                let manifestPath = Path.Combine(FileArtifactStore.artifactRoot storeConfig, manifestRelativePath)
-                let manifestDirectory = Path.GetDirectoryName manifestPath
+                    Directory.CreateDirectory manifestDirectory |> ignore
+                    File.WriteAllText(manifestPath, RuntimePromptLoop.manifestText manifest, UTF8Encoding(false, true))
 
-                if String.IsNullOrWhiteSpace manifestDirectory then
-                    invalidOp "Artifact manifest directory could not be resolved."
+                    let targetParticipantId = processableMessages.Head.FromParticipantId
 
-                Directory.CreateDirectory manifestDirectory |> ignore
-                File.WriteAllText(manifestPath, RuntimePromptLoop.manifestText manifest, UTF8Encoding(false, true))
+                    let replyIntent =
+                        RuntimePromptLoop.replyIntent
+                            runId
+                            outcome
+                            manifestRelativePath
+                            finalPath
+                            noteArtifact.Reference.Path
+                            targetParticipantId
+                            processResult.Stdout
+                            processResult.Stderr
+                            outputMapping.FinalMessageText
 
-                let targetParticipantId = batch.Messages.Head.FromParticipantId
+                    let! reply =
+                        MessageFabricBinding.sendDirectReplyAsync
+                            fabric
+                            binding
+                            replyIntent.TargetParticipantId
+                            replyIntent.Body
+                            replyIntent.Tags
+                            replyIntent.CorrelationId
 
-                let replyIntent =
-                    RuntimePromptLoop.replyIntent runId outcome manifestRelativePath finalPath noteArtifact.Reference.Path targetParticipantId processResult.Stdout processResult.Stderr
+                    let boundaryArtifact =
+                        FileArtifactStore.writeText
+                            storeConfig
+                            sessionId
+                            runId
+                            SessionBoundaryJson
+                            "session-boundary.json"
+                            (RuntimePromptLoop.readyToAckBoundaryText
+                                { SessionId = sessionId
+                                  RunId = runId
+                                  SelectedCursor = batch.NextCursor
+                                  ConsumedMessageIds = promptMessages |> List.map _.Ref.MessageId
+                                  Reply =
+                                    { MessageId = reply.MessageId
+                                      Body = reply.Body }
+                                  ArtifactManifestPath = manifestRelativePath
+                                  FinalMessagePath = finalPath
+                                  RunNotePath = noteArtifact.Reference.Path
+                                  PersistedBeforeAck = true })
+                            DateTimeOffset.UtcNow
 
-                let! reply =
-                    MessageFabricBinding.sendDirectReplyAsync
-                        fabric
-                        binding
-                        replyIntent.TargetParticipantId
-                        replyIntent.Body
-                        replyIntent.Tags
-                        replyIntent.CorrelationId
+                    let! ack = MessageFabricBinding.ackInboxAsync fabric binding batch.NextCursor
 
-                let boundaryArtifact =
-                    FileArtifactStore.writeText
-                        storeConfig
-                        sessionId
-                        runId
-                        SessionBoundaryJson
-                        "session-boundary.json"
-                        (RuntimePromptLoop.readyToAckBoundaryText
-                            { SessionId = sessionId
-                              RunId = runId
-                              SelectedCursor = batch.NextCursor
-                              ConsumedMessageIds = promptMessages |> List.map _.Ref.MessageId
-                              Reply =
-                                { MessageId = reply.MessageId
-                                  Body = reply.Body }
-                              ArtifactManifestPath = manifestRelativePath
-                              FinalMessagePath = finalPath
-                              RunNotePath = noteArtifact.Reference.Path
-                              PersistedBeforeAck = true })
-                        DateTimeOffset.UtcNow
-
-                let! ack = MessageFabricBinding.ackInboxAsync fabric binding batch.NextCursor
-
-                return
-                    { Status = RuntimePromptLoop.outcomeText outcome
-                      SessionId = options.SessionId
-                      SessionParticipantId = options.SessionParticipantId
-                      RunId = runIdText
-                      ConsumedMessageCount = batch.Messages.Length
-                      AckCursor = ack.Cursor |> Option.defaultValue String.Empty
-                      Outcome = RuntimePromptLoop.outcomeText outcome
-                      ExitCode = processResult.ExitCode |> Option.map string |> Option.defaultValue String.Empty
-                      ArtifactManifestPath = manifestRelativePath
-                      PersistenceBoundaryPath = boundaryArtifact.Reference.Path
-                      FinalMessagePath = finalPath
-                      RunNotePath = noteArtifact.Reference.Path
-                      ReplyMessageId = reply.MessageId
-                      ReplyBody = replyIntent.Body }
+                    return
+                        { Status = RuntimePromptLoop.outcomeText outcome
+                          SessionId = options.SessionId
+                          SessionParticipantId = options.SessionParticipantId
+                          RunId = runIdText
+                          ConsumedMessageCount = batch.Messages.Length
+                          AckCursor = ack.Cursor |> Option.defaultValue String.Empty
+                          Outcome = RuntimePromptLoop.outcomeText outcome
+                          ExitCode = processResult.ExitCode |> Option.map string |> Option.defaultValue String.Empty
+                          ArtifactManifestPath = manifestRelativePath
+                          PersistenceBoundaryPath = boundaryArtifact.Reference.Path
+                          FinalMessagePath = finalPath
+                          RunNotePath = noteArtifact.Reference.Path
+                          ReplyMessageId = reply.MessageId
+                          ReplyBody = replyIntent.Body }
         }

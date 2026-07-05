@@ -18,6 +18,8 @@ module SessionEngineCycle =
           Engine: EngineKind option
           /// Executable path/command override; defaults to `agy` or `codex`.
           ExecutablePath: string option
+          /// Optional executable overrides keyed by engine family.
+          EngineExecutableOverrides: Map<EngineKind, string> option
           /// Working directory used by the engine process.
           WorkingDirectory: string option
           /// Artifact root override; defaults to host config.
@@ -29,7 +31,11 @@ module SessionEngineCycle =
           /// Additional directories exposed to the engine.
           AdditionalDirectories: string list
           /// Optional Agy permission auto-approval for this bounded run.
-          AgyDangerouslySkipPermissions: bool option }
+          AgyDangerouslySkipPermissions: bool option
+          /// Optional Codex model used when no incoming intent tag supplies one.
+          CodexModel: string option
+          /// Optional Codex approval/sandbox bypass for bounded Foreman/tool execution.
+          CodexDangerouslyBypassApprovalsAndSandbox: bool option }
 
     /// Result returned by one bounded session cycle.
     type SingleCycleResult =
@@ -86,12 +92,19 @@ module SessionEngineCycle =
           ReplyParticipantId = runtime.Config.Ptcs.ReplyParticipantId
           Engine = engine
           ExecutablePath = executablePath
+          EngineExecutableOverrides =
+            options.EngineExecutableOverrides
+            |> Option.defaultValue runtime.Config.EngineExecutableOverrides
           WorkingDirectory = workingDirectory
           ArtifactRoot = artifactRoot
           Timeout = timeout
           SystemInstruction = options.SystemInstruction
           AdditionalDirectories = options.AdditionalDirectories
           AgyDangerouslySkipPermissions = options.AgyDangerouslySkipPermissions |> Option.defaultValue false
+          CodexModel = options.CodexModel
+          CodexDangerouslyBypassApprovalsAndSandbox =
+            options.CodexDangerouslyBypassApprovalsAndSandbox
+            |> Option.defaultValue false
           InboxLimit = runtime.Config.Ptcs.DefaultInboxLimit }
 
     let fromRuntimeResult (result: RuntimeMessageFabricCycle.RuntimeCycleResult) =

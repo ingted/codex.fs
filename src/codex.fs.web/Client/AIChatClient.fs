@@ -392,7 +392,7 @@ module AIChatClient =
                 select "codexfs-ai-engine" [| "agy", "Agy"; "codex", "Codex" |] "agy"
 
             let model =
-                select "codexfs-ai-model" [| "default", "Default"; "gpt-5-codex", "GPT-5 Codex" |] "default"
+                select "codexfs-ai-model" [| "default", "Default" |] "default"
 
             let reasoning =
                 select "codexfs-ai-reasoning" [| "medium", "Medium"; "high", "High"; "xhigh", "XHigh" |] "high"

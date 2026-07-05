@@ -71,6 +71,8 @@ module ActorFabricBinding =
           Engine: EngineKind option
           /// Executable path or command; defaults to `agy`.
           ExecutablePath: string option
+          /// Optional executable overrides keyed by engine family.
+          EngineExecutableOverrides: Map<EngineKind, string> option
           /// Working directory used by the engine process; defaults to current directory.
           WorkingDirectory: string option
           /// Artifact root for private run evidence.
@@ -82,7 +84,11 @@ module ActorFabricBinding =
           /// Additional directories exposed to the engine.
           AdditionalDirectories: string list
           /// Optional Agy permission auto-approval for bounded Foreman/tool execution.
-          AgyDangerouslySkipPermissions: bool option }
+          AgyDangerouslySkipPermissions: bool option
+          /// Optional Codex model used when no incoming intent tag supplies one.
+          CodexModel: string option
+          /// Optional Codex approval/sandbox bypass for bounded Foreman/tool execution.
+          CodexDangerouslyBypassApprovalsAndSandbox: bool option }
 
     /// Result returned after a WorkerActor completes one runtime cycle.
     type RuntimeCycleCompleted =
@@ -198,12 +204,17 @@ module ActorFabricBinding =
               ReplyParticipantId = command.ReplyParticipantId
               Engine = engine
               ExecutablePath = executablePath
+              EngineExecutableOverrides = command.EngineExecutableOverrides |> Option.defaultValue Map.empty
               WorkingDirectory = workingDirectory
               ArtifactRoot = artifactRoot
               Timeout = timeout
               SystemInstruction = command.SystemInstruction
               AdditionalDirectories = command.AdditionalDirectories
               AgyDangerouslySkipPermissions = command.AgyDangerouslySkipPermissions |> Option.defaultValue false
+              CodexModel = command.CodexModel
+              CodexDangerouslyBypassApprovalsAndSandbox =
+                command.CodexDangerouslyBypassApprovalsAndSandbox
+                |> Option.defaultValue false
               InboxLimit = MessageFabricBinding.defaultInboxLimit }
 
         member this.HandleEnsureRegistered() =
