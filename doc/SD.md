@@ -1684,6 +1684,101 @@ Verifier: `misc/verifyAiIntentControls.fsx`; passed 2026-07-05 14:58 +08:00 afte
 
 Production caveat: this E2E proves the real PTCS auto-local ActorFabric path. Crash-durable sharded replay, actor passivation recovery and durable task admission remain future durability hardening.
 
+## 14.4 Foreman control plane and AI intent bridge
+
+`RFC-RUNTIME-0002` introduces the product correction for Foreman execution and `codexfs-ai-chat` intent delivery.
+
+### 14.4.1 Runtime invocation policy
+
+Foreman product runtime uses explicit Agy permission policy. The policy is not global; it is carried per runtime command.
+
+```fsharp
+type AgyPrintExecutionInput =
+    { PromptPlan: RuntimePromptPlan
+      SessionId: SessionId
+      RunId: RunId
+      ExecutablePath: string
+      WorkingDirectory: string
+      PromptPath: string
+      ArtifactDirectory: string
+      Timeout: TimeSpan
+      AdditionalDirectories: string list
+      DangerouslySkipPermissions: bool
+      Metadata: Map<string, string> }
+
+type RunRuntimeCycle =
+    { SessionId: string
+      SessionParticipantId: string option
+      ReplyParticipantId: string option
+      Engine: EngineKind option
+      ExecutablePath: string option
+      WorkingDirectory: string option
+      ArtifactRoot: string
+      Timeout: TimeSpan option
+      SystemInstruction: string option
+      AdditionalDirectories: string list
+      AgyDangerouslySkipPermissions: bool option }
+```
+
+`RuntimePromptLoop.buildAgyPrintCommand` must render timeout and permission flags before `--print`:
+
+```text
+agy --print-timeout=20m0s --dangerously-skip-permissions --print <assembled-prompt>
+```
+
+This order is required because Agy treats tokens after `--print` as prompt text.
+
+### 14.4.2 Host AI intent bridge
+
+`HostWebShell` owns one PTCS `CommHub`, one `CommSpaMessageFabric`, the PTCS `RunningServer` and the Foreman actor loop. The AI intent bridge runs in that same host composition.
+
+```text
+HostWebShell.registeredHub
+  -> hub.useAIChat()
+  -> register default Foreman participant
+  -> register default AI Chat append page/key
+
+HostWebShell.tryStartAsync
+  -> Server.start options
+  -> startForemanRuntimeLoop server.ActorFabric
+  -> startAiIntentBridge hub fabric
+```
+
+Bridge algorithm:
+
+```fsharp
+for page in hub.ListAppendPages().Pages do
+    if page.Shape = "codexfs-ai-chat" then
+        let snapshot = hub.SetsSnapshot(None, Some page.SetName, Some 500)
+        for value in snapshot.Buckets |> all Values do
+            if not processed[value.ValueId] then
+                match parse codex.fs.web.ai-intent.v1 value.Value with
+                | Some intent ->
+                    ensure bridge participant
+                    send MessageFabric according to intent.target
+                    processed.Add value.ValueId
+                | None -> ignore
+```
+
+The bridge sender participant is `user.codexfs.web.ai-intent` until PTCS browser identity is carried by the intent schema. Runtime reply therefore appears in the bridge participant's MessageFabric thread; future UI work can project that reply back into the append page without changing Foreman runtime ownership.
+
+### 14.4.3 Basic Foreman acceptance
+
+The first real acceptance prompt is:
+
+```text
+hi 請用 powershell 取日期時間
+```
+
+Verifier must prove:
+
+- prompt enters Foreman MessageFabric inbox;
+- Foreman actor executes one bounded Agy run;
+- rendered argv includes `--dangerously-skip-permissions` before `--print`;
+- final artifact contains the date observed during the run;
+- note/manifest/final artifacts exist;
+- reply is sent through MessageFabric with artifact refs.
+
 ## 15. Testing design preview
 
 Detailed test plan belongs in `doc/Test.md`, but SD expects:

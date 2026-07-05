@@ -184,6 +184,7 @@ let runtimeExecutionPlan =
           ArtifactDirectory = "workspace/codex.fs/.codex.fs/sessions/sess-002/runs/run-002"
           Timeout = TimeSpan.FromSeconds 90.0
           AdditionalDirectories = [ "workspace/codex.fs/Libs" ]
+          DangerouslySkipPermissions = false
           Metadata = Map.ofList [ "cycle", "unit"; "sessionParticipantId", input.ParticipantId ] }
 
 assertEqual "runtime request engine" Agy runtimeExecutionPlan.Request.Engine
@@ -197,6 +198,27 @@ assertTrue "runtime rendered prompt arg includes markdown" (runtimeExecutionPlan
 assertContains "runtime rendered json executable" "\"fileName\": \"agy\"" runtimeExecutionPlan.RenderedCommandJson
 assertEqual "runtime process executable" runtimeExecutionPlan.RenderedCommand.FileName runtimeExecutionPlan.ProcessCommand.FileName
 assertEqual "runtime process cwd" (Some input.WorkingDirectory) runtimeExecutionPlan.ProcessCommand.WorkingDirectory
+
+let runtimeDangerExecutionPlan =
+    CodexFs.RuntimePromptLoop.planAgyPrintExecution
+        { PromptPlan = runtimePromptPlan
+          SessionId = input.SessionId
+          RunId = input.RunId
+          ExecutablePath = "agy"
+          WorkingDirectory = input.WorkingDirectory
+          PromptPath = "sessions/sess-002/runs/run-002/prompt.md"
+          ArtifactDirectory = "workspace/codex.fs/.codex.fs/sessions/sess-002/runs/run-002"
+          Timeout = TimeSpan.FromSeconds 90.0
+          AdditionalDirectories = []
+          DangerouslySkipPermissions = true
+          Metadata = Map.ofList [ "cycle", "unit"; "executionPolicy", "dangerously-skip-permissions" ] }
+
+let runtimeDangerArgs = runtimeDangerExecutionPlan.RenderedCommand.Arguments
+let dangerIndex = runtimeDangerArgs |> List.findIndex ((=) "--dangerously-skip-permissions")
+let printIndex = runtimeDangerArgs |> List.findIndex ((=) "--print")
+assertTrue "runtime danger arg before print" (dangerIndex < printIndex)
+assertTrue "runtime timeout arg before print" ((runtimeDangerArgs |> List.findIndex (fun arg -> arg.StartsWith("--print-timeout=", StringComparison.Ordinal))) < printIndex)
+assertTrue "runtime default does not render danger arg" (not (runtimeExecutionPlan.RenderedCommand.Arguments |> List.exists ((=) "--dangerously-skip-permissions")))
 
 let runtimeReplyIntent =
     CodexFs.RuntimePromptLoop.replyIntent
@@ -1387,7 +1409,8 @@ try
           Timeout = Some(TimeSpan.FromMinutes 2.0)
           SystemInstruction =
             Some "This is a codex.fs ACTOR-003 verifier. Find the latest PTCS message body and reply with exactly the requested token, with no explanation."
-          AdditionalDirectories = [] }
+          AdditionalDirectories = []
+          AgyDangerouslySkipPermissions = None }
 
     let actor003Completed =
         runTask

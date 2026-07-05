@@ -302,6 +302,18 @@ host 必須支援 local compaction policy：
 | Observability | host 提供 structured status/event，CLI 可查詢，PTCS reality metadata 不外洩 secret。 |
 | Lightweight | core package 不依賴 Web UI、不重寫 PTCS fabric、不強制特定 engine。 |
 
+### R-010 Foreman control plane and AI intent bridge
+
+Foreman / SessionActor 是 logical session 的頂層 worker participant，必須能處理基本 user prompt 並透過 headless engine 做事。產品層責任分界如下：
+
+- `MessageFabric` 是 observable logical chat、UI thread 與 participant visibility 的真實來源。
+- `ActorFabric` 是 runtime ownership、sharded worker lifecycle 與 Foreman/Worker spawn/register 的真實來源。
+- `Worker journal / wpcs` 是 codex physical session truth，包含 prompt、stdout、stderr、final、manifest、note 與 compaction input。
+- `SA MCP tools` 是 Foreman 控制 worker 的主要未來介面，不取代人類 UI chat 的 MessageFabric delivery。
+- `Codex/Agy exec` 是每個 actor 實際做事的 bounded execution。
+
+PTCS `codexfs-ai-chat` append page 的 `codex.fs.web.ai-intent.v1` value 只是 UI intent；host 必須 bridge 到 MessageFabric target，不能宣稱 append intent 本身就是 Foreman runtime response。第一個基本驗收是 Foreman 能處理 `hi 請用 powershell 取日期時間`，保存 artifacts/note，並透過 MessageFabric 回覆 artifact refs。
+
 ## 9. Package 初始邊界
 
 | Package / Tool | 用途 |

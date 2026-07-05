@@ -80,7 +80,9 @@ module ActorFabricBinding =
           /// Optional instruction prepended to the assembled prompt.
           SystemInstruction: string option
           /// Additional directories exposed to the engine.
-          AdditionalDirectories: string list }
+          AdditionalDirectories: string list
+          /// Optional Agy permission auto-approval for bounded Foreman/tool execution.
+          AgyDangerouslySkipPermissions: bool option }
 
     /// Result returned after a WorkerActor completes one runtime cycle.
     type RuntimeCycleCompleted =
@@ -201,6 +203,7 @@ module ActorFabricBinding =
               Timeout = timeout
               SystemInstruction = command.SystemInstruction
               AdditionalDirectories = command.AdditionalDirectories
+              AgyDangerouslySkipPermissions = command.AgyDangerouslySkipPermissions |> Option.defaultValue false
               InboxLimit = MessageFabricBinding.defaultInboxLimit }
 
         member this.HandleEnsureRegistered() =

@@ -1,7 +1,9 @@
 namespace CodexFs.Host
 
 open System
+open System.Collections.Generic
 open System.IO
+open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
 open Akka.Actor
@@ -53,6 +55,10 @@ module HostWebShell =
           ForemanLoop: Task option
           /// Cancellation source for the Foreman runtime loop.
           ForemanLoopCancellation: CancellationTokenSource option
+          /// Background bridge that turns PTCS AI append-page intents into MessageFabric messages.
+          AiIntentBridgeLoop: Task option
+          /// Cancellation source for the AI intent bridge loop.
+          AiIntentBridgeCancellation: CancellationTokenSource option
           /// UTC timestamp used when the shell was started.
           StartedUtc: DateTimeOffset }
 
@@ -124,6 +130,26 @@ module HostWebShell =
               Labels = Some [ "codex.fs"; "foreman"; "session-worker" ] }
         |> ignore
 
+    [<Literal>]
+    let defaultAiChatPageId = "codexfs-ai-chat"
+
+    [<Literal>]
+    let aiIntentBridgeParticipantId = "user.codexfs.web.ai-intent"
+
+    let registerDefaultAiChatPage (hub: CommHub) =
+        let page =
+            { Domain.appendPage defaultAiChatPageId "codex.fs AI Chat" defaultAiChatPageId "codexfs-ai-chat" with
+                Path = "/page/" + defaultAiChatPageId
+                Description = "codex.fs Foreman AI chat intent surface."
+                KeyPlaceholder = "\"agent.codexfs.foreman\""
+                ValuePlaceholder = "Prompt; controls emit codex.fs.web.ai-intent.v1 JSON"
+                DefaultKey = "\"agent.codexfs.foreman\""
+                Tags = [ "codex.fs"; "ai-chat"; "agent" ] }
+
+        let registered = hub.RegisterAppendPage page
+        hub.RegisterAppendPageKeyWithDisplayName(registered.PageId, [ "agent.codexfs.foreman" ], "Foreman") |> ignore
+        registered
+
     let registeredHub (config: HostConfig.HostConfig) =
         let hub =
             match config.WebShell.PcslRoot with
@@ -135,6 +161,7 @@ module HostWebShell =
 
         hub.useAIChat() |> ignore
         registerDefaultForeman hub
+        registerDefaultAiChatPage hub |> ignore
         hub
 
     let engineExecutable (config: HostConfig.HostConfig) engine =
@@ -157,8 +184,197 @@ module HostWebShell =
           Timeout = Some config.DefaultTimeout
           SystemInstruction =
             Some
-                "You are codex.fs Foreman. Reply concisely to the latest PTCS chat prompt and preserve requested exact tokens."
-          AdditionalDirectories = [] }
+                "You are codex.fs Foreman. Reply concisely to the latest PTCS chat prompt. If the user asks you to use PowerShell or another local tool, use the available command tool and report the observed result."
+          AdditionalDirectories = []
+          AgyDangerouslySkipPermissions = Some true }
+
+    type AiIntentTarget =
+        { Mode: string
+          Scope: string
+          ParticipantId: string
+          GroupId: string }
+
+    type AiIntent =
+        { Target: AiIntentTarget
+          Body: string
+          Tags: string list }
+
+    let textOrEmpty (value: string) =
+        if isNull value then String.Empty else value.Trim()
+
+    let tryGetProperty (name: string) (element: JsonElement) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+
+        if element.ValueKind = JsonValueKind.Object && element.TryGetProperty(name, &value) then
+            Some value
+        else
+            None
+
+    let stringProperty name (element: JsonElement) =
+        tryGetProperty name element
+        |> Option.bind (fun value ->
+            if value.ValueKind = JsonValueKind.String then
+                value.GetString() |> textOrEmpty |> Some
+            else
+                None)
+        |> Option.defaultValue String.Empty
+
+    let stringArrayProperty name (element: JsonElement) =
+        tryGetProperty name element
+        |> Option.map (fun value ->
+            if value.ValueKind = JsonValueKind.Array then
+                value.EnumerateArray()
+                |> Seq.choose (fun item ->
+                    if item.ValueKind = JsonValueKind.String then
+                        let text = item.GetString() |> textOrEmpty
+
+                        if String.IsNullOrWhiteSpace text then None else Some text
+                    else
+                        None)
+                |> Seq.toList
+            else
+                [])
+        |> Option.defaultValue []
+
+    let tryParseAiIntent (rawValue: string) =
+        if String.IsNullOrWhiteSpace rawValue then
+            None
+        else
+            try
+                use document = JsonDocument.Parse rawValue
+                let root = document.RootElement
+                let schema = stringProperty "schema" root
+
+                if not (schema.Equals(Package.intentSchema, StringComparison.OrdinalIgnoreCase)) then
+                    None
+                else
+                    let body = stringProperty "body" root
+
+                    if String.IsNullOrWhiteSpace body then
+                        None
+                    else
+                        let targetElement =
+                            tryGetProperty "target" root
+                            |> Option.defaultValue Unchecked.defaultof<JsonElement>
+
+                        Some
+                            { Target =
+                                { Mode = stringProperty "mode" targetElement
+                                  Scope = stringProperty "scope" targetElement
+                                  ParticipantId = stringProperty "participantId" targetElement
+                                  GroupId = stringProperty "groupId" targetElement }
+                              Body = body
+                              Tags = stringArrayProperty "tags" root }
+            with _ ->
+                None
+
+    let intentScope (intent: AiIntent) =
+        let mode = intent.Target.Mode.Trim().ToLowerInvariant()
+        let scope = intent.Target.Scope.Trim().ToLowerInvariant()
+
+        match mode, scope with
+        | "public", _
+        | _, "public" -> Some(MessageFabricScope.Public(Some Domain.publicChannelName))
+        | "group", _
+        | _, "group" ->
+            let groupId = textOrEmpty intent.Target.GroupId
+
+            if String.IsNullOrWhiteSpace groupId then None else Some(MessageFabricScope.Group groupId)
+        | "participant", _ ->
+            let participantId = textOrEmpty intent.Target.ParticipantId
+
+            if String.IsNullOrWhiteSpace participantId then None else Some(MessageFabricScope.Direct participantId)
+        | "foreman", _
+        | _, "direct" ->
+            let participantId =
+                intent.Target.ParticipantId
+                |> textOrEmpty
+                |> fun value -> if String.IsNullOrWhiteSpace value then "agent.codexfs.foreman" else value
+
+            Some(MessageFabricScope.Direct participantId)
+        | _ -> Some(MessageFabricScope.Direct "agent.codexfs.foreman")
+
+    let ensureAiIntentBridgeParticipantAsync (fabric: CommSpaMessageFabric) =
+        let binding = MessageFabricBinding.defaultBinding aiIntentBridgeParticipantId
+
+        MessageFabricBinding.registerParticipantAsync
+            fabric
+            binding
+            { MessageFabricBinding.defaultRegistration with
+                DisplayName = Some "codex.fs Web AI Intent"
+                Kind = Some "user"
+                Labels = Some [ "codex.fs"; "ai-chat"; "bridge"; "web" ] }
+        :> Task
+
+    let aiIntentPages (hub: CommHub) : AppendPageDefinition list =
+        hub.ListAppendPages().Pages
+        |> List.filter (fun page -> page.Shape.Equals("codexfs-ai-chat", StringComparison.OrdinalIgnoreCase))
+
+    let aiIntentValues (hub: CommHub) (page: AppendPageDefinition) =
+        let snapshot = hub.SetsSnapshot(None, Some page.SetName, Some 500)
+
+        snapshot.Buckets
+        |> List.collect _.Values
+        |> List.filter (fun value ->
+            value.Tags
+            |> List.exists (fun tag -> tag.Equals("shape:codexfs-ai-chat", StringComparison.OrdinalIgnoreCase)))
+        |> List.sortBy (fun value -> value.CreatedAtUtc, value.ValueId)
+
+    let runAiIntentBridgeOnceAsync (hub: CommHub) (fabric: CommSpaMessageFabric) (processedValueIds: HashSet<string>) =
+        task {
+            let mutable bridged = 0
+
+            for page in aiIntentPages hub do
+                for value in aiIntentValues hub page do
+                    if processedValueIds.Add value.ValueId then
+                        match tryParseAiIntent value.Value with
+                        | None -> ()
+                        | Some intent ->
+                            match intentScope intent with
+                            | None -> ()
+                            | Some scope ->
+                                let tags =
+                                    [ yield! intent.Tags
+                                      "codex.fs"
+                                      "ai-intent-bridge"
+                                      "source:" + value.ValueId ]
+                                    |> List.distinctBy _.ToLowerInvariant()
+
+                                let! _ =
+                                    MessageFabricBinding.sendAsync
+                                        fabric
+                                        { FromParticipantId = aiIntentBridgeParticipantId
+                                          Scope = scope
+                                          Body = intent.Body
+                                          Tags = tags
+                                          CorrelationId = Some("ai-intent:" + value.ValueId)
+                                          CreatedAtUtc = Some value.CreatedAtUtc }
+
+                                bridged <- bridged + 1
+
+            return bridged
+        }
+
+    let startAiIntentBridgeLoop (_startedUtc: DateTimeOffset) (hub: CommHub) (fabric: CommSpaMessageFabric) =
+        let cancellation = new CancellationTokenSource()
+        let token = cancellation.Token
+        let processedValueIds = HashSet<string>(StringComparer.Ordinal)
+
+        let loopTask =
+            task {
+                do! ensureAiIntentBridgeParticipantAsync fabric
+
+                while not token.IsCancellationRequested do
+                    try
+                        let! _ = runAiIntentBridgeOnceAsync hub fabric processedValueIds
+                        do! Task.Delay(TimeSpan.FromSeconds 1.0, token)
+                    with
+                    | :? OperationCanceledException -> ()
+                    | _ ->
+                        do! Task.Delay(TimeSpan.FromSeconds 2.0, token)
+            }
+
+        Some(loopTask :> Task), Some cancellation
 
     let startForemanRuntimeLoop (startedUtc: DateTimeOffset) (runtime: HostRuntime.HostRuntime) (fabric: CommSpaMessageFabric) (actorFabric: CommSpaActorFabric option) =
         match actorFabric with
@@ -216,6 +432,8 @@ module HostWebShell =
                 let server = Server.start options
                 let foremanActor, foremanLoop, foremanLoopCancellation =
                     startForemanRuntimeLoop startedUtc runtime fabric server.ActorFabric
+                let aiIntentBridgeLoop, aiIntentBridgeCancellation =
+                    startAiIntentBridgeLoop startedUtc hub fabric
 
                 let extension =
                     hub.ListClientExtensions()
@@ -233,6 +451,8 @@ module HostWebShell =
                           ForemanActor = foremanActor
                           ForemanLoop = foremanLoop
                           ForemanLoopCancellation = foremanLoopCancellation
+                          AiIntentBridgeLoop = aiIntentBridgeLoop
+                          AiIntentBridgeCancellation = aiIntentBridgeCancellation
                           StartedUtc = startedUtc }
         }
 
@@ -246,7 +466,22 @@ module HostWebShell =
             | Some source -> source.Dispose()
             | None -> ()
 
+            match server.AiIntentBridgeCancellation with
+            | Some source when not source.IsCancellationRequested ->
+                source.Cancel()
+                source.Dispose()
+            | Some source -> source.Dispose()
+            | None -> ()
+
             match server.ForemanLoop with
+            | Some loop when not loop.IsCompleted ->
+                try
+                    loop.Wait(TimeSpan.FromSeconds 5.0) |> ignore
+                with _ ->
+                    ()
+            | _ -> ()
+
+            match server.AiIntentBridgeLoop with
             | Some loop when not loop.IsCompleted ->
                 try
                     loop.Wait(TimeSpan.FromSeconds 5.0) |> ignore

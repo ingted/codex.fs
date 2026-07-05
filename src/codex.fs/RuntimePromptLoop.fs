@@ -55,6 +55,8 @@ module RuntimePromptLoop =
           Timeout: TimeSpan
           /// Additional directories exposed to the engine.
           AdditionalDirectories: string list
+          /// Render Agy permission auto-approval for bounded Foreman/tool execution.
+          DangerouslySkipPermissions: bool
           /// Non-secret metadata attached to the run request.
           Metadata: Map<string, string> }
 
@@ -260,12 +262,13 @@ module RuntimePromptLoop =
                redactedDisplay = rendered.RedactedDisplay |}
 
     /// Build an Agy print-mode command for the assembled prompt.
-    let buildAgyPrintCommand executablePath workingDirectory timeout promptMarkdown =
+    let buildAgyPrintCommand executablePath workingDirectory timeout dangerouslySkipPermissions promptMarkdown =
         let agyArgs =
             { Engine.Agy.V1_0.Print.emptyArgs with
                 Print = true
                 PromptText = Some promptMarkdown
-                PrintTimeout = Some timeout }
+                PrintTimeout = Some timeout
+                DangerouslySkipPermissions = dangerouslySkipPermissions }
 
         Engine.Agy.V1_0.Print.renderCommand executablePath workingDirectory agyArgs
 
@@ -293,7 +296,12 @@ module RuntimePromptLoop =
               Metadata = input.Metadata }
 
         let rendered =
-            buildAgyPrintCommand input.ExecutablePath input.WorkingDirectory input.Timeout input.PromptPlan.Prompt.Markdown
+            buildAgyPrintCommand
+                input.ExecutablePath
+                input.WorkingDirectory
+                input.Timeout
+                input.DangerouslySkipPermissions
+                input.PromptPlan.Prompt.Markdown
 
         { Request = request
           RequestJson = requestText request

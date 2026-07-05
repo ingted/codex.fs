@@ -27,7 +27,9 @@ module SessionEngineCycle =
           /// Optional instruction prepended to the assembled prompt.
           SystemInstruction: string option
           /// Additional directories exposed to the engine.
-          AdditionalDirectories: string list }
+          AdditionalDirectories: string list
+          /// Optional Agy permission auto-approval for this bounded run.
+          AgyDangerouslySkipPermissions: bool option }
 
     /// Result returned by one bounded session cycle.
     type SingleCycleResult =
@@ -89,6 +91,7 @@ module SessionEngineCycle =
           Timeout = timeout
           SystemInstruction = options.SystemInstruction
           AdditionalDirectories = options.AdditionalDirectories
+          AgyDangerouslySkipPermissions = options.AgyDangerouslySkipPermissions |> Option.defaultValue false
           InboxLimit = runtime.Config.Ptcs.DefaultInboxLimit }
 
     let fromRuntimeResult (result: RuntimeMessageFabricCycle.RuntimeCycleResult) =

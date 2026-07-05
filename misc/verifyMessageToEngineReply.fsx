@@ -161,7 +161,8 @@ let cycleResult =
               Timeout = Some timeout
               SystemInstruction =
                 Some "This is a codex.fs verifier. Find the latest PTCS message body and reply with exactly the requested token, with no explanation."
-              AdditionalDirectories = [] }
+              AdditionalDirectories = []
+              AgyDangerouslySkipPermissions = None }
             CancellationToken.None)
 
 if cycleResult.Status <> "completed" then

@@ -335,3 +335,11 @@
 - `misc/verifyPtcsAiChatE2E.fsx` is the E2E-004 verifier. It uses FAkka.Argu and Playwright, starts LAN `ptcs-webshell`, selects Foreman in the PTCS participant list, fills `[data-testid='chat-draft']`, clicks `[data-testid='chat-send']`, waits for `codexfs-artifact-reply`, and verifies manifest/final/note files under `.codex.fs/e2e004-artifacts`.
 - Completed browser evidence is `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e004\e2e004-ptcs-ai-chat.png`; completed artifact evidence is under `G:\codex.fs\src\codex.fs\.codex.fs\e2e004-artifacts\e2e004-25765348a165`.
 - This proves the real PTCS auto-local ActorFabric path. It does not prove crash-durable sharded delivery replay or passivation recovery.
+
+## 2026-07-05 RFC-RUNTIME-0002 Foreman Control Plane And AI Intent Bridge
+
+- Product boundary mnemonic is now a documented implementation contract: MessageFabric = observable logical chat/UI/participant visibility; ActorFabric = runtime ownership/sharding/worker lifecycle; worker journal/wpcs = physical execution truth; SA MCP tools = future Foreman worker-control interface; Codex/Agy exec = bounded actor execution.
+- Agy `--print` ordering matters: all options must render before `--print`; otherwise Agy treats later tokens as prompt text. `RuntimePromptLoop.planAgyPrintExecution` now supports `DangerouslySkipPermissions`, and tests assert `--dangerously-skip-permissions` appears before the exact `--print` argument.
+- `HostWebShell.foremanRuntimeCommand` sets `AgyDangerouslySkipPermissions = Some true` for the product Foreman loop so prompts such as `hi 請用 powershell 取日期時間` can use local tools. Default host/session wrappers still default to false.
+- `HostWebShell` registers default append page `codexfs-ai-chat` and bridges `codex.fs.web.ai-intent.v1` append-page set values into `CommSpaMessageFabric` from sender `user.codexfs.web.ai-intent`. This keeps append pages as observable UI intent and MessageFabric as delivery truth.
+- Verifiers: `misc/verifyAiIntentBridge.fsx` posts a real `/pages/api/append` value and waits for Foreman artifacts; `misc/verifyForemanPowershellDate.fsx` uses Playwright on PTCS `/chat` and verifies final/note/rendered-argv artifacts. Evidence screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\e2e005\e2e005-foreman-powershell-date.png`.

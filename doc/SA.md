@@ -335,3 +335,41 @@ Config should be expressed as typed records and load from explicit file/env/prov
 | SA-TBD-003 | Compactor engine: same selected CLI, separate cheap adapter, or pluggable function. |
 | SA-TBD-004 | Resolved: first codex.fs durable handoff profile uses PTCS `CommSpaDurableMessageFabric` with volatile durable admission as the package-level ticketed boundary; production sharded crash-durable provider proof remains an OPS-002/future profile gate. |
 | SA-TBD-005 | Whether first host starts package-owned PTCS fabric or requires caller-owned attachment. |
+
+## 14. Foreman control plane and AI intent bridge
+
+`RFC-RUNTIME-0002` 固定 Foreman runtime 的產品分層，修正「AI Chat append intent 看起來像 prompt，但沒有進 Foreman inbox」的落差。
+
+```text
+MessageFabric = observable logical chat / UI / participant visibility
+ActorFabric = runtime ownership / sharding / worker lifecycle
+Worker journal / wpcs = codex physical session truth
+SA MCP tools = Foreman 控制 worker 的主要介面
+Codex/Agy exec = 每個 actor 實際做事的 bounded execution
+```
+
+### 14.1 `/chat` Foreman path
+
+PTCS classic `/chat` 是目前可執行 prompt 的 primary UI path。使用者對 `agent.codexfs.foreman` 發 direct message 後：
+
+```text
+PTCS /chat
+  -> CommSpaMessageFabric direct inbox
+  -> CommSpaActorFabric Foreman actor
+  -> RunRuntimeCycle
+  -> Agy headless bounded execution
+  -> artifact manifest/final/note
+  -> MessageFabric direct reply
+```
+
+### 14.2 `codexfs-ai-chat` append-page bridge
+
+`codexfs-ai-chat` append page 仍是 PTCS observable UI surface，但其 `codex.fs.web.ai-intent.v1` value 不得停在 append-page set stream。`HostWebShell` 應在同一個 `CommHub` 上啟動 AI intent bridge：
+
+1. 掃描 shape `codexfs-ai-chat` append pages。
+2. 讀取 page set projection 的 raw intent values。
+3. 以 `valueId` 做 in-process dedupe。
+4. 解析 target mode：Foreman/participant/public/group。
+5. 送入 `CommSpaMessageFabric`，讓 Foreman/Worker actor runtime 消費。
+
+這個 bridge 是 MessageFabric delivery adapter，不是第二套 chat fabric。

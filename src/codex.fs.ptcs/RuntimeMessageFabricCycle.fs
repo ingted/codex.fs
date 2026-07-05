@@ -35,6 +35,8 @@ module RuntimeMessageFabricCycle =
           SystemInstruction: string option
           /// Additional directories exposed to the engine.
           AdditionalDirectories: string list
+          /// Render Agy permission auto-approval for this bounded run.
+          AgyDangerouslySkipPermissions: bool
           /// Maximum messages returned by one inbox poll.
           InboxLimit: int }
 
@@ -219,6 +221,7 @@ module RuntimeMessageFabricCycle =
                           ArtifactDirectory = FileArtifactStore.runDirectory storeConfig sessionId runId
                           Timeout = options.Timeout
                           AdditionalDirectories = options.AdditionalDirectories
+                          DangerouslySkipPermissions = options.AgyDangerouslySkipPermissions
                           Metadata =
                             Map.ofList
                                 [ "cycle", "single";
