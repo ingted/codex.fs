@@ -15,6 +15,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/ingted/codex.fs</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PulseTradeCommSpaVersion>0.2.5-beta71</PulseTradeCommSpaVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +36,15 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\$(PulseTradeCommSpaVersion)\contentFiles\any\any\build')">
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\$(PulseTradeCommSpaVersion)\contentFiles\any\any\build\**\*.*"
+             LinkBase="build"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest"
+             Pack="true"
+             PackagePath="contentFiles\any\any\build\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

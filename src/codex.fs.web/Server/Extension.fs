@@ -28,7 +28,7 @@ module AIChatExtensionOptions =
     /// Default metadata JSON. It is intentionally small and secret-free.
     [<Literal>]
     let defaultMetadataJson =
-        """{"schema":"codex.fs.web.ai-chat.v1","extensionId":"codex-fs-ai-chat","defaultTarget":"foreman"}"""
+        """{"schema":"codex.fs.web.ai-chat.v1","extensionId":"codex-fs-ai-chat","intentSchema":"codex.fs.web.ai-intent.v1","defaultTarget":"foreman","defaultPerspective":"self","defaultEngine":"agy","defaultModel":"default","defaultReasoning":"high","targetModes":[{"mode":"foreman","scope":"direct","participantId":"agent.codexfs.foreman","requiresValue":false},{"mode":"participant","scope":"direct","participantId":"","requiresValue":true},{"mode":"public","scope":"public","participantId":"","requiresValue":false},{"mode":"group","scope":"group","participantId":"","requiresValue":true}],"perspectiveModes":[{"mode":"self","senderPolicy":"current-user","requiresValue":false},{"mode":"participant-readonly","senderPolicy":"read-only","requiresValue":true}],"engineOptions":[{"engine":"agy","models":["default"],"reasoning":["medium","high","xhigh"]},{"engine":"codex","models":["default","gpt-5-codex"],"reasoning":["medium","high","xhigh"]}],"invocationOptions":[{"name":"mode","values":["exec","print"]},{"name":"approval","values":["never","on-request"]}]}"""
 
     /// Default registration options.
     let defaults =
@@ -158,7 +158,7 @@ module CommHubExtensions =
                     { Shape = "codexfs-ai-chat"
                       Description = Some "codex.fs AI chat participant surface."
                       KeyPlaceholder = Some "\"agent.codexfs.foreman\""
-                      ValuePlaceholder = Some "Prompt or intent metadata"
+                      ValuePlaceholder = Some "Prompt; controls emit codex.fs.web.ai-intent.v1 JSON"
                       DefaultKey = Some "\"agent.codexfs.foreman\""
                       Tags = [ "codex.fs"; "ai-chat"; "agent" ] }
                 |> ignore

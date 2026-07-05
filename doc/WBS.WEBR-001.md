@@ -31,7 +31,7 @@ Test：`T-WEBR-001`
 | WEBR-005 | Add product `ptcs-webshell` host mode or PTCS Host composition path | WEBR-004 | 100 | Done | None | SD §9, §14.3 | T-WEBR-005 | `misc/verifyHostPtcsWebProfile.fsx` |
 | RUNTIME-002 | Extract/complete reusable runtime prompt-loop modules | RUNTIME-001;PERSIST-001 | 100 | Done | None | SD §11.3, §12 | T-RUNTIME-002 | `misc/verifyRuntimeLoopExtraction.fsx` |
 | ACTOR-002 | Implement PTCS ActorFabric Foreman/Worker proof | ACTOR-001;RUNTIME-002 | 100 | Done | None | SD §11.2, §14.3 | T-ACTOR-002 | `misc/verifyPtcsActorFabricForeman.fsx` |
-| WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 0 | Planned | None | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx` |
+| WEBR-006 | Add AI target/perspective/invocation controls in PTCS shell | WEBR-004;ACTOR-002 | 100 | Done | None | SD §14.2, §14.3 | T-WEBR-006 | `misc/verifyAiIntentControls.fsx`; Playwright PTCS webshell evidence |
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;PERSIST-001 | 0 | Planned | runtime artifact provider | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
 | E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;WEBR-007;ACTOR-002 | 0 | Planned | all implementation slices | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
@@ -126,3 +126,17 @@ UpdatedAt：2026-07-05 14:25 +08:00
 - Verifier `dotnet fsi --exec .\misc\verifyPtcsActorFabricForeman.fsx -- --no-restore` passed on 2026-07-05 14:25 +08:00.
 - This slice proves participant visibility over real PTCS ActorFabric/MessageFabric. It does not yet turn WorkerActor into a durable sharded entity or execute the runtime loop from actor delivery handlers; that remains for later hardening/E2E.
 - `WEBR-006` is unblocked for AI target/perspective/invocation controls because Foreman/Worker `agent` participants can now be produced and listed.
+
+## WEBR-006 Closeout
+
+UpdatedAt：2026-07-05 15:05 +08:00
+
+- Added WEBR-006 AI intent metadata under `CodexFs.Web.Server.AIChatExtensionOptions.defaultMetadataJson`: intent schema, defaults, target/perspective modes, engine options and invocation options.
+- Added `CodexFs.Web.Client.AIChatClient` PTCS append-input renderer for shape `codexfs-ai-chat`. It renders Foreman/Worker/Public/Group target controls, perspective controls, Agy/Codex engine selection, model, reasoning, invocation, approval, prompt and send controls.
+- The renderer emits `codex.fs.web.ai-intent.v1` JSON into PTCS append values and keeps CLI argv out of the browser. Default target is `agent.codexfs.foreman`, default engine is `agy`, and default invocation is `exec`.
+- Added explicit `web.pcslRoot` host config and health reporting; host webshell now creates the local hub with `CommHub.createEmptyWithPcslRoot` when the setting is present.
+- Added PTCS package `build/**` asset copy for host, host.tool and tests so product `/chat` can serve `/build/PulseTrade.Comm.Spa.js` from package outputs.
+- Browser evidence used real PTCS webshell on LAN IP `http://10.28.112.93:18488/page/webr006-ai8`; desktop/mobile screenshots, geometry, console and network request bodies are under `G:\codex.fs\log\20260705\webr006-host8-*`.
+- Verification passed: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyAiIntentControls.fsx -- --no-restore`.
+- Known upstream/package caveats recorded in SD/DEVOP: PTCS `Server` static initialization can touch default AppContext `pcsl` before explicit hub injection, and `/sync/ws` returned 503 in this host composition while HTTP fallback APIs remained functional.
+- `WEBR-007` remains blocked until runtime artifact/note refs are produced by the worker execution path; `E2E-004` still waits for artifact refs plus actor-invoked runtime execution.

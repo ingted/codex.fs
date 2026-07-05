@@ -131,6 +131,15 @@ PTCS Host does not own headless Codex/Agy execution. codex.fs adds that through 
 | `WEBR-008` | Remove/deprecate standalone web-chat product path and enforce guard/redirect semantics. |
 | `E2E-004` | Real browser PTCS AI chat end-to-end acceptance. |
 
+## Implementation Notes
+
+2026-07-05 WEBR-006 update:
+
+- AI target/perspective/engine/model/reasoning/invocation/approval controls are now implemented as a PTCS append-input renderer in `codex.fs.web`, not as a standalone browser chat form.
+- Browser intent payload is `codex.fs.web.ai-intent.v1`; it is appended through PTCS `/pages/api/append` and defaults to Foreman `agent.codexfs.foreman`, engine `agy`, reasoning `high`, invocation `exec`.
+- Real browser evidence on `http://10.28.112.93:18488/page/webr006-ai8` is stored under `G:\codex.fs\log\20260705\webr006-host8-*`.
+- `ptcs-webshell` deployments need a dedicated `web.pcslRoot` and copied PTCS package `build/**` assets. Current composition still returns 503 for `/sync/ws`; HTTP fallback APIs passed WEBR-006, but E2E/production acceptance must close the WebSocket route and artifact/note rendering gap.
+
 ## 驗收
 
 This RFC slice is accepted when:

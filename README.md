@@ -100,7 +100,7 @@ Existing PTCS Host lives in `G:\PulseTrade.fs\Libs\PulseTrade.Comm\src\PulseTrad
 - `https://my-ai.co.in:81/chat` is the public GitHub OAuth profile and may redirect to GitHub login by design.
 - codex.fs worker visibility in that chat UI requires the same PTCS hub/fabric, not a separate standalone package-owned host fabric.
 
-`src/codex.fs.web` is the PTCS WebSharper Bundle package for codex.fs AI chat extension work. Its current verified surface is the package/build seam, real `CommHub.useAIChat(...)` registration over PTCS extension APIs, and `codex.fs.host` `web.profile=ptcs-webshell` composition that serves PTCS classic `/chat` with the extension registered. It is not yet the full product chat E2E until ActorFabric worker visibility and AI controls are complete.
+`src/codex.fs.web` is the PTCS WebSharper Bundle package for codex.fs AI chat extension work. Its current verified surface is the package/build seam, real `CommHub.useAIChat(...)` registration over PTCS extension APIs, `codex.fs.host` `web.profile=ptcs-webshell` composition that serves PTCS classic `/chat`, and WEBR-006 AI target/perspective/invocation controls that append `codex.fs.web.ai-intent.v1` JSON through PTCS page APIs. It is not yet the full product chat E2E until worker-run artifact/note refs and actor-invoked runtime execution are complete.
 
 ## License
 

@@ -329,3 +329,12 @@
 - Boundary: this proves Foreman/Worker visibility over PTCS ActorFabric/MessageFabric. Durable sharded delivery, passivation/recovery and actor-invoked `RuntimePromptLoop` remain future hardening/E2E work.
 - Tests: `dotnet fsi --exec .\misc\verifyPtcsActorFabricForeman.fsx -- --no-restore` passed on 2026-07-05 14:25 +08:00; the verifier checks source contracts, builds/runs `codex.fs.Tests`, starts real `CommSpaActorFabric` with LAN `ClusterHost`, spawns Foreman/Worker and verifies both as `agent` participants through MessageFabric listing.
 - Traceability: updated WBS/Test detail and stock rows, SD §11.3/§14.3 and KM. `WEBR-006` is unblocked for AI target/perspective/invocation controls in the PTCS shell.
+
+## 2026-07-05 15:05 +08:00 WEBR-006 PTCS AI intent controls
+
+- Scope: implemented the PTCS classic shell AI target/perspective/invocation controls slice; no standalone `/chat` product path was added.
+- Implementation: expanded AI extension metadata, added WebSharper append-input renderer controls, added responsive/scrolling control layout, copied PTCS package `build/**` assets into host outputs, and added `web.pcslRoot` config/health support for product webshell state.
+- Behavior: real PTCS webshell can create an `AI Chat` page, add Foreman key JSON literal `"agent.codexfs.foreman"`, and append `codex.fs.web.ai-intent.v1` JSON through `/pages/api/append`.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore`, `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`, and `dotnet fsi --exec .\misc\verifyAiIntentControls.fsx -- --no-restore` passed. Browser evidence is under `G:\codex.fs\log\20260705\webr006-host8-*`.
+- Caveats: `/sync/ws` returns 503 in current host composition while HTTP fallback APIs pass; PTCS `Server` static initialization can touch default AppContext `pcsl` before explicit hub injection, so deployments must use a dedicated `web.pcslRoot`.
+- Traceability: updated SD, WBS, Test, DEVOP, README and KM. `WEBR-007` remains blocked until runtime artifact/note refs exist.

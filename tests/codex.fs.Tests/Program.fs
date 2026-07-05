@@ -3,6 +3,7 @@ module CodexFs.Tests.Program
 open System
 open System.Collections.Generic
 open System.Diagnostics
+open System.IO
 open System.Net
 open System.Net.Http
 open System.Net.NetworkInformation
@@ -342,7 +343,14 @@ assertEqual "ai chat append shape" "codexfs-ai-chat" aiChatExtension.AppendPageS
 assertEqual "ai chat append shape label" (Some "AI Chat") aiChatExtension.AppendPageShapes.Head.Label
 assertEqual "ai chat append shape badge" (Some "ai") aiChatExtension.AppendPageShapes.Head.Badge
 assertContains "ai chat metadata schema" Package.metadataSchema AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat intent schema" Package.intentSchema AIChatExtensionOptions.defaultMetadataJson
 assertContains "ai chat metadata target" "\"defaultTarget\":\"foreman\"" AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat target modes" "\"targetModes\"" AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat perspective modes" "\"perspectiveModes\"" AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat engine options" "\"engineOptions\"" AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat invocation options" "\"invocationOptions\"" AIChatExtensionOptions.defaultMetadataJson
+assertContains "ai chat xhigh reasoning" "\"xhigh\"" AIChatExtensionOptions.defaultMetadataJson
+assertTrue "ai chat metadata no cli argv" (not (AIChatExtensionOptions.defaultMetadataJson.Contains("codex exec", StringComparison.OrdinalIgnoreCase)))
 
 aiChatExtension.ScriptUrls
 |> List.iter (fun url ->
@@ -364,6 +372,13 @@ let aiChatMainAsset =
     |> Option.defaultWith (fun () -> failwith $"Expected registered main script asset for {aiChatMainUrl}.")
 
 assertTrue "ai chat main bundle content" (aiChatMainAsset.Content.Length > 100)
+assertContains "ai chat append input renderer hook" "PulseTradeRegisterAppendInputRenderer" aiChatMainAsset.Content
+assertContains "ai chat controls test id" "codexfs-ai-controls" aiChatMainAsset.Content
+assertContains "ai chat target control test id" "codexfs-ai-target-mode" aiChatMainAsset.Content
+assertContains "ai chat perspective control test id" "codexfs-ai-perspective-mode" aiChatMainAsset.Content
+assertContains "ai chat reasoning control test id" "codexfs-ai-reasoning" aiChatMainAsset.Content
+assertContains "ai chat client intent schema" Package.intentSchema aiChatMainAsset.Content
+assertTrue "ai chat client no cli argv" (not (aiChatMainAsset.Content.Contains("codex exec", StringComparison.OrdinalIgnoreCase)))
 
 let aiChatRuntimeUrl =
     AIChatAssets.assetUrl AIChatExtensionOptions.defaultAssetRoutePrefix "WebSharper.Core.JavaScript/Runtime.js"
@@ -390,7 +405,7 @@ assertTrue "ai chat template listed" (aiChatTemplates |> List.exists (fun templa
 assertEqual "ai chat template shape" "codexfs-ai-chat" aiChatTemplate.Shape
 assertEqual "ai chat template default key" (Some "\"agent.codexfs.foreman\"") aiChatTemplate.DefaultKey
 assertEqual "ai chat template key placeholder" (Some "\"agent.codexfs.foreman\"") aiChatTemplate.KeyPlaceholder
-assertEqual "ai chat template value placeholder" (Some "Prompt or intent metadata") aiChatTemplate.ValuePlaceholder
+assertEqual "ai chat template value placeholder" (Some "Prompt; controls emit codex.fs.web.ai-intent.v1 JSON") aiChatTemplate.ValuePlaceholder
 assertTrue "ai chat template tag codex" (aiChatTemplate.Tags |> List.contains "codex.fs")
 assertTrue "ai chat template tag ai-chat" (aiChatTemplate.Tags |> List.contains "ai-chat")
 assertTrue "ai chat template tag agent" (aiChatTemplate.Tags |> List.contains "agent")
@@ -447,6 +462,7 @@ assertEqual "host advertise uri" "http://192.168.10.20:8788" hostConfig.ControlE
 assertEqual "host loopback false" false hostConfig.ControlEndpoint.AllowLoopbackOnly
 assertEqual "host default web shell profile" "control-only" hostConfig.WebShell.Profile
 assertEqual "host default web shell advertise" "http://127.0.0.1:8897" hostConfig.WebShell.AdvertiseUri
+assertEqual "host default web shell pcsl root" (Some ".codex.fs/ptcs-webshell/pcsl") hostConfig.WebShell.PcslRoot
 assertEqual "host swagger prefix" (Some "docs") hostConfig.ApiDocs.SwaggerRoutePrefix
 assertEqual "host fabric mode" "caller-owned-cluster" hostConfig.Ptcs.FabricMode
 assertEqual "host reply participant" (Some "agent.codexfs.host") hostConfig.Ptcs.ReplyParticipantId
@@ -534,6 +550,7 @@ let hostControlAddress =
 
 let webShellPort = reserveTcpPort ()
 let webShellAdvertiseUri = $"http://{hostControlAddress}:{webShellPort}"
+let webShellPcslRoot = Path.Combine(".codex.fs", "tests", "webr006-webshell-" + Guid.NewGuid().ToString("N"))
 
 let webShellSettings =
     hostSettings
@@ -546,6 +563,7 @@ let webShellSettings =
     |> Map.add "web.advertiseUri" webShellAdvertiseUri
     |> Map.add "web.allowLoopbackOnly" "false"
     |> Map.add "web.actorFabric" "disabled"
+    |> Map.add "web.pcslRoot" webShellPcslRoot
 
 let webShellLoad = CodexFs.HostConfig.loadFromMap webShellSettings
 assertTrue "web shell config loaded" webShellLoad.Config.IsSome
@@ -567,14 +585,18 @@ try
     assertEqual "web shell chat uri" $"{webShellAdvertiseUri}/chat" webShellServer.Contract.ChatUri
     assertEqual "web shell health uri" $"{webShellAdvertiseUri}/healthz" webShellServer.Contract.HealthUri
     assertEqual "web shell extension id" Package.extensionId webShellServer.Contract.ExtensionId
+    assertEqual "web shell pcsl root" (Some webShellPcslRoot) webShellServer.Contract.PcslRoot
     assertTrue "web shell scripts" (webShellServer.Contract.ScriptUrls |> List.exists (fun url -> url.EndsWith("CodexFs.Web.js", StringComparison.OrdinalIgnoreCase)))
     assertEqual "web shell has message fabric" true webShellServer.Contract.HasMessageFabric
     assertContains "web shell message fabric type" "PulseTrade.Comm.Spa.CommSpaMessageFabric" (webShellServer.Contract.MessageFabricType |> Option.defaultValue "")
+    assertTrue "web shell pcsl root exists" (Directory.Exists(Path.GetFullPath webShellPcslRoot))
 
     use webShellHttp = new HttpClient()
     let webShellChatHtml = runTask (webShellHttp.GetStringAsync webShellServer.Contract.ChatUri)
     assertContains "web shell ptcs extension manifest" "ptc-comm-client-extensions" webShellChatHtml
     assertContains "web shell ai extension manifest" Package.extensionId webShellChatHtml
+    assertContains "web shell ai intent metadata" Package.intentSchema webShellChatHtml
+    assertContains "web shell ai target modes" "targetModes" webShellChatHtml
     assertContains "web shell ptcs bundle" "/build/PulseTrade.Comm.Spa.js" webShellChatHtml
     assertTrue "web shell not guard page" (not (webShellChatHtml.Contains("Use PTCS chat", StringComparison.OrdinalIgnoreCase)))
     assertTrue "web shell not diagnostics page" (not (webShellChatHtml.Contains("diagnostics session send", StringComparison.OrdinalIgnoreCase)))
@@ -585,14 +607,19 @@ try
 
     let webShellMainScriptText = runTask (webShellHttp.GetStringAsync(webShellServer.Contract.AdvertiseUri.TrimEnd('/') + webShellMainScript))
     assertTrue "web shell main script content" (webShellMainScriptText.Length > 100)
+    assertContains "web shell main controls" "codexfs-ai-controls" webShellMainScriptText
+    assertContains "web shell main target control" "codexfs-ai-target-mode" webShellMainScriptText
+    assertContains "web shell main renderer hook" "PulseTradeRegisterAppendInputRenderer" webShellMainScriptText
 
     let webShellHealth = runTask (webShellHttp.GetStringAsync webShellServer.Contract.HealthUri)
     assertContains "web shell health service" "PulseTrade.Comm.Spa" webShellHealth
+    assertContains "web shell health pcsl root" $"webShellPcslRoot={webShellPcslRoot}" (CodexFs.Host.HostRuntime.healthSummary webShellServer.Runtime)
 finally
     let stoppedWebShell = runTask (CodexFs.Host.HostWebShell.stopAsync CancellationToken.None webShellServer)
     assertEqual "web shell stopped" CodexFs.Host.HostRuntime.Stopped stoppedWebShell.Status
 
 printfn "TC-WEBR-005 host PTCS webshell profile passed"
+printfn "TC-WEBR-006 AI intent controls passed"
 
 let hostControlPort = reserveTcpPort ()
 let hostControlAdvertiseUri = $"http://{hostControlAddress}:{hostControlPort}"
@@ -1046,6 +1073,7 @@ assertTrue "host tool start no 127" (not (hostToolStartText.Contains("127.", Str
 
 let hostToolWebShellPort = reserveTcpPort ()
 let hostToolWebShellAdvertiseUri = $"http://{hostControlAddress}:{hostToolWebShellPort}"
+let hostToolWebShellPcslRoot = Path.Combine(".codex.fs", "tests", "host-tool-webshell-" + Guid.NewGuid().ToString("N"))
 
 let hostToolWebShellArgs =
     [| yield "start"
@@ -1063,6 +1091,8 @@ let hostToolWebShellArgs =
        yield "web.allowLoopbackOnly=false"
        yield "--setting"
        yield "web.actorFabric=disabled"
+       yield "--setting"
+       yield $"web.pcslRoot={hostToolWebShellPcslRoot}"
        yield "--setting"
        yield $"control.bindAddress={hostControlAddress}"
        yield "--setting"
@@ -1085,6 +1115,7 @@ assertContains "host tool webshell running" "status=running" hostToolWebShellTex
 assertContains "host tool webshell profile" "profile=ptcs-webshell" hostToolWebShellText
 assertContains "host tool webshell chat" $"chatUri={hostToolWebShellAdvertiseUri}/chat" hostToolWebShellText
 assertContains "host tool webshell extension" $"extensionId={Package.extensionId}" hostToolWebShellText
+assertContains "host tool webshell pcsl root" $"webShellPcslRoot={hostToolWebShellPcslRoot}" hostToolWebShellText
 assertContains "host tool webshell stopped" "status=stopped" hostToolWebShellText
 assertTrue "host tool webshell no localhost" (not (hostToolWebShellText.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
 assertTrue "host tool webshell no 127" (not (hostToolWebShellText.Contains("127.", StringComparison.Ordinal)))

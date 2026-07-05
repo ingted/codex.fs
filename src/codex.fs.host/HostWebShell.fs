@@ -1,6 +1,7 @@
 namespace CodexFs.Host
 
 open System
+open System.IO
 open System.Threading
 open System.Threading.Tasks
 open CodexFs
@@ -29,6 +30,8 @@ module HostWebShell =
           ScriptUrls: string list
           /// PTCS actor fabric mode used for this shell.
           ActorFabric: string
+          /// Optional PCSL root used by the shell hub.
+          PcslRoot: string option
           /// True when the runtime has a MessageFabric connected to the shell hub.
           HasMessageFabric: bool
           /// Concrete MessageFabric type name.
@@ -83,6 +86,7 @@ module HostWebShell =
           ExtensionId = Package.extensionId
           ScriptUrls = []
           ActorFabric = webShell.ActorFabric
+          PcslRoot = webShell.PcslRoot
           HasMessageFabric = health.HasMessageFabric
           MessageFabricType = health.MessageFabricType }
 
@@ -104,8 +108,15 @@ module HostWebShell =
         | "disabled" -> Server.withoutActorFabric options
         | _ -> options
 
-    let registeredHub () =
-        let hub = CommHub.createEmpty()
+    let registeredHub (config: HostConfig.HostConfig) =
+        let hub =
+            match config.WebShell.PcslRoot with
+            | Some root ->
+                let fullRoot = Path.GetFullPath root
+                Directory.CreateDirectory fullRoot |> ignore
+                CommHub.createEmptyWithPcslRoot fullRoot
+            | None -> CommHub.createEmpty()
+
         hub.useAIChat() |> ignore
         hub
 
@@ -123,7 +134,7 @@ module HostWebShell =
             else
                 cancellationToken.ThrowIfCancellationRequested()
 
-                let hub = registeredHub ()
+                let hub = registeredHub runtime.Config
                 let fabric = CommSpaMessageFabric.create hub
                 let runtime = HostRuntime.startWithMessageFabric startedUtc fabric runtime
                 let options = serverOptions runtime.Config hub

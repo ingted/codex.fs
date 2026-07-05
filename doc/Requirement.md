@@ -175,6 +175,12 @@ Product Web profile 必須：
 - 讓 ActorFabric SessionActor/WorkerActor 負責 AI prompt-loop，而不是 browser 或 diagnostics route；
 - 用 Playwright 驗證 `/chat` 可見 tabs、participant list、thread/session/composer、AI controls 與 artifact/note refs。
 
+Current WEBR-006 status:
+
+- AI target/perspective/engine/model/reasoning/invocation/approval controls are implemented in the PTCS append renderer and verified through real browser evidence.
+- Product E2E remains incomplete until WorkerActor invokes runtime and browser reply rendering includes artifact/note refs.
+- `ptcs-webshell` deployments must set a dedicated `web.pcslRoot` and serve PTCS package `build/**` assets from host outputs.
+
 ### R-002 CLI client
 
 `codex.fs.cli` package 安裝後提供 `codex.fs.cli` command，`codex.fs.tool` package 提供相同 CLI surface 的 `codex.fs` short alias。兩者必須能在 terminal 中：

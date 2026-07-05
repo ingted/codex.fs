@@ -38,7 +38,9 @@ module HostConfig =
           /// Permit loopback bind/advertise addresses for single-node development.
           AllowLoopbackOnly: bool
           /// PTCS actor fabric mode for the web shell, for example `auto-local` or `disabled`.
-          ActorFabric: string }
+          ActorFabric: string
+          /// Optional PCSL root for the PTCS hub state used by the web shell.
+          PcslRoot: string option }
 
     /// Swagger/OpenAPI documentation settings for future host HTTP endpoints.
     type ApiDocsConfig =
@@ -142,7 +144,8 @@ module HostConfig =
           Port = Some 8897
           AdvertiseUri = "http://127.0.0.1:8897"
           AllowLoopbackOnly = true
-          ActorFabric = "auto-local" }
+          ActorFabric = "auto-local"
+          PcslRoot = Some ".codex.fs/ptcs-webshell/pcsl" }
 
     /// Default API documentation settings.
     let defaultApiDocs =
@@ -195,6 +198,7 @@ module HostConfig =
           "web.advertiseuri"
           "web.allowloopbackonly"
           "web.actorfabric"
+          "web.pcslroot"
           "apidocs.generatexmldocs"
           "apidocs.generateopenapi"
           "apidocs.exposeswaggerui"
@@ -447,6 +451,11 @@ module HostConfig =
             | _ -> addIssue "web.actorfabric" IssueError "Web shell actor fabric must be auto-local or disabled." issues
 
         let issues =
+            match config.WebShell.PcslRoot with
+            | Some value when String.IsNullOrWhiteSpace value -> addIssue "web.pcslroot" IssueError "Web shell PCSL root must not be blank when supplied." issues
+            | _ -> issues
+
+        let issues =
             if String.IsNullOrWhiteSpace config.Ptcs.FabricMode then
                 addIssue "ptcs.fabricmode" IssueError "PTCS fabric mode must not be blank." issues
             else
@@ -535,13 +544,18 @@ module HostConfig =
             (web4, issues8)
             ||> applySetting "web.allowloopbackonly" parseBool (fun current value -> { current with AllowLoopbackOnly = value }) normalized
 
-        let web, issues10 =
+        let web6, issues10 =
             (web5, issues9)
             ||> applyStringSetting "web.actorfabric" (fun current value -> { current with ActorFabric = value })
                     normalized
 
+        let web, issues10b =
+            (web6, issues10)
+            ||> applyStringSetting "web.pcslroot" (fun current value -> { current with PcslRoot = optionalNonBlank value })
+                    normalized
+
         let api1, issues11 =
-            (api0, issues10)
+            (api0, issues10b)
             ||> applySetting "apidocs.generatexmldocs" parseBool (fun current value -> { current with GenerateXmlDocs = value }) normalized
 
         let api2, issues12 =

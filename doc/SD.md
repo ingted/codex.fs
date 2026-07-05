@@ -1479,7 +1479,7 @@ Required project shape:
 
 | Project | Required shape |
 | --- | --- |
-| `codex.fs.web` | WebSharper Bundle project like `PulseTrade.Comm.Spa.Dynamic`; exact PTCS package reference; generated assets under `wwwroot/js`; no hand-written JavaScript. |
+| `codex.fs.web` | WebSharper Bundle project like `PulseTrade.Comm.Spa.Dynamic`; exact PTCS package reference; generated assets under `wwwroot/js`; no hand-written JavaScript files. Minimal `JS.Inline` is allowed only for PTCS global renderer hook interop. |
 | `codex.fs.web.server` or server module | `useAIChat(...)` registration, extension metadata, script assets and fixed JSON handlers over `CommHub`. |
 | `codex.fs.host` | control-only mode plus product `ptcs-webshell` composition mode; product mode must expose PTCS classic shell. |
 | `codex.fs.actor` | PTCS ActorFabric Foreman/Worker participants visible in PTCS participant list. |
@@ -1517,7 +1517,7 @@ Verifier: `misc/verifyPtcsClassicShellInventory.fsx`; detail: `doc/WEBR-002.PTCS
 | Dependencies | Exact `PulseTrade.Comm.Spa [0.2.5-beta71]` and `WebSharper.FSharp 10.1.5.674`; no ProjectReference backdoor to PTCS source. |
 | Bundle output | `WebSharperBundleOutputDir=wwwroot\js`; generated files are tracked package content like `PulseTrade.Comm.Spa.Dynamic`, while WebSharper `websharper.log` is ignored. |
 | Server seam | `CodexFs.Web.Server.CommHubExtensions.useAIChat(...)` registers fixed metadata JSON handler, generated script assets, extension manifest and append-page shape template over real PTCS `CommHub` APIs. |
-| Client seam | `CodexFs.Web.Client.AIChatClient.Main` is the WebSharper SPA entrypoint; full controls remain WEBR-006 after ActorFabric participants are visible. |
+| Client seam | `CodexFs.Web.Client.AIChatClient.Main` is the WebSharper SPA entrypoint; WEBR-006 adds the PTCS append-input renderer for AI target/perspective/invocation controls. |
 | Build stability | `wsconfig.json` sets `buildService=false` and `buildServiceLogging=false` because WebSharper build service can leave `websharper.log` locked/inaccessible on Windows. |
 
 Verifier: `misc/verifyCodexFsWebBundle.fsx`; passed 2026-07-05 11:07 +08:00 and checks nupkg `content/wwwroot/js` assets. Regression build/test also passed: `dotnet build .\codex.fs.slnx`; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore`.
@@ -1538,9 +1538,9 @@ Verifier: `misc/verifyUseAIChatRegistration.fsx`; passed 2026-07-05 11:37 +08:00
 
 | Area | Implemented contract |
 | --- | --- |
-| Host config | `HostConfig.WebShell` adds explicit `web.profile=control-only|ptcs-webshell`, `web.bindAddress`, `web.port`, `web.advertiseUri`, `web.allowLoopbackOnly`, and `web.actorFabric`. Control-only remains the default. |
-| Runtime health | `HostRuntime.healthSummary` reports webshell profile without leaking default loopback URI when profile is `control-only`; `ptcs-webshell` reports advertised chat binding and actor fabric mode. |
-| Product composition | `CodexFs.Host.HostWebShell.tryStartAsync` creates one PTCS `CommHub`, registers `useAIChat()`, creates `CommSpaMessageFabric` from that same hub, and starts PTCS `Server.start` for classic `/chat`. |
+| Host config | `HostConfig.WebShell` adds explicit `web.profile=control-only|ptcs-webshell`, `web.bindAddress`, `web.port`, `web.advertiseUri`, `web.allowLoopbackOnly`, `web.actorFabric`, and `web.pcslRoot`. Control-only remains the default. |
+| Runtime health | `HostRuntime.healthSummary` reports webshell profile without leaking default loopback URI when profile is `control-only`; `ptcs-webshell` reports advertised chat binding, actor fabric mode and explicit PCSL root when present. |
+| Product composition | `CodexFs.Host.HostWebShell.tryStartAsync` creates one PTCS `CommHub`, registers `useAIChat()`, creates `CommSpaMessageFabric` from that same hub, and starts PTCS `Server.start` for classic `/chat`; product deployments must set a dedicated `web.pcslRoot` outside tool/build output. |
 | Host tool | `codex.fs.host start --setting web.profile=ptcs-webshell ...` starts the product PTCS shell; default `start` still launches the ASP.NET control host. |
 | Boundary | The legacy ASP.NET `/chat` guard is not treated as product chat. The product path is the PTCS Suave `/chat` server returned by `HostWebShell`. |
 
@@ -1556,6 +1556,22 @@ Verifier: `misc/verifyHostPtcsWebProfile.fsx`; passed 2026-07-05 12:32 +08:00 an
 | Regression verifier | `misc/verifyNoStandaloneChatProductPath.fsx` checks source markers and runs full tests to prevent guard/diagnostics routes from being treated as product chat. |
 
 Verifier: `misc/verifyNoStandaloneChatProductPath.fsx`; passed 2026-07-05 13:03 +08:00.
+
+`WEBR-006` implementation result:
+
+| Area | Implemented contract |
+| --- | --- |
+| Metadata | `AIChatExtensionOptions.defaultMetadataJson` now declares schema `codex.fs.web.ai-chat.v1`, intent schema `codex.fs.web.ai-intent.v1`, defaults, target/perspective modes, engine options and invocation options. |
+| PTCS renderer | `CodexFs.Web.Client.AIChatClient.Main` registers `codexfs-ai-chat-append-input` through PTCS `PulseTradeRegisterAppendInputRenderer` for append shape `codexfs-ai-chat`. |
+| Controls | The renderer exposes target mode/id, perspective mode/id, engine, model, reasoning, invocation mode, approval, prompt and send controls. Default target is Foreman (`agent.codexfs.foreman`), default engine is Agy and default invocation is `exec`. |
+| Message payload | Send emits an append value with schema `codex.fs.web.ai-intent.v1`; `valueText` contains target/perspective/engine/invocation/body/tags JSON and `keyJson` stays the selected PTCS key. The browser never renders or sends CLI argv. |
+| Layout | Controls use a responsive WebSharper-generated grid with fixed input heights, white background and inner scroll when PTCS mobile append area is height-constrained. Desktop and mobile evidence is recorded under `G:\codex.fs\log\20260705\webr006-host8-*`. |
+| Package assets | `codex.fs.host`, `codex.fs.host.tool` and tests copy PTCS package `build/**` assets from `PulseTrade.Comm.Spa [0.2.5-beta71]`; otherwise PTCS classic `/chat` loads but `/build/PulseTrade.Comm.Spa.js` returns 404. |
+| PTCS key rule | PTCS append-page `add-key` expects `keyJson` to be a JSON literal such as `"agent.codexfs.foreman"`. Plain `agent.codexfs.foreman` is a 400 Bad Request because it is not valid JSON. |
+| PCSL caveat | `web.pcslRoot` creates the codex.fs hub with `CommHub.createEmptyWithPcslRoot`; however PTCS package `Server` currently has a static initializer path that can read the default AppContext `pcsl` before the explicit hub is passed. If default tool/build-output PCSL is corrupted, product host startup can fail before codex.fs configuration runs. |
+| WebSocket caveat | `ptcs-webshell` currently serves the classic shell and HTTP fallback APIs; `/sync/ws` returned 503 in WEBR-006 browser evidence. HTTP fallback still allowed page create, add-key and append, but production UX should fix the WebSocket route before high-volume interactive use. |
+
+Verifier: `misc/verifyAiIntentControls.fsx`; passed 2026-07-05 14:58 +08:00 after `dotnet build .\codex.fs.slnx --no-restore`, full `codex.fs.Tests`, and Playwright evidence on `http://10.28.112.93:18488/page/webr006-ai8`.
 
 ## 15. Testing design preview
 

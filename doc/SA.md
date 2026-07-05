@@ -128,6 +128,8 @@ Prompt assembly therefore belongs to runtime/session actor behavior. `codex.fs.h
 
 `WEBR-001` / `RFC-WEB-0002` supersedes any implementation interpretation that control-only `codex.fs.host` web is enough. Product Web must be PTCS classic shell plus codex.fs WebSharper Bundle and ActorFabric-backed AI workers. `codex.fs.host` may keep control-only mode, but product Web mode must either compose PTCS Host shell or run a PTCS webshell profile with the same visible layout and fabric semantics.
 
+`WEBR-006` completes the first PTCS shell AI control surface: browser controls append `codex.fs.web.ai-intent.v1` values through PTCS page APIs, default to Foreman `agent.codexfs.foreman`, and do not render CLI argv. Remaining product E2E work is actor-invoked runtime execution plus artifact/note ref rendering. `ptcs-webshell` deployments need a dedicated `web.pcslRoot`; current host composition uses HTTP fallback APIs successfully while `/sync/ws` still needs production hardening.
+
 ## 4. Runtime components
 
 | Component | Responsibility |

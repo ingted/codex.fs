@@ -297,3 +297,13 @@
 - The proof uses a real `CommSpaActorFabric` with LAN `ClusterHost` and the PTCS-owned `ActorSystem`; it is not an in-memory fake mailbox or standalone HTTP endpoint.
 - `misc/verifyPtcsActorFabricForeman.fsx` is the ACTOR-002 verifier. It checks source contracts, builds/runs `codex.fs.Tests`, spawns Foreman/Worker and verifies both through `CommSpaMessageFabric.ListParticipantsAsync`.
 - This slice unblocks WEBR-006 controls, but does not yet provide production durable sharded delivery or actor-invoked runtime prompt loop execution.
+
+## 2026-07-05 WEBR-006 PTCS AI Intent Controls
+
+- `CodexFs.Web.Client.AIChatClient` registers the PTCS append-input renderer `codexfs-ai-chat-append-input` for shape `codexfs-ai-chat`; controls are generated from F# WebSharper and use only minimal `JS.Inline` for the PTCS global renderer hook.
+- Browser controls emit `codex.fs.web.ai-intent.v1` JSON into PTCS append values. Default target is Foreman `agent.codexfs.foreman`, default engine is `agy`, reasoning `high`, invocation `exec`, approval `never`.
+- PTCS append-page `add-key` expects `keyJson` as a JSON literal, for example `"agent.codexfs.foreman"`. Sending plain `agent.codexfs.foreman` produces HTTP 400 because the server parses it as invalid JSON.
+- Product webshell deployments need `PulseTrade.Comm.Spa [0.2.5-beta71]` package `build/**` assets copied into host outputs; otherwise `/build/PulseTrade.Comm.Spa.js` is 404 even when `/chat` HTML is served.
+- Use `web.pcslRoot=<dedicated service data path>` for product PTCS webshell state. PTCS `Server` static initialization can still touch default AppContext `pcsl` before explicit hub injection, so corrupted build-output `pcsl` can fail startup before codex.fs config runs.
+- WEBR-006 browser evidence shows `/sync/ws` returning 503 in the current host composition while HTTP fallback APIs succeed for register-page, add-key and append. Production should fix WebSocket routing before high-volume usage.
+- Responsive renderer rule: controls use a white, scrollable, auto-fit grid. Desktop evidence has all controls visible; mobile evidence has no horizontal overflow and the controls panel scrolls within PTCS' constrained append region.

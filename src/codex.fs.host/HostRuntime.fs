@@ -55,6 +55,8 @@ module HostRuntime =
           WebShellAllowLoopbackOnly: bool
           /// PTCS actor fabric mode selected for the web shell.
           WebShellActorFabric: string
+          /// Optional PCSL root used by the PTCS web shell hub.
+          WebShellPcslRoot: string option
           /// PTCS fabric mode selected by config.
           PtcsFabricMode: string
           /// Prefix used for PTCS session participants.
@@ -138,6 +140,7 @@ module HostRuntime =
           WebShellAdvertiseUri = config.WebShell.AdvertiseUri
           WebShellAllowLoopbackOnly = config.WebShell.AllowLoopbackOnly
           WebShellActorFabric = config.WebShell.ActorFabric
+          WebShellPcslRoot = config.WebShell.PcslRoot
           PtcsFabricMode = config.Ptcs.FabricMode
           PtcsSessionParticipantPrefix = config.Ptcs.SessionParticipantPrefix
           PtcsDefaultInboxLimit = config.Ptcs.DefaultInboxLimit
@@ -158,6 +161,7 @@ module HostRuntime =
         let webShellAdvertiseUriText = if webShellEnabled then current.WebShellAdvertiseUri else String.Empty
         let webShellAllowLoopbackOnlyText = if webShellEnabled then string current.WebShellAllowLoopbackOnly else String.Empty
         let webShellActorFabricText = if webShellEnabled then current.WebShellActorFabric else String.Empty
+        let webShellPcslRootText = if webShellEnabled then current.WebShellPcslRoot |> Option.defaultValue String.Empty else String.Empty
 
         [ $"status={formatStatus current.Status}"
           $"defaultEngine={current.DefaultEngine}"
@@ -170,6 +174,7 @@ module HostRuntime =
           $"webShellAdvertiseUri={webShellAdvertiseUriText}"
           $"webShellAllowLoopbackOnly={webShellAllowLoopbackOnlyText}"
           $"webShellActorFabric={webShellActorFabricText}"
+          $"webShellPcslRoot={webShellPcslRootText}"
           $"ptcsFabricMode={current.PtcsFabricMode}"
           $"ptcsSessionParticipantPrefix={current.PtcsSessionParticipantPrefix}"
           $"ptcsDefaultInboxLimit={current.PtcsDefaultInboxLimit}"

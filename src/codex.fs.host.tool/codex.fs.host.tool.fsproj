@@ -18,6 +18,7 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>codex.fs.host</ToolCommandName>
+    <PulseTradeCommSpaVersion>0.2.5-beta71</PulseTradeCommSpaVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +35,13 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\$(PulseTradeCommSpaVersion)\contentFiles\any\any\build')">
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\$(PulseTradeCommSpaVersion)\contentFiles\any\any\build\**\*.*"
+             LinkBase="build"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

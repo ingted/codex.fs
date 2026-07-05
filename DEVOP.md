@@ -81,6 +81,32 @@ C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe start `
   --setting apiDocs.swaggerRoutePrefix=docs
 ```
 
+The command above starts the ASP.NET control host. Product browser chat must use the PTCS webshell profile:
+
+```powershell
+C:\Users\Administrator\.dotnet\tools\codex.fs.host.exe start `
+  --setting web.profile=ptcs-webshell `
+  --setting web.bindAddress=10.28.112.93 `
+  --setting web.port=10482 `
+  --setting web.advertiseUri=http://10.28.112.93:10482 `
+  --setting web.allowLoopbackOnly=false `
+  --setting web.actorFabric=disabled `
+  --setting web.pcslRoot=G:\codex.fs\.codex.fs\ptcs-webshell-pcsl
+```
+
+`web.pcslRoot` must be a dedicated service data path. Do not rely on `AppContext.BaseDirectory\pcsl` under a dotnet tool output or `bin\Debug`; PTCS package `Server` can touch the default PCSL path during static initialization before codex.fs passes the explicit hub. If startup fails with `Unsupported fCell2 protobuf tag: 0`, inspect the default tool/build-output `pcsl` and the configured `web.pcslRoot`; archive or remove only verified build-output state after confirming the resolved absolute path.
+
+The product PTCS webshell must serve these URLs:
+
+| URL | 用途 | 必須狀態 |
+| --- | --- | --- |
+| `http://<lan-ip>:<web-port>/chat` | PTCS classic shell with tabs, participant/key list, page/session area and append controls | HTTP 200 HTML |
+| `http://<lan-ip>:<web-port>/build/PulseTrade.Comm.Spa.js` | PTCS package core script copied from package `build/**` | HTTP 200 JavaScript |
+| `http://<lan-ip>:<web-port>/client-extensions/codexfs-ai-chat/js/CodexFs.Web.js` | codex.fs WebSharper bundle | HTTP 200 JavaScript |
+| `http://<lan-ip>:<web-port>/healthz` | PTCS webshell health | HTTP 200 JSON |
+
+Current WEBR-006 host composition uses PTCS HTTP fallback APIs successfully for page create, key add and append. `/sync/ws` returned HTTP 503 in the browser console during verification; fix the WebSocket route before treating this profile as high-volume production chat.
+
 ## 5. Availability Verification
 
 Minimum command checks:
@@ -107,6 +133,7 @@ Browser gate:
 - Submit a diagnostics prompt with blank or `foreman` session and verify the response shows `Accepted` plus the expected `targetParticipantId`.
 - Open `http://10.28.112.93:10481/docs/index.html`.
 - Verify Swagger UI lists root/health/session/foreman/diagnostics endpoints.
+- Start a separate `ptcs-webshell` profile on a LAN IP and verify `/chat` shows PTCS classic tabs plus a participant/key list. Create an `AI Chat` page, add key JSON literal `"agent.codexfs.foreman"`, send a prompt, and verify `/pages/api/append` stores a `codex.fs.web.ai-intent.v1` value.
 
 Current evidence:
 
