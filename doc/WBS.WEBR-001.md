@@ -36,6 +36,7 @@ Test：`T-WEBR-001`
 | WEBR-007 | Render artifact/note refs in PTCS shell | WEBR-006;ACTOR-003;PERSIST-001 | 100 | Done | None | SD §12, §14.3 | T-WEBR-007 | `misc/verifyArtifactRefsInPtcsShell.fsx` |
 | WEBR-008 | Remove/deprecate standalone web-chat product path | WEBR-005 | 100 | Done | None | SD §9, §14.3 | T-WEBR-008 | `misc/verifyNoStandaloneChatProductPath.fsx` |
 | E2E-004 | Real PTCS classic browser AI chat E2E | WEBR-006;ACTOR-003;WEBR-007 | 100 | Done | None | SD §14.3 | T-E2E-004 | `misc/verifyPtcsAiChatE2E.fsx` |
+| WEBR-010 | AI Chat same-page output projection | WEBR-009;WEBR-007 | 100 | Done | None | SD §14.4.2 | T-WEBR-010 | `misc/verifyAiIntentOutputProjection.fsx` |
 
 ## Cut / Rewrite Notes
 

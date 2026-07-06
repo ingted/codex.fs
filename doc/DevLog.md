@@ -382,3 +382,26 @@
 - Implementation: AI intent metadata now becomes MessageFabric tags; runtime selects Agy or Codex per batch; Codex exec writes prompt through stdin, stores `--output-last-message`, resolves native Windows `codex.exe`, normalizes `default`/`gpt-5-codex` to no `--model`, and ignores self-authored replies.
 - Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; `misc/verifyAiIntentBridge.fsx` passed with Codex intent token `CODEXFS_BRIDGE_c5a847a2698c`.
 - Evidence: final artifact `G:\codex.fs\src\codex.fs\.codex.fs\webr009-artifacts\webr009-c5a847a2698c\sessions\foreman\runs\run-20260705135834033-f0d6b35d\final.md`; rendered argv `G:\codex.fs\src\codex.fs\.codex.fs\webr009-artifacts\webr009-c5a847a2698c\sessions\foreman\runs\run-20260705135834033-f0d6b35d\rendered-argv.json`.
+
+## 2026-07-06 08:36 +08:00 RFC-WEB-0004 AI intent output projection
+
+- Scope: accepted the product bugfix RFC for AI Chat same-page output projection.
+- Decision: `Target=Foreman`, `Invocation=Exec`, `Approval=Never` is valid; not seeing output is a UI/product bug, not user option error.
+- Planning: added `doc/RFC/RFC-WEB-0004.ai-intent-output-projection.md`, `doc/WBS.WEBR-010.md`, `doc/Test.WEBR-010.md`, and stock REQ/SA/SD/WBS/Test updates.
+- Acceptance: `misc/verifyAiIntentOutputProjection.fsx` must use Playwright against real PTCS webshell and fail raw JSON-only display.
+
+## 2026-07-06 09:24 +08:00 WEBR-010 AI intent output projection implementation
+
+- Scope: fixed the same-page AI Chat output bug; raw intent JSON is no longer the only user-visible result after Send.
+- Root cause: browser append-page values from PTCS sharded stream were not fully included by the bridge scan, and the AI append renderer did not project the service participant reply thread `user.codexfs.web.ai-intent <-> agent.codexfs.foreman` back into the append page.
+- Implementation: `CodexFs.Web.Client.AIChatClient` now renders `codexfs-ai-output*` controls, polls `/chat/api/thread`, labels the projected thread, parses full runtime reply bodies, and reuses artifact-card rendering; `HostWebShell.aiIntentValues` merges sharded append-page streams; `RuntimeMessageFabricCycle` now reads Agy final artifacts through stored artifact absolute paths instead of treating manifest reference paths as filesystem paths.
+- Tests: `dotnet build .\codex.fs.slnx --no-restore` passed; `dotnet run --project .\tests\codex.fs.Tests\codex.fs.Tests.fsproj --no-restore` passed; `dotnet fsi --exec .\misc\verifyAiIntentOutputProjection.fsx -- --repo-root "G:/codex.fs/src/codex.fs" --configuration Debug --no-restore --host-run-seconds 480` passed.
+- Evidence: screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\webr010\webr010-ai-intent-output-projection.png`; manifest `G:\codex.fs\src\codex.fs\.codex.fs\webr010-artifacts\webr010-19a8c6204ffe\sessions\foreman\runs\run-20260706012130613-7c68a5ce\manifest.json`; final `G:\codex.fs\src\codex.fs\.codex.fs\webr010-artifacts\webr010-19a8c6204ffe\sessions\foreman\runs\run-20260706012130613-7c68a5ce\final.md`; rendered argv `G:\codex.fs\src\codex.fs\.codex.fs\webr010-artifacts\webr010-19a8c6204ffe\sessions\foreman\runs\run-20260706012130613-7c68a5ce\rendered-argv.json`.
+- Boundary: live 18488 handoff still needs deployment restart/health verification after this implementation closeout.
+
+## 2026-07-06 09:42 +08:00 WEBR-010 live 18488 handoff and layout fix
+
+- Scope: restarted live `http://10.28.112.93:18488` from copied runtime output and verified the user-facing AI Chat page, not just a temporary verifier host.
+- UI fix: changed `codexfs-ai-controls` to flex-column with nested `codexfs-ai-fields` grid. The previous single-grid layout let full-span Send/action and output items overlap in PTCS append-page rendering.
+- Verifier: `misc/verifyAiIntentOutputProjection.fsx` now supports `--existing-host-url` / `--existing-artifact-root` and includes a bounding-box gate for Send/output non-overlap.
+- Live evidence: process path `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260706094118\app\codex.fs.host.tool.exe`; screenshot `G:\codex.fs\src\codex.fs\.playwright-mcp\webr010\webr010-ai-intent-output-projection-live18488.png`; manifest `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260706094118\artifacts\sessions\foreman\runs\run-20260706014146458-4f9ea7a6\manifest.json`.

@@ -18,25 +18,97 @@ function registerAppendInputRenderer(name, priority, renderer){
   if(Equals(typeof globalThis.PulseTradeRegisterAppendInputRenderer, "function"))globalThis.PulseTradeRegisterAppendInputRenderer(name, priority, renderer);
 }
 function renderAppendInput(ctx){
+  let outputPollHandle;
   if(!sameTextInvariant(ctx.shape, "codexfs-ai-chat"))return null;
   else {
     const root=setTestId("codexfs-ai-controls", element("div", "codexfs-ai-controls", null));
-    setStyle("display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 12px;align-items:end;width:100%;box-sizing:border-box;min-height:0;overflow:auto;background:#fff;position:relative;z-index:3;padding:8px 0;", root);
+    setStyle("display:flex;flex-direction:column;gap:10px;width:100%;box-sizing:border-box;min-height:0;overflow:auto;background:#fff;position:relative;z-index:3;padding:8px 0;", root);
     root.setAttribute("data-intent-schema", "codex.fs.web.ai-intent.v1");
     root.setAttribute("data-metadata-schema", "codex.fs.web.ai-chat.v1");
+    const fieldsGrid=setStyle("display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 12px;align-items:end;width:100%;box-sizing:border-box;min-height:0;", element("div", "codexfs-ai-fields", null));
     const targetMode=select("codexfs-ai-target-mode", [["foreman", "Foreman"], ["participant", "Worker"], ["public", "Public"], ["group", "Group"]], "foreman");
     const targetValue=input("text", "codexfs-ai-target-value", "agent.* participant or group id", "");
     const perspectiveMode=select("codexfs-ai-perspective-mode", [["self", "My view"], ["participant-readonly", "Participant view"]], "self");
     const perspectiveValue=input("text", "codexfs-ai-perspective-value", "participant id for read-only perspective", "");
-    const engine=select("codexfs-ai-engine", [["agy", "Agy"], ["codex", "Codex"]], "agy");
+    const engine=select("codexfs-ai-engine", [["codex", "Codex"], ["agy", "Agy"]], "codex");
     const model=select("codexfs-ai-model", [["default", "Default"]], "default");
-    const reasoning=select("codexfs-ai-reasoning", [["medium", "Medium"], ["high", "High"], ["xhigh", "XHigh"]], "high");
+    const reasoning=select("codexfs-ai-reasoning", [["medium", "Medium"], ["high", "High"], ["xhigh", "XHigh"]], "medium");
     const invocationMode=select("codexfs-ai-invocation-mode", [["exec", "Exec"], ["print", "Print"]], "exec");
     const approval=select("codexfs-ai-approval", [["never", "Never"], ["on-request", "On request"]], "never");
     const prompt=textarea("codexfs-ai-prompt", "Prompt to send through PTCS MessageFabric", promptFromExistingValue(ctx.valueText));
     const status=setTestId("codexfs-ai-status", element("div", "codexfs-ai-status", ""));
-    setStyle("grid-column:2 / -1;min-height:36px;display:flex;align-items:center;font-size:13px;line-height:1.35;", status);
+    setStyle("min-height:36px;display:flex;align-items:center;font-size:13px;line-height:1.35;min-width:0;overflow-wrap:anywhere;", status);
     const send=button("primary codexfs-ai-send", "codexfs-ai-send", "Send");
+    const actionRow=setStyle("grid-column:1 / -1;display:flex;align-items:flex-start;gap:12px;min-height:40px;width:100%;box-sizing:border-box;", element("div", "codexfs-ai-action-row", null));
+    append(actionRow, [send, status]);
+    const output=setTestId("codexfs-ai-output", setStyle("grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;min-height:64px;border:1px solid #c8d7ea;border-radius:6px;background:#f8fbff;padding:10px 12px;box-sizing:border-box;margin-top:0;", element("section", "codexfs-ai-output", null)));
+    const outputState=setTestId("codexfs-ai-output-state", setStyle("font-size:13px;line-height:1.35;color:#40546a;", element("div", "codexfs-ai-output-state", "No output yet.")));
+    const outputThread=setTestId("codexfs-ai-output-thread", setStyle("font-size:12px;line-height:1.35;color:#64748b;overflow-wrap:anywhere;", element("div", "codexfs-ai-output-thread", "")));
+    const outputMessage=setTestId("codexfs-ai-output-message", setStyle("font-size:13px;line-height:1.45;color:#172033;overflow-wrap:anywhere;", element("div", "codexfs-ai-output-message", "")));
+    append(output, [outputState, outputThread, outputMessage]);
+    outputPollHandle=null;
+    const liveElement=(testId, fallback) => {
+      const current=((selector) => {
+        const nodes=Array.prototype.slice.call(document.querySelectorAll(selector)).filter((node) => node&&node.isConnected);
+        return nodes.length===0?null:nodes[nodes.length-1];
+      })("[data-testid='"+asText(testId)+"']");
+      return current==null?fallback:current;
+    };
+    const currentOutputMessage=() => liveElement("codexfs-ai-output-message", outputMessage);
+    const setOutputState=(text) => {
+      liveElement("codexfs-ai-output-state", outputState).textContent=asText(text);
+    };
+    const setOutputThread=(text) => {
+      liveElement("codexfs-ai-output-thread", outputThread).textContent=asText(text);
+    };
+    const stopOutputPolling=() => {
+      if(!(outputPollHandle==null)){
+        clearInterval(outputPollHandle);
+        outputPollHandle=null;
+      }
+    };
+    const startOutputProjection=(targetParticipantId_1, baselineReplyId) => {
+      let attempts;
+      stopOutputPolling();
+      attempts=0;
+      setOutputThread(aiIntentBridgeParticipantId()+" <-> "+targetParticipantId_1);
+      const poll=() => {
+        attempts=attempts+1;
+        setOutputThread(aiIntentBridgeParticipantId()+" <-> "+targetParticipantId_1);
+        setOutputState("Waiting for runtime reply...");
+        return tryLatestProjectedReply(targetParticipantId_1, (reply) => {
+          let _1, _2;
+          if(reply!=null&&reply.$==1){
+            const latest=reply.$0;
+            _2=!isBlank(latest.messageId)&&!sameTextInvariant(latest.messageId, baselineReplyId)?(_1=reply.$0,0):attempts>=120?1:2;
+          }
+          else _2=attempts>=120?1:2;
+          switch(_2){
+            case 0:
+              stopOutputPolling();
+              setOutputState("Runtime reply received.");
+              const body=_1.body;
+              const target=currentOutputMessage();
+              clearChildren(target);
+              const m=renderArtifactReply(body);
+              if(m==null)target.appendChild(setStyle("margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.45;", element("pre", "codexfs-ai-output-plain", asText(body))));
+              else target.appendChild(m.$0);
+              break;
+            case 1:
+              stopOutputPolling();
+              setOutputState("Timed out waiting for runtime reply. Check the Chat tab or artifact logs.");
+              break;
+            case 2:
+              break;
+          }
+        }, (error) => {
+          stopOutputPolling();
+          setOutputState("Output projection failed: "+asText(error));
+        });
+      };
+      poll();
+      outputPollHandle=globalThis.setInterval(poll, 2000);
+    };
     const updateTargetPlaceholder=() => {
       const m=elementValue(targetMode);
       if(m=="participant")targetValue.placeholder="agent.codexfs.worker...";
@@ -49,9 +121,42 @@ function renderAppendInput(ctx){
       const promptText=Trim(asText(prompt.value));
       const targetText=Trim(asText(targetValue.value));
       const perspectiveText=Trim(asText(perspectiveValue.value));
-      return isBlank(promptText)?void(status.textContent="Prompt is required."):sameTextInvariant(elementValue(targetMode), "participant")&&isBlank(targetText)?void(status.textContent="Worker participant id is required."):sameTextInvariant(elementValue(targetMode), "group")&&isBlank(targetText)?void(status.textContent="Group id is required."):sameTextInvariant(elementValue(perspectiveMode), "participant-readonly")&&isBlank(perspectiveText)?void(status.textContent="Perspective participant id is required."):(ctx.submit(New_29(buildIntentJson(elementValue(targetMode), targetText, elementValue(perspectiveMode), perspectiveText, elementValue(engine), elementValue(model), elementValue(reasoning), elementValue(invocationMode), elementValue(approval), promptText), ctx.selectedKeyJson)),void(status.textContent="Intent submitted."));
+      if(isBlank(promptText)){
+        status.textContent="Prompt is required.";
+        return;
+      }
+      else if(sameTextInvariant(elementValue(targetMode), "participant")&&isBlank(targetText)){
+        status.textContent="Worker participant id is required.";
+        return;
+      }
+      else if(sameTextInvariant(elementValue(targetMode), "group")&&isBlank(targetText)){
+        status.textContent="Group id is required.";
+        return;
+      }
+      else if(sameTextInvariant(elementValue(perspectiveMode), "participant-readonly")&&isBlank(perspectiveText)){
+        status.textContent="Perspective participant id is required.";
+        return;
+      }
+      else {
+        const valueText=buildIntentJson(elementValue(targetMode), targetText, elementValue(perspectiveMode), perspectiveText, elementValue(engine), elementValue(model), elementValue(reasoning), elementValue(invocationMode), elementValue(approval), promptText);
+        const projectionTargetParticipantId=targetParticipantId(elementValue(targetMode), targetText);
+        const payload=New_30(valueText, !isBlank(ctx.selectedKeyJson)?ctx.selectedKeyJson:!isBlank(projectionTargetParticipantId)?JSON.stringify([projectionTargetParticipantId]):ctx.selectedKeyJson);
+        const submitAction=() => {
+          ctx.submit(payload);
+          status.textContent="Intent submitted; waiting for output.";
+        };
+        return isBlank(projectionTargetParticipantId)?(setOutputThread("Projection for public/group target is not implemented in this slice."),setOutputState("Intent submitted; open the Chat tab for public/group replies."),submitAction()):(setOutputThread(aiIntentBridgeParticipantId()+" <-> "+projectionTargetParticipantId),setOutputState("Submitting intent and preparing output projection..."),clearChildren(currentOutputMessage()),tryLatestProjectedReply(projectionTargetParticipantId, (baseline) => {
+          const baselineReplyId=baseline==null?"":baseline.$0.messageId;
+          submitAction();
+          startOutputProjection(projectionTargetParticipantId, baselineReplyId);
+        }, () => {
+          submitAction();
+          startOutputProjection(projectionTargetParticipantId, "");
+        }));
+      }
     });
-    append(root, [field("Target", targetMode), field("Target id", targetValue), field("Perspective", perspectiveMode), field("Perspective id", perspectiveValue), field("Engine", engine), field("Model", model), field("Reasoning", reasoning), field("Invocation", invocationMode), field("Approval", approval), prompt, send, status]);
+    append(fieldsGrid, [field("Target", targetMode), field("Target id", targetValue), field("Perspective", perspectiveMode), field("Perspective id", perspectiveValue), field("Engine", engine), field("Model", model), field("Reasoning", reasoning), field("Invocation", invocationMode), field("Approval", approval)]);
+    append(root, [fieldsGrid, prompt, actionRow, output]);
     return Some(root);
   }
 }
@@ -136,27 +241,41 @@ function button(className, testId, label){
   node.type="button";
   node.className=className;
   node.textContent=label;
-  setStyle("width:96px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;align-self:start;", node);
+  setStyle("position:static;transform:none;margin:0;width:96px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;align-self:start;display:inline-flex;align-items:center;justify-content:center;flex:0 0 96px;", node);
   setTestId(testId, node);
   return node;
-}
-function elementValue(node){
-  return node.value;
-}
-function asText(value){
-  return value==null||Equals(typeof value, "undefined")?"":value;
-}
-function isBlank(value){
-  return IsNullOrWhiteSpace(asText(value));
-}
-function buildIntentJson(targetMode, targetValue, perspectiveMode, perspectiveValue, engine, model, reasoning, invocationMode, approval, prompt){
-  return JSON.stringify(New_36("codex.fs.web.ai-intent.v1", New_37(targetMode, targetScope(targetMode), targetParticipantId(targetMode, targetValue), targetGroupId(targetMode, targetValue)), New_38(perspectiveMode, sameTextInvariant(perspectiveMode, "participant-readonly")?Trim(asText(perspectiveValue)):"", perspectivePolicy(perspectiveMode)), New_39(engine, model, reasoning), New_40(invocationMode, approval), prompt, ["codex.fs", "ai-chat", "intent"]));
 }
 function append(parent, children){
   iter((child) => {
     parent.appendChild(child);
   }, children);
   return parent;
+}
+function asText(value){
+  return value==null||Equals(typeof value, "undefined")?"":value;
+}
+function aiIntentBridgeParticipantId(){
+  return _c_1.aiIntentBridgeParticipantId;
+}
+function tryLatestProjectedReply(targetParticipantId_1, onOk, onError){
+  return getJson("/chat/api/thread?participantId="+urlEncode(aiIntentBridgeParticipantId())+"&peerId="+urlEncode(targetParticipantId_1), (data) => {
+    const message=latestReplyMessage(targetParticipantId_1, data);
+    if(message==null)onOk(null);
+    else onOk(Some(projectedReplyFromMessage(message)));
+  }, onError);
+}
+function isBlank(value){
+  return IsNullOrWhiteSpace(asText(value));
+}
+function elementValue(node){
+  return node.value;
+}
+function targetParticipantId(mode, value){
+  const m=asText(mode);
+  return m=="foreman"?"agent.codexfs.foreman":m=="participant"?Trim(asText(value)):"";
+}
+function buildIntentJson(targetMode, targetValue, perspectiveMode, perspectiveValue, engine, model, reasoning, invocationMode, approval, prompt){
+  return JSON.stringify(New_37("codex.fs.web.ai-intent.v1", New_38(targetMode, targetScope(targetMode), targetParticipantId(targetMode, targetValue), targetGroupId(targetMode, targetValue)), New_39(perspectiveMode, sameTextInvariant(perspectiveMode, "participant-readonly")?Trim(asText(perspectiveValue)):"", perspectivePolicy(perspectiveMode)), New_40(engine, model, reasoning), New_41(invocationMode, approval), prompt, ["codex.fs", "ai-chat", "intent"]));
 }
 function field(labelText, control){
   const wrapper=setStyle("display:flex;flex-direction:column;gap:4px;min-width:0;font-size:12px;line-height:1.25;", element("label", "codexfs-ai-field", null));
@@ -165,14 +284,21 @@ function field(labelText, control){
   append(wrapper, [caption, control]);
   return wrapper;
 }
+function clearChildren(node){
+  const _1=node;
+  while(_1.firstChild)
+    _1.removeChild(_1.firstChild);
+}
 function parseArtifactReply(text){
-  const source=Trim(asText(text));
+  const p=normalizedArtifactReplySource(text);
+  const source=p[0];
+  const projectedSummary=p[1];
   if(!StartsWith(source, "run "))return null;
   else {
     const headerEnd=source.indexOf(";");
     const parts=SplitChars(headerEnd<0?source:Substring(source, 0, headerEnd), [" "], 1);
     const manifestPath=valueBetweenMarkerAndNextSeparator("manifest=", source);
-    return length(parts)<3||isBlank(manifestPath)?null:Some(New_30(get(parts, 1), get(parts, 2), manifestPath, valueBetweenMarkerAndNextSeparator("final=", source), valueBetweenMarkerAndNextSeparator("note=", source), valueAfterMarker("summary=", source)));
+    return length(parts)<3||isBlank(manifestPath)?null:Some(New_31(get(parts, 1), get(parts, 2), manifestPath, valueBetweenMarkerAndNextSeparator("final=", source), valueBetweenMarkerAndNextSeparator("note=", source), isBlank(projectedSummary)?valueAfterMarker("summary=", source):projectedSummary));
   }
 }
 function artifactRow(testId, labelText, value){
@@ -208,19 +334,56 @@ function optionNode(value, label){
 function setElementValue(node, value){
   node.value=value;
 }
+function getJson(url, onOk, onError){
+  const url_1=url;
+  const onOk_1=onOk;
+  const onError_1=onError;
+  const options={cache:"no-store"};
+  (globalThis.fetch(url_1, options).then((response) => response.text().then((body) => {
+    if(response.ok)onOk_1(JSON.parse(body||"{}"));
+    else onError_1(body||"GET "+url_1+" "+response.status);
+  })))["catch"]((error) => {
+    onError_1(String(error&&error.message?error.message:error));
+  });
+}
+function latestReplyMessage(targetParticipantId_1, data){
+  const target=targetParticipantId_1;
+  const messages=data&&data.messages||[];
+  const expected=String(target||"").toLowerCase();
+  for(let i=messages.length-1;i>=0;i--){
+    const m=messages[i]||{};
+    if(String(m.fromId||"").toLowerCase()===expected)return m;
+  }
+  return null;
+}
+function projectedReplyFromMessage(message){
+  return New_29(String(message&&message.messageId||""), String(message&&message.fromId||""), String(message&&message.body||""), String(message&&message.createdAtUtc||""));
+}
+function urlEncode(value){
+  return encodeURIComponent(asText(value));
+}
 function targetScope(mode){
   const m=asText(mode);
   return m=="public"?"public":m=="group"?"group":"direct";
-}
-function targetParticipantId(mode, value){
-  const m=asText(mode);
-  return m=="foreman"?"agent.codexfs.foreman":m=="participant"?Trim(asText(value)):"";
 }
 function targetGroupId(mode, value){
   return sameTextInvariant(mode, "group")?Trim(asText(value)):"";
 }
 function perspectivePolicy(mode){
   return sameTextInvariant(mode, "participant-readonly")?"read-only":"current-user";
+}
+function normalizedArtifactReplySource(text){
+  const source=Trim(asText(text));
+  if(StartsWith(source, "run "))return[source, valueAfterMarker("summary=", source)];
+  else {
+    const marker="[codex.fs run ";
+    const markerIndex=source.indexOf(marker);
+    if(markerIndex<0)return[source, ""];
+    else {
+      const summary=Trim(Substring(source, 0, markerIndex));
+      return["run "+TrimEnd(Trim(source.substring(markerIndex+marker.length)), ["]"]), summary];
+    }
+  }
 }
 function valueBetweenMarkerAndNextSeparator(marker, text){
   const source=asText(text);
@@ -410,7 +573,7 @@ function Main_1(){
         if(a==null){ }
         else applyDefinitionsFromReply(a.$0);
       });
-      getJson("/pages/api/definitions", (data) => {
+      getJson_1("/pages/api/definitions", (data) => {
         writeAppendPagesDefinitions(data);
         applyDefinitionsFromReply(data);
       }, () => {
@@ -420,7 +583,7 @@ function Main_1(){
       subscribeAppendPageRegistry();
       renderAppendRegistryHealth();
     };
-    getJson("/acl/api/snapshot", (snapshot) => {
+    getJson_1("/acl/api/snapshot", (snapshot) => {
       set_currentAclSnapshotJson(JSON.stringify(snapshot));
       set_currentAclSnapshot(Some(snapshot));
       notifyAclSnapshotObservers(currentAclSnapshotJson());
@@ -526,7 +689,7 @@ function newRequestId(prefix){
 function defaultCacheLimit(){
   return _c.defaultCacheLimit;
 }
-function getJson(url, onOk, onError){
+function getJson_1(url, onOk, onError){
   const options=requestOptions();
   options.cache="no-store";
   (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_1(body)?"{}":body)):onError(isBlank_1(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
@@ -916,7 +1079,7 @@ function mountAppendPage(page, definition){
     const keyJson=isBlank_1(selectedKeyJson)?keysAsJson(bucket.keys):selectedKeyJson;
     const url="/pages/api/read-before?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&beforeSequence="+String(beforeSequence)+"&count="+String(defaultRenderLimit());
     setStatus(workState, "Loading older values before "+String(beforeSequence));
-    return getJson(url, (reply) => {
+    return getJson_1(url, (reply) => {
       applyLineage(reply.lineage);
       applyLineageHealth(reply.lineageHealth);
       const incoming=arrayOrEmpty(reply.values);
@@ -956,7 +1119,7 @@ function mountAppendPage(page, definition){
   }
   const readNewerFromBackend=(generation, bucket) => {
     const keyJson=keysAsJson(bucket.keys);
-    return getJson("/pages/api/read-after?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
+    return getJson_1("/pages/api/read-after?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
       if(generation===loadGeneration){
         applyLineage(reply.lineage);
         applyLineageHealth(reply.lineageHealth);
@@ -1033,7 +1196,7 @@ function mountAppendPage(page, definition){
     if(!isBlank_1(filterText))url=url+"&key="+encodeURIComponent(filterText);
     const cacheKey_1=stateCacheKey();
     const fetchFullState=() => {
-      getJson(url, (data) => {
+      getJson_1(url, (data) => {
         if(generation===loadGeneration){
           writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, appendPageValueCount(data), "append-page-state");
           writeAppendPageKeyWatermark(data);
@@ -1894,7 +2057,7 @@ function mountSets(page){
       }
       else if(a.$0,generation===loadGeneration)applySnapshot("cached", a.$0);
     });
-    getJson("/sets/api/state?"+concat_1("&", ofSeq(parts)), (data) => {
+    getJson_1("/sets/api/state?"+concat_1("&", ofSeq(parts)), (data) => {
       if(generation===loadGeneration){
         writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state");
         applySnapshot("backend", data);
@@ -2266,13 +2429,13 @@ function mountActors(page){
     return setStatus(status, "Loaded "+String(actorSnapshot.nodeCount)+" "+String(source)+" node(s), "+String(actorSnapshot.actorCount)+" actor(s)");
   };
   const load=() => {
-    getJson("/actors/api/snapshot", (data) => {
+    getJson_1("/actors/api/snapshot", (data) => {
       writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, actorValueCount(data), "actors-snapshot");
       applySnapshot("backend", data);
     }, (t) => {
       setStatus(status, t);
     });
-    getJson("/actors/api/tree", (data) => {
+    getJson_1("/actors/api/tree", (data) => {
       renderActorTree("backend", data);
     }, (error) => {
       clear(treePanel);
@@ -2520,7 +2683,7 @@ function mountChat(page){
         replayPendingChatCommands();
       }
     });
-    getJson("/chat/api/agents", (data) => {
+    getJson_1("/chat/api/agents", (data) => {
       participants=arrayOrEmpty(data.participants);
       writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
       isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
@@ -2541,7 +2704,7 @@ function mountChat(page){
         let url;
         url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(selected);
         if(useCursor&&!isBlank_1(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
-        getJson(url, (data) => {
+        getJson_1(url, (data) => {
           const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty(data.messages);
           appendMessages(messages);
           if(!isBlank_1(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
@@ -2781,7 +2944,7 @@ function refreshAppendNav(activePath){
     if(a==null){ }
     else applyDefinitions(a.$0);
   });
-  getJson("/pages/api/definitions", (data) => {
+  getJson_1("/pages/api/definitions", (data) => {
     writeAppendPagesDefinitions(data);
     applyDefinitions(data);
   }, () => { });
@@ -2850,7 +3013,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_33(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_34(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_1(request.userName)||isBlank_1(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -2880,7 +3043,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_1(node.textContent)?New_32("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_1(node.textContent)?New_33("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_1(value)?fallback:value;
@@ -3185,18 +3348,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3278,22 +3441,22 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
     }
@@ -3443,7 +3606,7 @@ function renderPageCreator(nav, activePath, pages){
     }
     else {
       const normalizedInput=Trim(pageIdText);
-      return candidatesLoaded&&candidatePageId.toLowerCase()==normalizedInput.toLowerCase()?onDone():(setStatus(status, "Checking history"),getJson("/pages/api/tab-candidates?pageId="+encodeURIComponent(normalizedInput), (reply) => {
+      return candidatesLoaded&&candidatePageId.toLowerCase()==normalizedInput.toLowerCase()?onDone():(setStatus(status, "Checking history"),getJson_1("/pages/api/tab-candidates?pageId="+encodeURIComponent(normalizedInput), (reply) => {
         const candidates=arrayOrEmpty(reply.candidates);
         clear(binding);
         if(length(candidates)===0){
@@ -3477,7 +3640,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_1(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_35(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_36(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson("/pages/api/register-page", request, (reply) => {
@@ -3636,8 +3799,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -3695,10 +3858,10 @@ function hasTag(tag, tags){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_1(userNode.textContent))return New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  if(userNode==null||isBlank_1(userNode.textContent))return New_35("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_1(user.participantId)?New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_1(user.participantId)?New_35("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
 }
 function fcellValueModeLabel(mode, tags){
@@ -3881,7 +4044,7 @@ function registeredRenderers(){
   return _c.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_31(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_32(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -3905,9 +4068,9 @@ function GetFieldValues(o){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -4583,16 +4746,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -4733,8 +4896,8 @@ class FSharpList {
   static Empty=Create(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -4767,16 +4930,16 @@ function TryParse(s, r){
 }
 function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
@@ -4792,43 +4955,43 @@ function checkBounds(arr, n){
 }
 function New_4(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -4871,50 +5034,50 @@ function listEmpty(){
 }
 function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
 function New_9(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_10(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
 function New_11(pageId, keyJson, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
+    pageId:pageId,
+    keyJson:keyJson,
     displayName:displayName
   };
 }
 function New_12(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -4926,17 +5089,17 @@ function New_14(pageId, keyId){
 }
 function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
@@ -5078,53 +5241,53 @@ function unfold(f, s){
 }
 function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_19(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -5133,9 +5296,9 @@ function New_20(maxSequence, buckets){
 }
 function New_21(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -5219,30 +5382,30 @@ function OfArray(a){
 }
 function New_22(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
 function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
@@ -5251,37 +5414,45 @@ function New_25(messages, nextAfterMessageId){
 }
 function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
 function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_28(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
-function New_29(valueText, keyJson){
+function New_29(messageId, fromId, body, createdAtUtc){
+  return{
+    messageId:messageId,
+    fromId:fromId,
+    body:body,
+    createdAtUtc:createdAtUtc
+  };
+}
+function New_30(valueText, keyJson){
   return{valueText:valueText, keyJson:keyJson};
 }
-function New_30(runId, outcome, manifestPath, finalPath, notePath, summary){
+function New_31(runId, outcome, manifestPath, finalPath, notePath, summary){
   return{
     runId:runId,
     outcome:outcome,
@@ -5291,43 +5462,43 @@ function New_30(runId, outcome, manifestPath, finalPath, notePath, summary){
     summary:summary
   };
 }
-function New_31(shape, label, badge, className){
+function New_32(shape, label, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label,
+    badge:badge,
     className:className
   };
 }
-function New_32(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_33(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
     aclLabel:aclLabel
   };
 }
-function New_33(userName, password, returnUrl, keepSession){
+function New_34(userName, password, returnUrl, keepSession){
   return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
     keepSession:keepSession
   };
 }
-function New_34(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_35(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
     logoutPath:logoutPath
   };
 }
@@ -5375,15 +5546,15 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_35(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_36(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -5474,7 +5645,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_41(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_42(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -5531,40 +5702,53 @@ function mapiInPlace(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
   return arr;
 }
-function New_36(schema, target, perspective, engine, invocation, body, tags){
+let _c_1=Lazy((_i) => class $StartupCode_AIChatClient {
+  static {
+    _c_1=_i(this);
+  }
+  static aiIntentBridgeParticipantId;
+  static doc;
+  static loadedMarkerName;
+  static {
+    this.loadedMarkerName="CodexFsAiChatLoaded";
+    this.doc=globalThis.document;
+    this.aiIntentBridgeParticipantId="user.codexfs.web.ai-intent";
+  }
+});
+function New_37(schema, target, perspective, engine, invocation, body, tags){
   return{
-    schema:schema, 
-    target:target, 
-    perspective:perspective, 
-    engine:engine, 
-    invocation:invocation, 
-    body:body, 
+    schema:schema,
+    target:target,
+    perspective:perspective,
+    engine:engine,
+    invocation:invocation,
+    body:body,
     tags:tags
   };
 }
-function New_37(mode, scope, participantId, groupId){
+function New_38(mode, scope, participantId, groupId){
   return{
-    mode:mode, 
-    scope:scope, 
-    participantId:participantId, 
+    mode:mode,
+    scope:scope,
+    participantId:participantId,
     groupId:groupId
   };
 }
-function New_38(mode, participantId, senderPolicy){
+function New_39(mode, participantId, senderPolicy){
   return{
-    mode:mode, 
-    participantId:participantId, 
+    mode:mode,
+    participantId:participantId,
     senderPolicy:senderPolicy
   };
 }
-function New_39(engine, model, reasoning){
+function New_40(engine, model, reasoning){
   return{
-    engine:engine, 
-    model:model, 
+    engine:engine,
+    model:model,
     reasoning:reasoning
   };
 }
-function New_40(mode, approval){
+function New_41(mode, approval){
   return{mode:mode, approval:approval};
 }
 class Exception extends Object_1 { }
@@ -5653,23 +5837,12 @@ class Dictionary extends Object_1 {
     }
   }
 }
-let _c_1=Lazy((_i) => class $StartupCode_AIChatClient {
-  static {
-    _c_1=_i(this);
-  }
-  static doc;
-  static loadedMarkerName;
-  static {
-    this.loadedMarkerName="CodexFsAiChatLoaded";
-    this.doc=globalThis.document;
-  }
-});
-function New_41(Node_1, Left, Right, Height, Count){
+function New_42(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }

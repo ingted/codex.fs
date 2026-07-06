@@ -366,12 +366,21 @@ module HostWebShell =
 
     let aiIntentValues (hub: CommHub) (page: AppendPageDefinition) =
         let snapshot = hub.SetsSnapshot(None, Some page.SetName, Some 500)
+        let directValues =
+            snapshot.Buckets
+            |> List.collect _.Values
 
-        snapshot.Buckets
-        |> List.collect _.Values
-        |> List.filter (fun value ->
-            value.Tags
-            |> List.exists (fun tag -> tag.Equals("shape:codexfs-ai-chat", StringComparison.OrdinalIgnoreCase)))
+        let streamValues =
+            hub.ListAppendPageKeys(page.PageId).Keys
+            |> List.collect (fun key ->
+                CommSpaShardedAppendPage.valueStreamKeys page key.Keys
+                |> List.collect (fun streamKey ->
+                    hub.ReadStreamAfter(streamKey, 0L, 500)
+                    |> List.choose (CommSpaShardedAppendPage.tryReadPageValue page)))
+
+        [ yield! directValues
+          yield! streamValues ]
+        |> List.distinctBy _.ValueId
         |> List.sortBy (fun value -> value.CreatedAtUtc, value.ValueId)
 
     let runAiIntentBridgeOnceAsync (hub: CommHub) (fabric: CommSpaMessageFabric) (processedValueIds: HashSet<string>) =

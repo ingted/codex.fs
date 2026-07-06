@@ -70,7 +70,16 @@ module AIChatClient =
           notePath: string
           summary: string }
 
+    [<JavaScript>]
+    type ProjectedReplyDto =
+        { messageId: string
+          fromId: string
+          body: string
+          createdAtUtc: string }
+
     let doc = JS.Document
+
+    let aiIntentBridgeParticipantId = "user.codexfs.web.ai-intent"
 
     let asText (value: string) =
         if isNull value || JS.TypeOf(box value) = JS.Kind.Undefined then "" else value
@@ -111,6 +120,19 @@ module AIChatClient =
     let append (parent: Node) (children: Node[]) =
         children |> Array.iter (fun child -> parent.AppendChild child |> ignore)
         parent
+
+    let clearChildren (node: #Element) =
+        JS.Inline("while($0.firstChild){$0.removeChild($0.firstChild);}", node)
+
+    let urlEncode (value: string) =
+        JS.Inline<string>("encodeURIComponent($0)", asText value)
+
+    let getJson (url: string) (onOk: obj -> unit) (onError: string -> unit) =
+        JS.Inline(
+            "(function(url,onOk,onError){var options={cache:'no-store'};globalThis.fetch(url,options).then(function(response){return response.text().then(function(body){if(response.ok){onOk(JSON.parse(body||'{}'));}else{onError(body||('GET '+url+' '+response.status));}});})['catch'](function(error){onError(String(error&&error.message?error.message:error));});})($0,$1,$2)",
+            url,
+            onOk,
+            onError)
 
     let optionNode value label =
         let node = doc.CreateElement "option" :?> HTMLOptionElement
@@ -155,7 +177,7 @@ module AIChatClient =
         node.Type <- "button"
         node.ClassName <- className
         node.TextContent <- label
-        setStyle "width:96px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;align-self:start;" node
+        setStyle "position:static;transform:none;margin:0;width:96px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;align-self:start;display:inline-flex;align-items:center;justify-content:center;flex:0 0 96px;" node
         |> ignore
         setTestId testId node |> ignore
         node
@@ -197,8 +219,27 @@ module AIChatClient =
         else
             source.Substring(index + marker.Length).Trim()
 
-    let parseArtifactReply (text: string) =
+    let normalizedArtifactReplySource (text: string) =
         let source = asText text |> _.Trim()
+
+        if source.StartsWith("run ") then
+            source, valueAfterMarker "summary=" source
+        else
+            let marker = "[codex.fs run "
+            let markerIndex = source.IndexOf(marker)
+
+            if markerIndex < 0 then
+                source, ""
+            else
+                let summary = source.Substring(0, markerIndex).Trim()
+                let command =
+                    "run "
+                    + source.Substring(markerIndex + marker.Length).Trim().TrimEnd([| ']' |])
+
+                command, summary
+
+    let parseArtifactReply (text: string) =
+        let source, projectedSummary = normalizedArtifactReplySource text
 
         if not (source.StartsWith("run ")) then
             None
@@ -222,7 +263,11 @@ module AIChatClient =
                       manifestPath = manifestPath
                       finalPath = valueBetweenMarkerAndNextSeparator "final=" source
                       notePath = valueBetweenMarkerAndNextSeparator "note=" source
-                      summary = valueAfterMarker "summary=" source }
+                      summary =
+                        if isBlank projectedSummary then
+                            valueAfterMarker "summary=" source
+                        else
+                            projectedSummary }
 
     let artifactRow testId labelText value =
         let row =
@@ -283,6 +328,36 @@ module AIChatClient =
             |> ignore
 
             Some(root :> Node)
+
+    let latestReplyMessage (targetParticipantId: string) (data: obj) =
+        JS.Inline<obj>(
+            "(function(data,target){var messages=(data&&data.messages)||[];var expected=String(target||'').toLowerCase();for(var i=messages.length-1;i>=0;i--){var m=messages[i]||{};if(String(m.fromId||'').toLowerCase()===expected){return m;}}return null;})($0,$1)",
+            data,
+            targetParticipantId)
+
+    let projectedReplyFromMessage (message: obj) =
+        { messageId = JS.Inline<string>("String(($0&&$0.messageId)||'')", message)
+          fromId = JS.Inline<string>("String(($0&&$0.fromId)||'')", message)
+          body = JS.Inline<string>("String(($0&&$0.body)||'')", message)
+          createdAtUtc = JS.Inline<string>("String(($0&&$0.createdAtUtc)||'')", message) }
+
+    let tryLatestProjectedReply targetParticipantId onOk onError =
+        let url =
+            "/chat/api/thread?participantId="
+            + urlEncode aiIntentBridgeParticipantId
+            + "&peerId="
+            + urlEncode targetParticipantId
+
+        getJson
+            url
+            (fun data ->
+                let message = latestReplyMessage targetParticipantId data
+
+                if isNull (box message) then
+                    onOk None
+                else
+                    onOk(Some(projectedReplyFromMessage message)))
+            onError
 
     let targetScope mode =
         match asText mode with
@@ -360,11 +435,15 @@ module AIChatClient =
         else
             let root = element "div" "codexfs-ai-controls" null |> setTestId "codexfs-ai-controls"
             setStyle
-                "display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 12px;align-items:end;width:100%;box-sizing:border-box;min-height:0;overflow:auto;background:#fff;position:relative;z-index:3;padding:8px 0;"
+                "display:flex;flex-direction:column;gap:10px;width:100%;box-sizing:border-box;min-height:0;overflow:auto;background:#fff;position:relative;z-index:3;padding:8px 0;"
                 root
             |> ignore
             root.SetAttribute("data-intent-schema", Package.intentSchema)
             root.SetAttribute("data-metadata-schema", Package.metadataSchema)
+
+            let fieldsGrid =
+                element "div" "codexfs-ai-fields" null
+                |> setStyle "display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 12px;align-items:end;width:100%;box-sizing:border-box;min-height:0;"
 
             let targetMode =
                 select
@@ -389,13 +468,13 @@ module AIChatClient =
                 input "text" "codexfs-ai-perspective-value" "participant id for read-only perspective" ""
 
             let engine =
-                select "codexfs-ai-engine" [| "agy", "Agy"; "codex", "Codex" |] "agy"
+                select "codexfs-ai-engine" [| "codex", "Codex"; "agy", "Agy" |] "codex"
 
             let model =
                 select "codexfs-ai-model" [| "default", "Default" |] "default"
 
             let reasoning =
-                select "codexfs-ai-reasoning" [| "medium", "Medium"; "high", "High"; "xhigh", "XHigh" |] "high"
+                select "codexfs-ai-reasoning" [| "medium", "Medium"; "high", "High"; "xhigh", "XHigh" |] "medium"
 
             let invocationMode =
                 select "codexfs-ai-invocation-mode" [| "exec", "Exec"; "print", "Print" |] "exec"
@@ -407,9 +486,137 @@ module AIChatClient =
                 textarea "codexfs-ai-prompt" "Prompt to send through PTCS MessageFabric" (promptFromExistingValue context.valueText)
 
             let status = element "div" "codexfs-ai-status" "" |> setTestId "codexfs-ai-status"
-            setStyle "grid-column:2 / -1;min-height:36px;display:flex;align-items:center;font-size:13px;line-height:1.35;" status
+            setStyle "min-height:36px;display:flex;align-items:center;font-size:13px;line-height:1.35;min-width:0;overflow-wrap:anywhere;" status
             |> ignore
             let send = button "primary codexfs-ai-send" "codexfs-ai-send" "Send"
+
+            let actionRow =
+                element "div" "codexfs-ai-action-row" null
+                |> setStyle "grid-column:1 / -1;display:flex;align-items:flex-start;gap:12px;min-height:40px;width:100%;box-sizing:border-box;"
+
+            append actionRow [| send :> Node; status :> Node |] |> ignore
+
+            let output =
+                element "section" "codexfs-ai-output" null
+                |> setStyle "grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;min-height:64px;border:1px solid #c8d7ea;border-radius:6px;background:#f8fbff;padding:10px 12px;box-sizing:border-box;margin-top:0;"
+                |> setTestId "codexfs-ai-output"
+
+            let outputState =
+                element "div" "codexfs-ai-output-state" "No output yet."
+                |> setStyle "font-size:13px;line-height:1.35;color:#40546a;"
+                |> setTestId "codexfs-ai-output-state"
+
+            let outputThread =
+                element "div" "codexfs-ai-output-thread" ""
+                |> setStyle "font-size:12px;line-height:1.35;color:#64748b;overflow-wrap:anywhere;"
+                |> setTestId "codexfs-ai-output-thread"
+
+            let outputMessage =
+                element "div" "codexfs-ai-output-message" ""
+                |> setStyle "font-size:13px;line-height:1.45;color:#172033;overflow-wrap:anywhere;"
+                |> setTestId "codexfs-ai-output-message"
+
+            append output [| outputState :> Node; outputThread :> Node; outputMessage :> Node |]
+            |> ignore
+
+            let mutable outputPollHandle: obj = null
+
+            let liveElement testId (fallback: Element) =
+                let selector = "[data-testid='" + asText testId + "']"
+                let current =
+                    JS.Inline<Element>(
+                        "(function(selector){var nodes=Array.prototype.slice.call(document.querySelectorAll(selector)).filter(function(node){return node&&node.isConnected;});return nodes.length===0?null:nodes[nodes.length-1];})($0)",
+                        selector)
+
+                if isNull (box current) then fallback else current
+
+            let currentOutputState () =
+                liveElement "codexfs-ai-output-state" outputState
+
+            let currentOutputThread () =
+                liveElement "codexfs-ai-output-thread" outputThread
+
+            let currentOutputMessage () =
+                liveElement "codexfs-ai-output-message" outputMessage
+
+            let setOutputState text =
+                (currentOutputState()).TextContent <- asText text
+
+            let setOutputThread text =
+                (currentOutputThread()).TextContent <- asText text
+
+            let stopOutputPolling () =
+                if not (isNull outputPollHandle) then
+                    JS.Inline("clearInterval($0)", outputPollHandle)
+                    outputPollHandle <- null
+
+            let renderPlainOutput text =
+                let node =
+                    element "pre" "codexfs-ai-output-plain" (asText text)
+                    |> setStyle "margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.45;"
+
+                node
+
+            let setOutputMessage body =
+                let target = currentOutputMessage ()
+                clearChildren target
+
+                match renderArtifactReply body with
+                | Some rendered -> target.AppendChild rendered |> ignore
+                | None -> target.AppendChild(renderPlainOutput body) |> ignore
+
+            let startOutputProjection targetParticipantId baselineReplyId =
+                stopOutputPolling ()
+                let mutable attempts = 0
+                setOutputThread (aiIntentBridgeParticipantId + " <-> " + targetParticipantId)
+
+                let poll () =
+                    attempts <- attempts + 1
+                    setOutputThread (aiIntentBridgeParticipantId + " <-> " + targetParticipantId)
+                    setOutputState "Waiting for runtime reply..."
+
+                    tryLatestProjectedReply
+                        targetParticipantId
+                        (fun reply ->
+                            match reply with
+                            | Some latest when not (isBlank latest.messageId) && not (sameTextInvariant latest.messageId baselineReplyId) ->
+                                stopOutputPolling ()
+                                setOutputState "Runtime reply received."
+                                setOutputMessage latest.body
+                            | _ when attempts >= 120 ->
+                                stopOutputPolling ()
+                                setOutputState "Timed out waiting for runtime reply. Check the Chat tab or artifact logs."
+                            | _ -> ())
+                        (fun error ->
+                            stopOutputPolling ()
+                            setOutputState ("Output projection failed: " + asText error))
+
+                poll ()
+                outputPollHandle <- JS.Window.SetInterval((fun () -> poll ()), 2000)
+
+            let submitWithOutputProjection targetParticipantId submitAction =
+                if isBlank targetParticipantId then
+                    setOutputThread "Projection for public/group target is not implemented in this slice."
+                    setOutputState "Intent submitted; open the Chat tab for public/group replies."
+                    submitAction ()
+                else
+                    setOutputThread (aiIntentBridgeParticipantId + " <-> " + targetParticipantId)
+                    setOutputState "Submitting intent and preparing output projection..."
+                    clearChildren (currentOutputMessage ())
+
+                    tryLatestProjectedReply
+                        targetParticipantId
+                        (fun baseline ->
+                            let baselineReplyId =
+                                match baseline with
+                                | Some reply -> reply.messageId
+                                | None -> ""
+
+                            submitAction ()
+                            startOutputProjection targetParticipantId baselineReplyId)
+                        (fun _ ->
+                            submitAction ()
+                            startOutputProjection targetParticipantId "")
 
             let updateTargetPlaceholder () =
                 match elementValue targetMode with
@@ -449,15 +656,29 @@ module AIChatClient =
                                 (elementValue approval)
                                 promptText
 
+                        let projectionTargetParticipantId =
+                            targetParticipantId (elementValue targetMode) targetText
+
+                        let submissionKeyJson =
+                            if not (isBlank context.selectedKeyJson) then
+                                context.selectedKeyJson
+                            elif not (isBlank projectionTargetParticipantId) then
+                                JSON.Stringify [| projectionTargetParticipantId |]
+                            else
+                                context.selectedKeyJson
+
                         let payload: AiChatSubmitPayloadDto =
                             { valueText = valueText
-                              keyJson = context.selectedKeyJson }
+                              keyJson = submissionKeyJson }
 
-                        context.submit(box payload)
-                        status.TextContent <- "Intent submitted."))
+                        submitWithOutputProjection
+                            projectionTargetParticipantId
+                            (fun () ->
+                                context.submit(box payload)
+                                status.TextContent <- "Intent submitted; waiting for output.")))
 
             append
-                root
+                fieldsGrid
                 [| field "Target" (targetMode :> Node) :> Node
                    field "Target id" (targetValue :> Node) :> Node
                    field "Perspective" (perspectiveMode :> Node) :> Node
@@ -466,10 +687,15 @@ module AIChatClient =
                    field "Model" (model :> Node) :> Node
                    field "Reasoning" (reasoning :> Node) :> Node
                    field "Invocation" (invocationMode :> Node) :> Node
-                   field "Approval" (approval :> Node) :> Node
+                   field "Approval" (approval :> Node) :> Node |]
+            |> ignore
+
+            append
+                root
+                [| fieldsGrid :> Node
                    prompt :> Node
-                   send :> Node
-                   status :> Node |]
+                   actionRow :> Node
+                   output :> Node |]
             |> ignore
 
             Some(root :> Node)

@@ -101,6 +101,7 @@ Status 值：
 | FOREMAN-001 | Foreman control plane RFC/current-state sync | E2E-004 | 100 | Done | None | 2026-07-05 20:04 +08:00 | 2026-07-05 20:30 +08:00 | SD §14.4 | T-FOREMAN-001 | file trace | [@FOREMAN-001](WBS.FOREMAN-001.md) |
 | FOREMAN-002 | Agy Foreman execution policy and argv order | FOREMAN-001 | 100 | Done | None | 2026-07-05 20:24 +08:00 | 2026-07-05 20:30 +08:00 | SD §11.3, §14.4 | T-FOREMAN-002 | `tests/codex.fs.Tests`; `misc/verifyForemanPowershellDate.fsx` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
 | WEBR-009 | Bridge AI Chat append intent to MessageFabric and Codex exec | FOREMAN-001;WEBR-006;ACTOR-003 | 100 | Done | None | 2026-07-05 20:25 +08:00 | 2026-07-05 21:53 +08:00 | SD §14.4 | T-WEBR-009; T-WEBR-009-CODEX | `misc/verifyAiIntentBridge.fsx`; `tests/codex.fs.Tests` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
+| WEBR-010 | AI Chat same-page output projection | WEBR-009;WEBR-007 | 100 | Done | None | 2026-07-06 08:38 +08:00 | 2026-07-06 09:42 +08:00 | SD §14.4.2 | T-WEBR-010 | `misc/verifyAiIntentOutputProjection.fsx` | [@WEBR-010](WBS.WEBR-010.md) |
 | E2E-005 | Foreman handles PowerShell date prompt | FOREMAN-002;WEBR-009 | 100 | Done | None | 2026-07-05 20:26 +08:00 | 2026-07-05 20:30 +08:00 | SD §14.4 | T-E2E-005 | `misc/verifyForemanPowershellDate.fsx` | [@FOREMAN-001](WBS.FOREMAN-001.md) |
 
 ## 3. Roll-up / Detail Files
@@ -144,6 +145,7 @@ Status 值：
 | [@PERSIST-001](WBS.PERSIST-001.md) | Transcript/note/artifact policy defines private raw run evidence, public redacted export, note summaries, compact refs and ready-to-ack boundary requirements. |
 | [@WEBR-001](WBS.WEBR-001.md) | Reset/rewrite backlog: product Web must be PTCS classic chat shell plus codex.fs WebSharper Bundle and ActorFabric-backed AI workers; standalone diagnostics/guard pages are cut from product acceptance. |
 | [@FOREMAN-001](WBS.FOREMAN-001.md) | Foreman control plane and AI intent bridge backlog: fixes Agy execution policy, append-page intent delivery and the PowerShell date baseline prompt. |
+| [@WEBR-010](WBS.WEBR-010.md) | AI Chat append page must project MessageFabric runtime reply/output in the same user-facing surface; raw intent JSON is not accepted as output. |
 
 ## 4. Update Rule
 

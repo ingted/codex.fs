@@ -270,6 +270,14 @@ module RuntimeMessageFabricCycle =
             else
                 None)
 
+    let readStoredArtifactText (artifact: FileArtifactStore.StoredArtifact) =
+        if File.Exists artifact.AbsolutePath then
+            let text = File.ReadAllText(artifact.AbsolutePath, UTF8Encoding(false, true))
+
+            if String.IsNullOrWhiteSpace text then None else Some text
+        else
+            None
+
     let mapProcessOutputArtifacts
         (storeConfig: FileArtifactStore.FileArtifactStoreConfig)
         (executionPlan: RuntimePromptLoop.RuntimeExecutionPlan)
@@ -293,7 +301,7 @@ module RuntimeMessageFabricCycle =
 
             let finalMessageText =
                 mapping.FinalMessage
-                |> Option.map (fun artifact -> File.ReadAllText(artifact.Reference.Path, UTF8Encoding(false, true)))
+                |> Option.bind readStoredArtifactText
 
             { Stdout = mapping.Stdout
               Stderr = mapping.Stderr

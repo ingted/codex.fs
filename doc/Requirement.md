@@ -314,6 +314,12 @@ Foreman / SessionActor 是 logical session 的頂層 worker participant，必須
 
 PTCS `codexfs-ai-chat` append page 的 `codex.fs.web.ai-intent.v1` value 只是 UI intent；host 必須 bridge 到 MessageFabric target，不能宣稱 append intent 本身就是 Foreman runtime response。第一個基本驗收是 Foreman 能處理 `hi 請用 powershell 取日期時間`，保存 artifacts/note，並透過 MessageFabric 回覆 artifact refs。
 
+### R-011 AI intent output visibility
+
+`codexfs-ai-chat` 使用者送出 prompt 後，必須能在同一個 user-facing AI Chat surface 看見 runtime reply、failure 或 artifact refs。只在 append page value stream 顯示 raw `codex.fs.web.ai-intent.v1` JSON 不符合產品驗收。
+
+這不是使用者 option 選錯：`Target=Foreman`、`Invocation=Exec`、`Approval=Never` 是基本合法路徑。若 reply 暫時落在 service participant thread，例如 `user.codexfs.web.ai-intent <-> agent.codexfs.foreman`，Web UI 必須投影該 MessageFabric truth，並清楚標示 read/render perspective，不得要求使用者自行查 artifact path 或隱藏 participant id。
+
 ## 9. Package 初始邊界
 
 | Package / Tool | 用途 |

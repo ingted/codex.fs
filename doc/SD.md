@@ -1760,7 +1760,35 @@ for page in hub.ListAppendPages().Pages do
                 | None -> ignore
 ```
 
-The bridge sender participant is `user.codexfs.web.ai-intent` until PTCS browser identity is carried by the intent schema. Runtime reply therefore appears in the bridge participant's MessageFabric thread; future UI work can project that reply back into the append page without changing Foreman runtime ownership.
+The bridge sender participant is `user.codexfs.web.ai-intent` until PTCS browser identity is carried by the intent schema. Runtime reply therefore appears in the bridge participant's MessageFabric thread. `RFC-WEB-0004` makes projecting that reply back into the append page mandatory for product usability without changing Foreman runtime ownership.
+
+### 14.4.2 AI intent output projection
+
+Client-side MVP:
+
+```text
+renderAppendInput
+  -> show controls + output projection region
+  -> on Send, append codex.fs.web.ai-intent.v1
+  -> poll /chat/api/thread?participantId=user.codexfs.web.ai-intent&peerId=<targetParticipantId>
+  -> render latest target reply using artifact renderer when possible
+```
+
+Required stable selectors:
+
+| Selector | Meaning |
+| --- | --- |
+| `codexfs-ai-output` | Output projection container. |
+| `codexfs-ai-output-state` | Waiting/completed/failure state. |
+| `codexfs-ai-output-message` | Visible reply text or artifact card host. |
+| `codexfs-artifact-reply` | Existing artifact reply renderer reused when reply format matches. |
+
+Rules:
+
+- Raw append value JSON does not satisfy output visibility.
+- `Target=Foreman`, `Invocation=Exec`, `Approval=Never` is a valid default path and must show output.
+- Projection reads MessageFabric truth; it must not write a separate browser-local chat history.
+- Projection must label bridge thread identity so users understand whether they are seeing `user.codexfs.web.ai-intent <-> agent.codexfs.foreman` or a future authenticated user participant thread.
 
 ### 14.4.3 Basic Foreman acceptance
 

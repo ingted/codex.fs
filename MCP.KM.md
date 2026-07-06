@@ -353,3 +353,15 @@
 - Local `codex-cli 0.142.4` with ChatGPT subscription rejects `--model gpt-5-codex`; normalize `default` and `gpt-5-codex` to no `--model` unless a compatible explicit model is intentionally supplied.
 - Foreman runtime cycles must ignore self-authored MessageFabric replies to avoid treating artifact replies as new user prompts.
 - Regression evidence: `misc/verifyAiIntentBridge.fsx` passed with token `CODEXFS_BRIDGE_c5a847a2698c`; final artifact `G:\codex.fs\src\codex.fs\.codex.fs\webr009-artifacts\webr009-c5a847a2698c\sessions\foreman\runs\run-20260705135834033-f0d6b35d\final.md`.
+
+## 2026-07-06 WEBR-010 AI Intent Output Projection
+
+- `codexfs-ai-chat` append page raw value list is an intent/debug stream, not a valid runtime output view.
+- Valid default options are `Target=Foreman`, `Invocation=Exec`, `Approval=Never`; users should not need hidden participant knowledge to see output.
+- Current bridge sender is `user.codexfs.web.ai-intent`; until authenticated browser identity is wired, same-page projection may read `user.codexfs.web.ai-intent <-> agent.codexfs.foreman` and must label that identity.
+- PTCS append-page values created from the browser WebSocket path are not fully covered by generic `CommHub.SetsSnapshot(None, Some page.SetName, ...)`; `HostWebShell.aiIntentValues` must also merge sharded append-page stream values via `CommSpaShardedAppendPage.valueStreamKeys`, `ReadStreamAfter`, and `tryReadPageValue`.
+- `CodexFs.Web.Client.AIChatClient` now projects the service participant thread back into the same append page by polling `/chat/api/thread?participantId=user.codexfs.web.ai-intent&peerId=<target>`.
+- Stable output selectors are `codexfs-ai-output`, `codexfs-ai-output-state`, `codexfs-ai-output-thread`, and `codexfs-ai-output-message`; artifact refs reuse the `codexfs-artifact-reply` renderer when parseable.
+- Verifier `misc/verifyAiIntentOutputProjection.fsx` passed with Playwright against real PTCS webshell and Codex exec. Evidence screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\webr010\webr010-ai-intent-output-projection.png`; final artifact: `G:\codex.fs\src\codex.fs\.codex.fs\webr010-artifacts\webr010-19a8c6204ffe\sessions\foreman\runs\run-20260706012130613-7c68a5ce\final.md`.
+- `codexfs-ai-controls` must use a flex-column outer flow and a nested `codexfs-ai-fields` grid for field controls. Using one CSS grid for fields plus prompt/action/output can overlap full-span items in PTCS append-page layout.
+- Live 18488 handoff evidence after the flex layout fix is `G:\codex.fs\src\codex.fs\.playwright-mcp\webr010\webr010-ai-intent-output-projection-live18488.png`; artifact root `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260706094118\artifacts`.

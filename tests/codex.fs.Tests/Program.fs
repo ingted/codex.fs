@@ -692,6 +692,10 @@ try
     assertContains "web shell main renderer hook" "PulseTradeRegisterAppendInputRenderer" webShellMainScriptText
     assertContains "web shell artifact renderer hook" "PulseTradeRegisterRenderer" webShellMainScriptText
     assertContains "web shell artifact reply test id" "codexfs-artifact-reply" webShellMainScriptText
+    assertContains "web shell ai output panel" "codexfs-ai-output" webShellMainScriptText
+    assertContains "web shell ai output message" "codexfs-ai-output-message" webShellMainScriptText
+    assertContains "web shell ai output thread" "user.codexfs.web.ai-intent" webShellMainScriptText
+    assertContains "web shell ai output thread api" "/chat/api/thread?participantId=" webShellMainScriptText
 
     let webShellHealth = runTask (webShellHttp.GetStringAsync webShellServer.Contract.HealthUri)
     assertContains "web shell health service" "PulseTrade.Comm.Spa" webShellHealth
@@ -702,6 +706,7 @@ finally
 
 printfn "TC-WEBR-005 host PTCS webshell profile passed"
 printfn "TC-WEBR-006 AI intent controls passed"
+printfn "TC-WEBR-010 AI intent output projection source contract passed"
 
 let hostControlPort = reserveTcpPort ()
 let hostControlAdvertiseUri = $"http://{hostControlAddress}:{hostControlPort}"

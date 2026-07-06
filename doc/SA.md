@@ -373,3 +373,17 @@ PTCS /chat
 5. 送入 `CommSpaMessageFabric`，讓 Foreman/Worker actor runtime 消費。
 
 這個 bridge 是 MessageFabric delivery adapter，不是第二套 chat fabric。
+
+### 14.3 AI intent output projection
+
+`codexfs-ai-chat` append page 是可操作的 AI surface，不只是 intent debug stream。當 user 從該頁送出 prompt 後，UI 必須投影 MessageFabric reply：
+
+```text
+append page intent
+  -> bridge participant user.codexfs.web.ai-intent
+  -> Foreman/Worker runtime
+  -> MessageFabric reply
+  -> same AI Chat page output projection
+```
+
+MVP 可讀取 `user.codexfs.web.ai-intent <-> target participant` thread 來呈現 output，但必須標示 thread identity 與 perspective。這是 read/render projection，不是 sender impersonation。Raw intent JSON 只可作 trace/debug，不可作使用者-facing output。
