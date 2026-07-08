@@ -543,6 +543,8 @@ module RuntimeMessageFabricCycle =
                             outcome
                             manifestRelativePath
                             finalPath
+                            outputMapping.Stdout.Reference.Path
+                            outputMapping.Stderr.Reference.Path
                             noteArtifact.Reference.Path
                             targetParticipantId
                             processResult.Stdout

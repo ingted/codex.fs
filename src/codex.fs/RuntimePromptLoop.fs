@@ -489,18 +489,20 @@ module RuntimePromptLoop =
         |> fun text -> text + Environment.NewLine
 
     /// Build the redacted reply intent for MessageFabric.
-    let replyIntent runId outcome manifestRelativePath finalPath notePath targetParticipantId stdout stderr finalMessage =
+    let replyIntent runId outcome manifestRelativePath finalPath stdoutPath stderrPath notePath targetParticipantId stdout stderr finalMessage =
         let (RunId runIdText) = runId
 
         let replyText = redactedReplyText finalMessage stdout stderr
+        let refsText =
+            $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; stdout={stdoutPath}; stderr={stderrPath}; note={notePath}"
 
         let body =
             if String.IsNullOrWhiteSpace replyText then
-                $"run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; note={notePath}"
+                refsText
             else
                 [ replyText
                   ""
-                  $"[codex.fs run {runIdText} {outcomeText outcome}; manifest={manifestRelativePath}; final={finalPath}; note={notePath}]" ]
+                  $"[codex.fs {refsText}]" ]
                 |> String.concat Environment.NewLine
 
         { TargetParticipantId = targetParticipantId

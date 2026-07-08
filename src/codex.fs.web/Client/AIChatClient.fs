@@ -67,8 +67,15 @@ module AIChatClient =
           outcome: string
           manifestPath: string
           finalPath: string
+          stdoutPath: string
+          stderrPath: string
           notePath: string
           summary: string }
+
+    [<JavaScript>]
+    type ArtifactReadRequestDto =
+        { path: string
+          maxBytes: int }
 
     [<JavaScript>]
     type ProjectedReplyDto =
@@ -80,6 +87,10 @@ module AIChatClient =
     let doc = JS.Document
 
     let aiIntentBridgeParticipantId = "user.codexfs.web.ai-intent"
+
+    let artifactReadEndpoint = "/client-extensions/codexfs-ai-chat/artifact/read"
+
+    let artifactReadMaxBytes = 131072
 
     let asText (value: string) =
         if isNull value || JS.TypeOf(box value) = JS.Kind.Undefined then "" else value
@@ -131,6 +142,14 @@ module AIChatClient =
         JS.Inline(
             "(function(url,onOk,onError){var options={cache:'no-store'};globalThis.fetch(url,options).then(function(response){return response.text().then(function(body){if(response.ok){onOk(JSON.parse(body||'{}'));}else{onError(body||('GET '+url+' '+response.status));}});})['catch'](function(error){onError(String(error&&error.message?error.message:error));});})($0,$1,$2)",
             url,
+            onOk,
+            onError)
+
+    let postJson (url: string) (body: string) (onOk: obj -> unit) (onError: string -> unit) =
+        JS.Inline(
+            "(function(url,body,onOk,onError){var options={method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:body};globalThis.fetch(url,options).then(function(response){return response.text().then(function(text){if(response.ok){onOk(JSON.parse(text||'{}'));}else{onError(text||('POST '+url+' '+response.status));}});})['catch'](function(error){onError(String(error&&error.message?error.message:error));});})($0,$1,$2,$3)",
+            url,
+            body,
             onOk,
             onError)
 
@@ -231,10 +250,16 @@ module AIChatClient =
             if markerIndex < 0 then
                 source, ""
             else
+                let markerEnd = source.IndexOf("]", markerIndex)
                 let summary = source.Substring(0, markerIndex).Trim()
-                let command =
-                    "run "
-                    + source.Substring(markerIndex + marker.Length).Trim().TrimEnd([| ']' |])
+
+                let commandText =
+                    if markerEnd < 0 then
+                        source.Substring(markerIndex + marker.Length).Trim().TrimEnd([| ']' |])
+                    else
+                        source.Substring(markerIndex + marker.Length, markerEnd - markerIndex - marker.Length).Trim()
+
+                let command = "run " + commandText
 
                 command, summary
 
@@ -262,6 +287,8 @@ module AIChatClient =
                       outcome = parts[2]
                       manifestPath = manifestPath
                       finalPath = valueBetweenMarkerAndNextSeparator "final=" source
+                      stdoutPath = valueBetweenMarkerAndNextSeparator "stdout=" source
+                      stderrPath = valueBetweenMarkerAndNextSeparator "stderr=" source
                       notePath = valueBetweenMarkerAndNextSeparator "note=" source
                       summary =
                         if isBlank projectedSummary then
@@ -287,44 +314,230 @@ module AIChatClient =
         append row [| labelNode :> Node; valueNode :> Node |] |> ignore
         row
 
+    let compactButton className testId label =
+        let node = doc.CreateElement "button" :?> HTMLButtonElement
+        node.Type <- "button"
+        node.ClassName <- className
+        node.TextContent <- label
+        setStyle "height:30px;min-height:30px;box-sizing:border-box;border:1px solid #9fb2c8;border-radius:6px;background:#f7fafc;color:#172033;padding:0 10px;font-size:12px;line-height:1;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;" node
+        |> ignore
+        setTestId testId node |> ignore
+        node
+
+    let readArtifactText path onOk onError =
+        if isBlank path then
+            onError "Artifact path is blank."
+        else
+            let request: ArtifactReadRequestDto =
+                { path = asText path
+                  maxBytes = artifactReadMaxBytes }
+
+            postJson
+                artifactReadEndpoint
+                (JSON.Stringify request)
+                (fun data ->
+                    let status = JS.Inline<string>("String(($0&&($0.status||$0.Status))||'')", data)
+                    let text = JS.Inline<string>("String(($0&&($0.text||$0.Text))||'')", data)
+                    let error = JS.Inline<string>("String(($0&&($0.error||$0.Error))||'')", data)
+                    let truncated = JS.Inline<bool>("!!($0&&($0.truncated||$0.Truncated))", data)
+                    let bytes = JS.Inline<int>("Number(($0&&($0.bytes||$0.Bytes))||0)", data)
+
+                    if sameTextInvariant status "ok" then
+                        onOk text truncated bytes
+                    else
+                        onError (if isBlank error then "Artifact read failed." else error))
+                onError
+
+    let removeExistingStdioPanels () =
+        JS.Inline(
+            "(function(){Array.prototype.slice.call(document.querySelectorAll('[data-testid=\"codexfs-stdio-panel\"]')).forEach(function(node){if(node&&node.parentNode){node.parentNode.removeChild(node);}});})()")
+
+    let enablePanelDrag (panel: Element) (handle: Element) =
+        JS.Inline(
+            "(function(panel,handle){var dragging=false,startX=0,startY=0,startLeft=0,startTop=0;function down(e){if(e.button!==0){return;}var r=panel.getBoundingClientRect();dragging=true;startX=e.clientX;startY=e.clientY;startLeft=r.left;startTop=r.top;panel.style.left=r.left+'px';panel.style.top=r.top+'px';panel.style.right='auto';panel.style.bottom='auto';e.preventDefault();}function move(e){if(!dragging){return;}var maxLeft=Math.max(0,window.innerWidth-panel.offsetWidth);var maxTop=Math.max(0,window.innerHeight-panel.offsetHeight);panel.style.left=Math.min(Math.max(0,startLeft+e.clientX-startX),maxLeft)+'px';panel.style.top=Math.min(Math.max(0,startTop+e.clientY-startY),maxTop)+'px';}function up(){dragging=false;}handle.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);})($0,$1)",
+            panel,
+            handle)
+
+    let openRunArtifactPanel (reply: ArtifactReplyDto) initialKind =
+        removeExistingStdioPanels ()
+
+        let panel =
+            element "aside" "codexfs-stdio-panel" null
+            |> setStyle "position:fixed;right:24px;bottom:24px;width:min(720px,calc(100vw - 48px));height:min(380px,calc(100vh - 48px));min-width:320px;min-height:190px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);display:flex;flex-direction:column;resize:both;overflow:hidden;background:#ffffff;color:#172033;border:1px solid #7e94ad;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,0.28);z-index:2147483000;"
+            |> setTestId "codexfs-stdio-panel"
+
+        panel.SetAttribute("data-run-id", reply.runId)
+
+        let header =
+            element "div" "codexfs-stdio-header" null
+            |> setStyle "display:flex;align-items:center;gap:8px;padding:8px 10px;background:#24384f;color:#ffffff;cursor:move;user-select:none;min-height:40px;box-sizing:border-box;"
+            |> setTestId "codexfs-stdio-drag-handle"
+
+        let title =
+            element "div" "codexfs-stdio-title" ("Run " + reply.runId)
+            |> setStyle "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.2;font-weight:700;"
+
+        let closeButton = compactButton "codexfs-stdio-close" "codexfs-stdio-close" "Close"
+        setStyle "height:28px;min-height:28px;border-color:#c9d6e6;background:#ffffff;color:#172033;padding:0 10px;" closeButton
+        |> ignore
+        closeButton.AddEventListener("click", Action<Event>(fun _ ->
+            JS.Inline("if($0&&$0.parentNode){$0.parentNode.removeChild($0);}", panel)))
+
+        append header [| title :> Node; closeButton :> Node |] |> ignore
+
+        let tabRow =
+            element "div" "codexfs-stdio-tabs" null
+            |> setStyle "display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid #d8e4f2;background:#f7fafc;box-sizing:border-box;overflow:auto;"
+
+        let state =
+            element "div" "codexfs-stdio-state" "No artifact loaded."
+            |> setStyle "font-size:12px;line-height:1.35;color:#40546a;padding:7px 10px;border-bottom:1px solid #d8e4f2;min-height:30px;box-sizing:border-box;overflow-wrap:anywhere;"
+            |> setTestId "codexfs-stdio-state"
+
+        let content =
+            element "pre" "codexfs-stdio-content" ""
+            |> setStyle "flex:1 1 auto;margin:0;padding:10px;overflow:auto;background:#fbfdff;color:#172033;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;box-sizing:border-box;"
+            |> setTestId "codexfs-stdio-content"
+
+        let setActiveTab (active: HTMLButtonElement) =
+            let buttons =
+                JS.Inline<HTMLButtonElement[]>("Array.prototype.slice.call($0.querySelectorAll('button'))", tabRow)
+
+            buttons
+            |> Array.iter (fun button ->
+                if JS.Inline<bool>("$0===$1", button, active) then
+                    button.SetAttribute("data-active", "true")
+                    JS.Inline("$0.style.background=$1;$0.style.borderColor=$2", button, "#dbeafe", "#6ea8fe")
+                else
+                    button.RemoveAttribute("data-active")
+                    JS.Inline("$0.style.background=$1;$0.style.borderColor=$2", button, "#f7fafc", "#9fb2c8"))
+
+        let loadArtifact label path activeButton =
+            setActiveTab activeButton
+            state.TextContent <- "Loading " + label + "..."
+            content.TextContent <- ""
+
+            readArtifactText
+                path
+                (fun text truncated bytes ->
+                    let suffix =
+                        if truncated then
+                            $" ({bytes} bytes; showing first {artifactReadMaxBytes} bytes)"
+                        else
+                            $" ({bytes} bytes)"
+
+                    state.TextContent <- label + suffix
+                    content.TextContent <- if isBlank text then "(empty artifact)" else text)
+                (fun error ->
+                    state.TextContent <- "Artifact read failed."
+                    content.TextContent <- asText error)
+
+        let artifactTab testId label path =
+            let tab = compactButton "codexfs-stdio-tab" testId label
+
+            if isBlank path then
+                tab.Disabled <- true
+                tab.Title <- label + " artifact path is not available."
+                JS.Inline("$0.style.opacity='0.55';$0.style.cursor='not-allowed';", tab)
+            else
+                tab.AddEventListener("click", Action<Event>(fun event ->
+                    event.PreventDefault()
+                    loadArtifact label path tab))
+
+            tab
+
+        let finalTab = artifactTab "codexfs-stdio-tab-final" "Final" reply.finalPath
+        let stdoutTab = artifactTab "codexfs-stdio-tab-stdout" "Stdout" reply.stdoutPath
+        let stderrTab = artifactTab "codexfs-stdio-tab-stderr" "Stderr" reply.stderrPath
+        let noteTab = artifactTab "codexfs-stdio-tab-note" "Note" reply.notePath
+
+        append tabRow [| finalTab :> Node; stdoutTab :> Node; stderrTab :> Node; noteTab :> Node |]
+        |> ignore
+
+        append panel [| header :> Node; tabRow :> Node; state :> Node; content :> Node |] |> ignore
+        doc.Body.AppendChild panel |> ignore
+        enablePanelDrag panel header
+
+        match asText initialKind with
+        | "stderr" when not (isBlank reply.stderrPath) -> loadArtifact "Stderr" reply.stderrPath stderrTab
+        | "final" when not (isBlank reply.finalPath) -> loadArtifact "Final" reply.finalPath finalTab
+        | "note" when not (isBlank reply.notePath) -> loadArtifact "Note" reply.notePath noteTab
+        | _ when not (isBlank reply.stdoutPath) -> loadArtifact "Stdout" reply.stdoutPath stdoutTab
+        | _ when not (isBlank reply.finalPath) -> loadArtifact "Final" reply.finalPath finalTab
+        | _ -> content.TextContent <- "No artifact path is available for this run."
+
     let renderArtifactReply (text: string) =
         match parseArtifactReply text with
         | None -> None
         | Some reply ->
             let root =
                 element "section" "codexfs-artifact-reply message-body" null
-                |> setStyle "display:flex;flex-direction:column;gap:7px;box-sizing:border-box;width:100%;white-space:normal;background:#f7fbff;border:1px solid #b8d7ef;border-radius:6px;padding:10px 12px;color:#172033;max-height:none;overflow:visible;"
+                |> setStyle "display:flex;flex-direction:column;gap:8px;box-sizing:border-box;width:100%;white-space:normal;background:#ffffff;border:1px solid #c8d7ea;border-radius:6px;padding:10px 12px;color:#172033;max-height:none;overflow:visible;"
                 |> setTestId "codexfs-artifact-reply"
 
             root.SetAttribute("data-run-id", reply.runId)
             root.SetAttribute("data-outcome", reply.outcome)
             root.SetAttribute("data-manifest-path", reply.manifestPath)
             root.SetAttribute("data-final-path", reply.finalPath)
+            root.SetAttribute("data-stdout-path", reply.stdoutPath)
+            root.SetAttribute("data-stderr-path", reply.stderrPath)
             root.SetAttribute("data-note-path", reply.notePath)
 
-            let header =
-                element "div" "codexfs-artifact-header" null
-                |> setStyle "display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;font-weight:700;"
+            let replyText =
+                if isBlank reply.summary then
+                    $"run {reply.runId} {reply.outcome}"
+                else
+                    reply.summary
 
-            append
-                header
-                [| element "span" "" "codex.fs artifact refs" :> Node |]
-            |> ignore
-
-            let summary =
-                element "div" "codexfs-artifact-summary" (asText reply.summary)
-                |> setStyle "font-size:13px;line-height:1.45;overflow-wrap:anywhere;"
+            let message =
+                element "div" "codexfs-artifact-summary codexfs-artifact-reply-text" (asText replyText)
+                |> setStyle "font-size:13px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap;"
                 |> setTestId "codexfs-artifact-summary"
 
+            let actionRow =
+                element "div" "codexfs-artifact-actions" null
+                |> setStyle "display:flex;flex-wrap:wrap;gap:8px;align-items:center;"
+                |> setTestId "codexfs-artifact-actions"
+
+            let stdioButton = compactButton "codexfs-artifact-stdio-open" "codexfs-stdio-open" "Open stdio"
+            stdioButton.AddEventListener("click", Action<Event>(fun event ->
+                event.PreventDefault()
+                openRunArtifactPanel reply "stdout"))
+            append actionRow [| stdioButton :> Node |] |> ignore
+
+            let details =
+                element "details" "codexfs-artifact-details" null
+                |> setStyle "border-top:1px solid #d8e4f2;padding-top:7px;"
+                |> setTestId "codexfs-artifact-details"
+
+            let detailsSummary =
+                element "summary" "codexfs-artifact-details-toggle" $"Run artifacts ({reply.outcome})"
+                |> setStyle "cursor:pointer;font-size:12px;line-height:1.35;color:#40546a;font-weight:600;user-select:none;"
+                |> setTestId "codexfs-artifact-details-toggle"
+
+            let refs =
+                element "div" "codexfs-artifact-refs" null
+                |> setStyle "display:flex;flex-direction:column;gap:7px;margin-top:8px;"
+                |> setTestId "codexfs-artifact-refs"
+
             append
-                root
-                [| header :> Node
-                   summary :> Node
-                   artifactRow "codexfs-artifact-run" "run" reply.runId :> Node
+                refs
+                [| artifactRow "codexfs-artifact-run" "run" reply.runId :> Node
                    artifactRow "codexfs-artifact-outcome" "outcome" reply.outcome :> Node
                    artifactRow "codexfs-artifact-manifest" "manifest" reply.manifestPath :> Node
                    artifactRow "codexfs-artifact-final" "final" reply.finalPath :> Node
+                   artifactRow "codexfs-artifact-stdout" "stdout" reply.stdoutPath :> Node
+                   artifactRow "codexfs-artifact-stderr" "stderr" reply.stderrPath :> Node
                    artifactRow "codexfs-artifact-note" "note" reply.notePath :> Node |]
+            |> ignore
+
+            append details [| detailsSummary :> Node; refs :> Node |] |> ignore
+
+            append
+                root
+                [| message :> Node
+                   actionRow :> Node
+                   details :> Node |]
             |> ignore
 
             Some(root :> Node)
@@ -498,7 +711,7 @@ module AIChatClient =
 
             let output =
                 element "section" "codexfs-ai-output" null
-                |> setStyle "grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;min-height:64px;border:1px solid #c8d7ea;border-radius:6px;background:#f8fbff;padding:10px 12px;box-sizing:border-box;margin-top:0;"
+                |> setStyle "grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;min-height:42px;max-height:240px;overflow:auto;border:1px solid #c8d7ea;border-radius:6px;background:#f8fbff;padding:8px 10px;box-sizing:border-box;margin-top:0;"
                 |> setTestId "codexfs-ai-output"
 
             let outputState =

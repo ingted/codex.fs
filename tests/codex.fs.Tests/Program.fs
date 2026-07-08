@@ -8,6 +8,7 @@ open System.Net
 open System.Net.Http
 open System.Net.NetworkInformation
 open System.Net.Sockets
+open System.Text
 open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
@@ -19,6 +20,8 @@ open CodexFs.PromptAssembly
 open CodexFs.Ptcs
 open CodexFs.Web
 open CodexFs.Web.Server
+
+let strictUtf8 = UTF8Encoding(false, true)
 
 let assertTrue name condition =
     if not condition then
@@ -253,6 +256,8 @@ let runtimeReplyIntent =
         Completed
         "sessions/sess-002/runs/run-002/manifest.json"
         "sessions/sess-002/runs/run-002/final.md"
+        "sessions/sess-002/runs/run-002/stdout.log"
+        "sessions/sess-002/runs/run-002/stderr.log"
         "sessions/sess-002/runs/run-002/note.md"
         "user.alice"
         "runtime final output"
@@ -261,6 +266,8 @@ let runtimeReplyIntent =
 
 assertEqual "runtime reply target" "user.alice" runtimeReplyIntent.TargetParticipantId
 assertContains "runtime reply manifest" "manifest=sessions/sess-002/runs/run-002/manifest.json" runtimeReplyIntent.Body
+assertContains "runtime reply stdout" "stdout=sessions/sess-002/runs/run-002/stdout.log" runtimeReplyIntent.Body
+assertContains "runtime reply stderr" "stderr=sessions/sess-002/runs/run-002/stderr.log" runtimeReplyIntent.Body
 assertContains "runtime reply note" "note=sessions/sess-002/runs/run-002/note.md" runtimeReplyIntent.Body
 assertContains "runtime reply final answer" "assistant final answer" runtimeReplyIntent.Body
 assertEqual "runtime reply correlation" (Some "run-002") runtimeReplyIntent.CorrelationId
@@ -448,6 +455,16 @@ assertContains "ai chat append input renderer hook" "PulseTradeRegisterAppendInp
 assertContains "ai chat message renderer hook" "PulseTradeRegisterRenderer" aiChatMainAsset.Content
 assertContains "ai chat controls test id" "codexfs-ai-controls" aiChatMainAsset.Content
 assertContains "ai chat artifact reply test id" "codexfs-artifact-reply" aiChatMainAsset.Content
+assertContains "ai chat artifact summary test id" "codexfs-artifact-summary" aiChatMainAsset.Content
+assertContains "ai chat artifact details toggle test id" "codexfs-artifact-details-toggle" aiChatMainAsset.Content
+assertContains "ai chat artifact refs test id" "codexfs-artifact-refs" aiChatMainAsset.Content
+assertContains "ai chat artifact stdout test id" "codexfs-artifact-stdout" aiChatMainAsset.Content
+assertContains "ai chat artifact stderr test id" "codexfs-artifact-stderr" aiChatMainAsset.Content
+assertContains "ai chat artifact read endpoint" AIChatExtensionOptions.defaultArtifactReadPath aiChatMainAsset.Content
+assertContains "ai chat stdio open test id" "codexfs-stdio-open" aiChatMainAsset.Content
+assertContains "ai chat stdio panel test id" "codexfs-stdio-panel" aiChatMainAsset.Content
+assertContains "ai chat stdio content test id" "codexfs-stdio-content" aiChatMainAsset.Content
+assertContains "ai chat stdio resize" "resize:both" aiChatMainAsset.Content
 assertContains "ai chat target control test id" "codexfs-ai-target-mode" aiChatMainAsset.Content
 assertContains "ai chat perspective control test id" "codexfs-ai-perspective-mode" aiChatMainAsset.Content
 assertContains "ai chat reasoning control test id" "codexfs-ai-reasoning" aiChatMainAsset.Content
@@ -469,6 +486,42 @@ let aiChatMetadataReply =
     |> Option.defaultWith (fun () -> failwith "Expected AI chat metadata JSON POST handler.")
 
 assertEqual "ai chat metadata handler" AIChatExtensionOptions.defaultMetadataJson aiChatMetadataReply
+
+let aiChatArtifactRoot =
+    Path.Combine(Path.GetTempPath(), "codexfs-ai-artifact-read-" + Guid.NewGuid().ToString("N"))
+
+let aiChatArtifactRelative = "sessions/foreman/runs/run-test/stdout.log"
+let aiChatArtifactPath = Path.Combine(aiChatArtifactRoot, aiChatArtifactRelative.Replace('/', Path.DirectorySeparatorChar))
+Directory.CreateDirectory(Path.GetDirectoryName aiChatArtifactPath) |> ignore
+File.WriteAllText(aiChatArtifactPath, "STDOUT-CONTENT-WEBR011", strictUtf8)
+
+let aiChatArtifactHub = PulseTrade.Comm.Spa.CommHub.createEmpty()
+
+aiChatArtifactHub.useAIChat
+    { AIChatExtensionOptions.defaults with
+        ArtifactRoot = Some aiChatArtifactRoot
+        ArtifactReadMaxBytes = 1024 }
+|> ignore
+
+let aiChatArtifactRequest =
+    JsonSerializer.Serialize({| path = aiChatArtifactRelative; maxBytes = 1024 |})
+
+let aiChatArtifactReply =
+    aiChatArtifactHub.TryHandleClientExtensionJsonPost(AIChatExtensionOptions.defaultArtifactReadPath, aiChatArtifactRequest)
+    |> Option.defaultWith (fun () -> failwith "Expected AI chat artifact read JSON POST handler.")
+
+assertContains "ai chat artifact read ok status" "\"status\":\"ok\"" aiChatArtifactReply
+assertContains "ai chat artifact read content" "STDOUT-CONTENT-WEBR011" aiChatArtifactReply
+
+let aiChatTraversalReply =
+    aiChatArtifactHub.TryHandleClientExtensionJsonPost(
+        AIChatExtensionOptions.defaultArtifactReadPath,
+        JsonSerializer.Serialize({| path = "../outside.txt"; maxBytes = 1024 |})
+    )
+    |> Option.defaultWith (fun () -> failwith "Expected AI chat artifact traversal JSON POST handler.")
+
+assertContains "ai chat artifact traversal rejected" "\"status\":\"error\"" aiChatTraversalReply
+assertContains "ai chat artifact traversal boundary" "artifact root" aiChatTraversalReply
 
 let aiChatTemplates = aiChatHub.ListAppendPageShapeTemplates()
 let aiChatTemplate =
@@ -696,6 +749,8 @@ try
     assertContains "web shell ai output message" "codexfs-ai-output-message" webShellMainScriptText
     assertContains "web shell ai output thread" "user.codexfs.web.ai-intent" webShellMainScriptText
     assertContains "web shell ai output thread api" "/chat/api/thread?participantId=" webShellMainScriptText
+    assertContains "web shell artifact read endpoint" AIChatExtensionOptions.defaultArtifactReadPath webShellMainScriptText
+    assertContains "web shell stdio panel" "codexfs-stdio-panel" webShellMainScriptText
 
     let webShellHealth = runTask (webShellHttp.GetStringAsync webShellServer.Contract.HealthUri)
     assertContains "web shell health service" "PulseTrade.Comm.Spa" webShellHealth

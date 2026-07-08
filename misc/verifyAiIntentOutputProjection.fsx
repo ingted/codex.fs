@@ -128,6 +128,7 @@ let strictUtf8 = UTF8Encoding(false, true)
 let solution = Path.Combine(repoRoot, "codex.fs.slnx")
 let hostToolProject = Path.Combine(repoRoot, "src", "codex.fs.host.tool", "codex.fs.host.tool.fsproj")
 let aiChatClient = Path.Combine(repoRoot, "src", "codex.fs.web", "Client", "AIChatClient.fs")
+let aiChatServerExtension = Path.Combine(repoRoot, "src", "codex.fs.web", "Server", "Extension.fs")
 let generatedMainJs = Path.Combine(repoRoot, "src", "codex.fs.web", "wwwroot", "js", "CodexFs.Web.js")
 let wbsDetail = Path.Combine(repoRoot, "doc", "WBS.WEBR-010.md")
 let testDetail = Path.Combine(repoRoot, "doc", "Test.WEBR-010.md")
@@ -237,6 +238,7 @@ let artifactRoot =
 let pcslRoot = Path.Combine(repoRoot, ".codex.fs", "webr010-pcsl", "pcsl-" + runSuffix)
 
 let clientSource = readText "AIChatClient.fs" aiChatClient
+let serverExtensionSource = readText "Extension.fs" aiChatServerExtension
 let wbsText = readText "WBS.WEBR-010.md" wbsDetail
 let testText = readText "Test.WEBR-010.md" testDetail
 
@@ -251,7 +253,20 @@ requireAll
       "/chat/api/thread?participantId="
       "Runtime reply received."
       "Timed out waiting for runtime reply."
+      "/client-extensions/codexfs-ai-chat/artifact/read"
+      "codexfs-stdio-open"
+      "codexfs-stdio-panel"
+      "codexfs-stdio-content"
+      "resize:both"
       "codexfs-artifact-reply" ]
+
+requireAll
+    "Extension.fs"
+    serverExtensionSource
+    [ "RegisterClientExtensionJsonPostHandler"
+      "artifactReadPath"
+      "AIChatArtifactRead.handleJson"
+      "Artifact path must stay under artifact root." ]
 
 requireAll
     "WBS/Test WEBR-010"
@@ -266,6 +281,7 @@ let buildArgs =
       yield solution
       yield "--configuration"
       yield configuration
+      yield "-p:GenerateDocumentationFile=false"
       if results.Contains VerifyArgument.No_Restore then
           yield "--no-restore" ]
 
@@ -277,6 +293,9 @@ requireAll
     generatedText
     [ "codexfs-ai-output"
       "codexfs-ai-output-message"
+      "codexfs-stdio-panel"
+      "codexfs-stdio-content"
+      "/client-extensions/codexfs-ai-chat/artifact/read"
       "/chat/api/thread?participantId="
       "user.codexfs.web.ai-intent" ]
 
@@ -287,6 +306,7 @@ let startHostProcess () =
           yield hostToolProject
           yield "--configuration"
           yield configuration
+          yield "-p:GenerateDocumentationFile=false"
           if results.Contains VerifyArgument.No_Restore then
               yield "--no-restore"
           yield "--"
@@ -430,6 +450,29 @@ let waitForOutputText (page: IPage) =
 
     outputText, stateText
 
+let waitForLocatorTextContains (locator: ILocator) (label: string) (needle: string) (timeout: TimeSpan) =
+    let deadline = DateTimeOffset.UtcNow + timeout
+    let mutable latest = ""
+    let mutable found = false
+
+    while not found && DateTimeOffset.UtcNow < deadline do
+        try
+            latest <- locator.TextContentAsync() |> awaitValue
+            if isNull latest then
+                latest <- ""
+
+            found <- latest.Contains(needle, StringComparison.Ordinal)
+        with ex ->
+            latest <- ex.Message
+
+        if not found then
+            Thread.Sleep 500
+
+    if not found then
+        failwith $"{label} did not contain {needle}; latest={latest}"
+
+    latest
+
 let pathFromArtifactRow (page: IPage) testId =
     let value = textContentOrEmpty page $"[data-testid='{testId}'] code"
     let text = if isNull value then "" else value.Trim()
@@ -527,6 +570,22 @@ let runBrowserCheck () =
         requireContains "artifact reply token" artifactText promptToken
         requireContains "artifact reply date" artifactText expectedDate
 
+        let stdioOpen = lastLocator page "[data-testid='codexfs-stdio-open']"
+        stdioOpen.ClickAsync() |> awaitUnit
+        let stdioPanel = lastLocator page "[data-testid='codexfs-stdio-panel']"
+        stdioPanel.WaitForAsync(LocatorWaitForOptions(State = Nullable WaitForSelectorState.Visible)) |> awaitUnit
+        let stdioState = lastLocator page "[data-testid='codexfs-stdio-state']"
+        waitForLocatorTextContains stdioState "stdio stdout state" "Stdout" (TimeSpan.FromSeconds 20.0) |> ignore
+        let stdioContent = lastLocator page "[data-testid='codexfs-stdio-content']"
+        let stdioStateText = stdioState.TextContentAsync() |> awaitValue
+        requireNotContains "stdio state" stdioStateText "Artifact read failed."
+
+        let finalTab = lastLocator page "[data-testid='codexfs-stdio-tab-final']"
+        finalTab.ClickAsync() |> awaitUnit
+        waitForLocatorTextContains stdioContent "stdio final content" promptToken (TimeSpan.FromSeconds 20.0) |> ignore
+        let finalPanelText = stdioContent.TextContentAsync() |> awaitValue
+        requireContains "stdio final date" finalPanelText expectedDate
+
         let threadText = textContentOrEmpty page "[data-testid='codexfs-ai-output-thread']"
         requireContains "output thread bridge participant" threadText "user.codexfs.web.ai-intent"
         requireContains "output thread foreman participant" threadText "agent.codexfs.foreman"
@@ -589,6 +648,7 @@ try
     requireContains "rendered argv output last message" renderedArgvText "--output-last-message"
 
     printfn "TC-WEBR-010 AI intent output projection passed"
+    printfn "TC-WEBR-011 reply stdio artifact panel passed"
     printfn "hostUrl=%s" hostUrl
     printfn "pageUrl=%s" (hostUrl.TrimEnd('/') + "/page/codexfs-ai-chat")
     printfn "promptToken=%s" promptToken

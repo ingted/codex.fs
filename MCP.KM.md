@@ -365,3 +365,11 @@
 - Verifier `misc/verifyAiIntentOutputProjection.fsx` passed with Playwright against real PTCS webshell and Codex exec. Evidence screenshot: `G:\codex.fs\src\codex.fs\.playwright-mcp\webr010\webr010-ai-intent-output-projection.png`; final artifact: `G:\codex.fs\src\codex.fs\.codex.fs\webr010-artifacts\webr010-19a8c6204ffe\sessions\foreman\runs\run-20260706012130613-7c68a5ce\final.md`.
 - `codexfs-ai-controls` must use a flex-column outer flow and a nested `codexfs-ai-fields` grid for field controls. Using one CSS grid for fields plus prompt/action/output can overlap full-span items in PTCS append-page layout.
 - Live 18488 handoff evidence after the flex layout fix is `G:\codex.fs\src\codex.fs\.playwright-mcp\webr010\webr010-ai-intent-output-projection-live18488.png`; artifact root `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260706094118\artifacts`.
+
+## 2026-07-08 WEBR-011 Reply Stdio Artifact Panel
+
+- MessageFabric reply body should remain redacted final summary plus refs; raw stdout/stderr/final/note content is loaded on demand from the worker artifact root.
+- `useAIChat(...)` can register `/client-extensions/codexfs-ai-chat/artifact/read` through PTCS `RegisterClientExtensionJsonPostHandler`; this is the correct same-origin seam for a WebSharper bundle artifact viewer.
+- Artifact read handlers must reject absolute paths and traversal by resolving the requested relative path under configured `artifact.root`; do not expose a generic local-file proxy.
+- Stable viewer selectors are `codexfs-stdio-open`, `codexfs-stdio-panel`, `codexfs-stdio-drag-handle`, `codexfs-stdio-tab-final`, `codexfs-stdio-tab-stdout`, `codexfs-stdio-tab-stderr`, `codexfs-stdio-tab-note`, and `codexfs-stdio-content`.
+- Live 18488 handoff evidence is `G:\codex.fs\src\codex.fs\.playwright-mcp\webr011\webr010-ai-intent-output-projection-live18488.png`; artifact root `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260708121312\artifacts`.

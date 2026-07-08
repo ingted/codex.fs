@@ -1790,7 +1790,56 @@ Rules:
 - Projection reads MessageFabric truth; it must not write a separate browser-local chat history.
 - Projection must label bridge thread identity so users understand whether they are seeing `user.codexfs.web.ai-intent <-> agent.codexfs.foreman` or a future authenticated user participant thread.
 
-### 14.4.3 Basic Foreman acceptance
+### 14.4.3 Reply stdio artifact panel
+
+`WEBR-011` keeps MessageFabric replies compact and uses a same-origin PTCS extension handler for on-demand artifact inspection.
+
+Server registration:
+
+```text
+HostWebShell.registeredHub(config)
+  -> hub.useAIChat({ defaults with ArtifactRoot = Some config.ArtifactRoot })
+  -> RegisterClientExtensionJsonPostHandler(
+       "/client-extensions/codexfs-ai-chat/artifact/read",
+       read relative artifact path under artifact.root)
+```
+
+Artifact read rules:
+
+- request body is JSON with `path` and optional `maxBytes`;
+- `path` must be relative and resolve under configured `artifact.root`;
+- absolute paths and traversal are rejected with an error payload;
+- response includes `status`, `path`, `text`, `truncated`, `bytes`, and `error`;
+- default cap is `131072` bytes per read.
+
+Client projection:
+
+```text
+codexfs-artifact-reply
+  -> show codexfs-artifact-summary as the last assistant reply
+  -> keep codexfs-artifact-details collapsed
+  -> Open stdio
+  -> floating codexfs-stdio-panel
+  -> tabs: Final / Stdout / Stderr / Note
+  -> POST artifact/read for selected relative path
+```
+
+Required stable selectors:
+
+| Selector | Meaning |
+| --- | --- |
+| `codexfs-stdio-open` | Button on an artifact reply card. |
+| `codexfs-stdio-panel` | Floating movable/resizable panel. |
+| `codexfs-stdio-drag-handle` | Panel header used for moving the panel. |
+| `codexfs-stdio-tab-final` | Final message tab. |
+| `codexfs-stdio-tab-stdout` | Stdout tab. |
+| `codexfs-stdio-tab-stderr` | Stderr tab. |
+| `codexfs-stdio-tab-note` | Note tab. |
+| `codexfs-stdio-content` | Loaded artifact text. |
+
+This handler is an artifact viewer, not a generic proxy. It does not change prompt assembly, worker ownership, MessageFabric truth, or persistence policy.
+
+### 14.4.4 Basic Foreman acceptance
 
 The first real acceptance prompt is:
 

@@ -41,7 +41,7 @@ function renderAppendInput(ctx){
     const send=button("primary codexfs-ai-send", "codexfs-ai-send", "Send");
     const actionRow=setStyle("grid-column:1 / -1;display:flex;align-items:flex-start;gap:12px;min-height:40px;width:100%;box-sizing:border-box;", element("div", "codexfs-ai-action-row", null));
     append(actionRow, [send, status]);
-    const output=setTestId("codexfs-ai-output", setStyle("grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;min-height:64px;border:1px solid #c8d7ea;border-radius:6px;background:#f8fbff;padding:10px 12px;box-sizing:border-box;margin-top:0;", element("section", "codexfs-ai-output", null)));
+    const output=setTestId("codexfs-ai-output", setStyle("grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;min-height:42px;max-height:240px;overflow:auto;border:1px solid #c8d7ea;border-radius:6px;background:#f8fbff;padding:8px 10px;box-sizing:border-box;margin-top:0;", element("section", "codexfs-ai-output", null)));
     const outputState=setTestId("codexfs-ai-output-state", setStyle("font-size:13px;line-height:1.35;color:#40546a;", element("div", "codexfs-ai-output-state", "No output yet.")));
     const outputThread=setTestId("codexfs-ai-output-thread", setStyle("font-size:12px;line-height:1.35;color:#64748b;overflow-wrap:anywhere;", element("div", "codexfs-ai-output-thread", "")));
     const outputMessage=setTestId("codexfs-ai-output-message", setStyle("font-size:13px;line-height:1.45;color:#172033;overflow-wrap:anywhere;", element("div", "codexfs-ai-output-message", "")));
@@ -167,15 +167,28 @@ function renderArtifactReply(text){
   const m=parseArtifactReply(text);
   if(m!=null&&m.$==1){
     const reply=m.$0;
-    const root=setTestId("codexfs-artifact-reply", setStyle("display:flex;flex-direction:column;gap:7px;box-sizing:border-box;width:100%;white-space:normal;background:#f7fbff;border:1px solid #b8d7ef;border-radius:6px;padding:10px 12px;color:#172033;max-height:none;overflow:visible;", element("section", "codexfs-artifact-reply message-body", null)));
+    const root=setTestId("codexfs-artifact-reply", setStyle("display:flex;flex-direction:column;gap:8px;box-sizing:border-box;width:100%;white-space:normal;background:#ffffff;border:1px solid #c8d7ea;border-radius:6px;padding:10px 12px;color:#172033;max-height:none;overflow:visible;", element("section", "codexfs-artifact-reply message-body", null)));
     root.setAttribute("data-run-id", reply.runId);
     root.setAttribute("data-outcome", reply.outcome);
     root.setAttribute("data-manifest-path", reply.manifestPath);
     root.setAttribute("data-final-path", reply.finalPath);
+    root.setAttribute("data-stdout-path", reply.stdoutPath);
+    root.setAttribute("data-stderr-path", reply.stderrPath);
     root.setAttribute("data-note-path", reply.notePath);
-    const header=setStyle("display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;font-weight:700;", element("div", "codexfs-artifact-header", null));
-    append(header, [element("span", "", "codex.fs artifact refs")]);
-    append(root, [header, setTestId("codexfs-artifact-summary", setStyle("font-size:13px;line-height:1.45;overflow-wrap:anywhere;", element("div", "codexfs-artifact-summary", asText(reply.summary)))), artifactRow("codexfs-artifact-run", "run", reply.runId), artifactRow("codexfs-artifact-outcome", "outcome", reply.outcome), artifactRow("codexfs-artifact-manifest", "manifest", reply.manifestPath), artifactRow("codexfs-artifact-final", "final", reply.finalPath), artifactRow("codexfs-artifact-note", "note", reply.notePath)]);
+    const message=setTestId("codexfs-artifact-summary", setStyle("font-size:13px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap;", element("div", "codexfs-artifact-summary codexfs-artifact-reply-text", asText(isBlank(reply.summary)?"run "+reply.runId+" "+reply.outcome:reply.summary))));
+    const actionRow=setTestId("codexfs-artifact-actions", setStyle("display:flex;flex-wrap:wrap;gap:8px;align-items:center;", element("div", "codexfs-artifact-actions", null)));
+    const stdioButton=compactButton("codexfs-artifact-stdio-open", "codexfs-stdio-open", "Open stdio");
+    stdioButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      return openRunArtifactPanel(reply, "stdout");
+    });
+    append(actionRow, [stdioButton]);
+    const details=setTestId("codexfs-artifact-details", setStyle("border-top:1px solid #d8e4f2;padding-top:7px;", element("details", "codexfs-artifact-details", null)));
+    const detailsSummary=setTestId("codexfs-artifact-details-toggle", setStyle("cursor:pointer;font-size:12px;line-height:1.35;color:#40546a;font-weight:600;user-select:none;", element("summary", "codexfs-artifact-details-toggle", "Run artifacts ("+reply.outcome+")")));
+    const refs=setTestId("codexfs-artifact-refs", setStyle("display:flex;flex-direction:column;gap:7px;margin-top:8px;", element("div", "codexfs-artifact-refs", null)));
+    append(refs, [artifactRow("codexfs-artifact-run", "run", reply.runId), artifactRow("codexfs-artifact-outcome", "outcome", reply.outcome), artifactRow("codexfs-artifact-manifest", "manifest", reply.manifestPath), artifactRow("codexfs-artifact-final", "final", reply.finalPath), artifactRow("codexfs-artifact-stdout", "stdout", reply.stdoutPath), artifactRow("codexfs-artifact-stderr", "stderr", reply.stderrPath), artifactRow("codexfs-artifact-note", "note", reply.notePath)]);
+    append(details, [detailsSummary, refs]);
+    append(root, [message, actionRow, details]);
     return Some(root);
   }
   else return null;
@@ -298,7 +311,110 @@ function parseArtifactReply(text){
     const headerEnd=source.indexOf(";");
     const parts=SplitChars(headerEnd<0?source:Substring(source, 0, headerEnd), [" "], 1);
     const manifestPath=valueBetweenMarkerAndNextSeparator("manifest=", source);
-    return length(parts)<3||isBlank(manifestPath)?null:Some(New_31(get(parts, 1), get(parts, 2), manifestPath, valueBetweenMarkerAndNextSeparator("final=", source), valueBetweenMarkerAndNextSeparator("note=", source), isBlank(projectedSummary)?valueAfterMarker("summary=", source):projectedSummary));
+    return length(parts)<3||isBlank(manifestPath)?null:Some(New_31(get(parts, 1), get(parts, 2), manifestPath, valueBetweenMarkerAndNextSeparator("final=", source), valueBetweenMarkerAndNextSeparator("stdout=", source), valueBetweenMarkerAndNextSeparator("stderr=", source), valueBetweenMarkerAndNextSeparator("note=", source), isBlank(projectedSummary)?valueAfterMarker("summary=", source):projectedSummary));
+  }
+}
+function compactButton(className, testId, label){
+  const node=doc().createElement("button");
+  node.type="button";
+  node.className=className;
+  node.textContent=label;
+  setStyle("height:30px;min-height:30px;box-sizing:border-box;border:1px solid #9fb2c8;border-radius:6px;background:#f7fafc;color:#172033;padding:0 10px;font-size:12px;line-height:1;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;", node);
+  setTestId(testId, node);
+  return node;
+}
+function openRunArtifactPanel(reply, initialKind){
+  removeExistingStdioPanels();
+  const panel=setTestId("codexfs-stdio-panel", setStyle("position:fixed;right:24px;bottom:24px;width:min(720px,calc(100vw - 48px));height:min(380px,calc(100vh - 48px));min-width:320px;min-height:190px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);display:flex;flex-direction:column;resize:both;overflow:hidden;background:#ffffff;color:#172033;border:1px solid #7e94ad;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,0.28);z-index:2147483000;", element("aside", "codexfs-stdio-panel", null)));
+  panel.setAttribute("data-run-id", reply.runId);
+  const header=setTestId("codexfs-stdio-drag-handle", setStyle("display:flex;align-items:center;gap:8px;padding:8px 10px;background:#24384f;color:#ffffff;cursor:move;user-select:none;min-height:40px;box-sizing:border-box;", element("div", "codexfs-stdio-header", null)));
+  const title=setStyle("flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.2;font-weight:700;", element("div", "codexfs-stdio-title", "Run "+reply.runId));
+  const closeButton=compactButton("codexfs-stdio-close", "codexfs-stdio-close", "Close");
+  setStyle("height:28px;min-height:28px;border-color:#c9d6e6;background:#ffffff;color:#172033;padding:0 10px;", closeButton);
+  closeButton.addEventListener("click", () => {
+    const _1=panel;
+    if(_1&&_1.parentNode)_1.parentNode.removeChild(_1);
+  });
+  append(header, [title, closeButton]);
+  const tabRow=setStyle("display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid #d8e4f2;background:#f7fafc;box-sizing:border-box;overflow:auto;", element("div", "codexfs-stdio-tabs", null));
+  const state=setTestId("codexfs-stdio-state", setStyle("font-size:12px;line-height:1.35;color:#40546a;padding:7px 10px;border-bottom:1px solid #d8e4f2;min-height:30px;box-sizing:border-box;overflow-wrap:anywhere;", element("div", "codexfs-stdio-state", "No artifact loaded.")));
+  const content=setTestId("codexfs-stdio-content", setStyle("flex:1 1 auto;margin:0;padding:10px;overflow:auto;background:#fbfdff;color:#172033;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;box-sizing:border-box;", element("pre", "codexfs-stdio-content", "")));
+  const loadArtifact=(label, path, activeButton) => {
+    const _1=tabRow;
+    let _2=Array.prototype.slice.call(_1.querySelectorAll("button"));
+    iter((button_2) => {
+      if(button_2===activeButton){
+        button_2.setAttribute("data-active", "true");
+        const _3=button_2;
+        const _4="#dbeafe";
+        const _5="#6ea8fe";
+        _3.style.background=_4;
+        _3.style.borderColor=_5;
+      }
+      else {
+        button_2.removeAttribute("data-active");
+        const _6=button_2;
+        const _7="#f7fafc";
+        const _8="#9fb2c8";
+        _6.style.background=_7;
+        _6.style.borderColor=_8;
+      }
+    }, _2);
+    state.textContent="Loading "+label+"...";
+    content.textContent="";
+    return readArtifactText(path, (_3, _4, _5) => {
+      state.textContent=label+(_4?" ("+String(_5)+" bytes; showing first "+String(artifactReadMaxBytes())+" bytes)":" ("+String(_5)+" bytes)");
+      content.textContent=isBlank(_3)?"(empty artifact)":_3;
+    }, (error) => {
+      state.textContent="Artifact read failed.";
+      content.textContent=asText(error);
+    });
+  };
+  const artifactTab=(testId, label, path) => {
+    let _1;
+    const tab=compactButton("codexfs-stdio-tab", testId, label);
+    if(isBlank(path)){
+      tab.disabled=true;
+      tab.title=label+" artifact path is not available.";
+      const _2=tab;
+      _2.style.opacity="0.55";
+      _2.style.cursor="not-allowed";
+      _1=void 0;
+    }
+    else _1=tab.addEventListener("click", (event) => {
+      event.preventDefault();
+      return loadArtifact(label, path, tab);
+    });
+    return tab;
+  };
+  const finalTab=artifactTab("codexfs-stdio-tab-final", "Final", reply.finalPath);
+  const stdoutTab=artifactTab("codexfs-stdio-tab-stdout", "Stdout", reply.stdoutPath);
+  const stderrTab=artifactTab("codexfs-stdio-tab-stderr", "Stderr", reply.stderrPath);
+  const noteTab=artifactTab("codexfs-stdio-tab-note", "Note", reply.notePath);
+  append(tabRow, [finalTab, stdoutTab, stderrTab, noteTab]);
+  append(panel, [header, tabRow, state, content]);
+  doc().body.appendChild(panel);
+  enablePanelDrag(panel, header);
+  const m=asText(initialKind);
+  switch(m=="stderr"?!isBlank(reply.stderrPath)?0:!isBlank(reply.stdoutPath)?3:!isBlank(reply.finalPath)?4:5:m=="final"?!isBlank(reply.finalPath)?1:!isBlank(reply.stdoutPath)?3:!isBlank(reply.finalPath)?4:5:m=="note"?!isBlank(reply.notePath)?2:!isBlank(reply.stdoutPath)?3:!isBlank(reply.finalPath)?4:5:!isBlank(reply.stdoutPath)?3:!isBlank(reply.finalPath)?4:5){
+    case 0:
+      loadArtifact("Stderr", reply.stderrPath, stderrTab);
+      break;
+    case 1:
+      loadArtifact("Final", reply.finalPath, finalTab);
+      break;
+    case 2:
+      loadArtifact("Note", reply.notePath, noteTab);
+      break;
+    case 3:
+      loadArtifact("Stdout", reply.stdoutPath, stdoutTab);
+      break;
+    case 4:
+      loadArtifact("Final", reply.finalPath, finalTab);
+      break;
+    case 5:
+      content.textContent="No artifact path is available for this run.";
+      break;
   }
 }
 function artifactRow(testId, labelText, value){
@@ -380,8 +496,9 @@ function normalizedArtifactReplySource(text){
     const markerIndex=source.indexOf(marker);
     if(markerIndex<0)return[source, ""];
     else {
+      const markerEnd=source.indexOf("]", markerIndex);
       const summary=Trim(Substring(source, 0, markerIndex));
-      return["run "+TrimEnd(Trim(source.substring(markerIndex+marker.length)), ["]"]), summary];
+      return["run "+(markerEnd<0?TrimEnd(Trim(source.substring(markerIndex+marker.length)), ["]"]):Trim(Substring(source, markerIndex+marker.length, markerEnd-markerIndex-marker.length))), summary];
     }
   }
 }
@@ -399,6 +516,86 @@ function valueAfterMarker(marker, text){
   const source=asText(text);
   const index=source.indexOf(marker);
   return index<0?"":Trim(source.substring(index+marker.length));
+}
+function removeExistingStdioPanels(){
+  Array.prototype.slice.call(document.querySelectorAll("[data-testid=\"codexfs-stdio-panel\"]")).forEach((node) => {
+    if(node&&node.parentNode)node.parentNode.removeChild(node);
+  });
+}
+function readArtifactText(path, onOk, onError){
+  if(isBlank(path))onError("Artifact path is blank.");
+  else {
+    const request=New_42(asText(path), artifactReadMaxBytes());
+    postJson(artifactReadEndpoint(), JSON.stringify(request), (data) => {
+      const status=String(data&&(data.status||data.Status)||"");
+      const text=String(data&&(data.text||data.Text)||"");
+      const error=String(data&&(data.error||data.Error)||"");
+      const truncated=!(!(data&&(data.truncated||data.Truncated)));
+      const bytes=Number(data&&(data.bytes||data.Bytes)||0);
+      if(sameTextInvariant(status, "ok"))onOk(text, truncated, bytes);
+      else onError(isBlank(error)?"Artifact read failed.":error);
+    }, onError);
+  }
+}
+function artifactReadMaxBytes(){
+  return _c_1.artifactReadMaxBytes;
+}
+function enablePanelDrag(panel, handle){
+  const panel_1=panel;
+  const handle_1=handle;
+  let dragging=false;
+  let startX=0;
+  let startY=0;
+  let startLeft=0;
+  let startTop=0;
+  function down(e){
+    if(e.button!==0)return;
+    let r=panel_1.getBoundingClientRect();
+    dragging=true;
+    startX=e.clientX;
+    startY=e.clientY;
+    startLeft=r.left;
+    startTop=r.top;
+    panel_1.style.left=r.left+"px";
+    panel_1.style.top=r.top+"px";
+    panel_1.style.right="auto";
+    panel_1.style.bottom="auto";
+    e.preventDefault();
+  }
+  function move(e){
+    if(!dragging)return;
+    let maxLeft=Math.max(0, globalThis.innerWidth-panel_1.offsetWidth);
+    let maxTop=Math.max(0, globalThis.innerHeight-panel_1.offsetHeight);
+    panel_1.style.left=Math.min(Math.max(0, startLeft+e.clientX-startX), maxLeft)+"px";
+    panel_1.style.top=Math.min(Math.max(0, startTop+e.clientY-startY), maxTop)+"px";
+  }
+  function up(){
+    dragging=false;
+  }
+  handle_1.addEventListener("mousedown", down);
+  globalThis.addEventListener("mousemove", move);
+  globalThis.addEventListener("mouseup", up);
+}
+function postJson(url, body, onOk, onError){
+  const url_1=url;
+  const body_1=body;
+  const onOk_1=onOk;
+  const onError_1=onError;
+  const options={
+    method:"POST", 
+    cache:"no-store", 
+    headers:{"content-type":"application/json"}, 
+    body:body_1
+  };
+  (globalThis.fetch(url_1, options).then((response) => response.text().then((text) => {
+    if(response.ok)onOk_1(JSON.parse(text||"{}"));
+    else onError_1(text||"POST "+url_1+" "+response.status);
+  })))["catch"]((error) => {
+    onError_1(String(error&&error.message?error.message:error));
+  });
+}
+function artifactReadEndpoint(){
+  return _c_1.artifactReadEndpoint;
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
@@ -1854,7 +2051,7 @@ function mountAppendPage(page, definition){
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
-    return postJson("/pages/api/remove-page", request, (reply) => {
+    return postJson_1("/pages/api/remove-page", request, (reply) => {
       deletePendingThen(pendingId, () => {
         writeAppendPagesDefinitions(reply);
         setStatus(status, "Page removed");
@@ -1895,7 +2092,7 @@ function renderNav(nav, activePath, pages){
       event.preventDefault();
       event.stopPropagation();
       closeButton.setAttribute("disabled", "disabled");
-      return postJson("/pages/api/remove-page", New_13(page.pageId), (reply) => {
+      return postJson_1("/pages/api/remove-page", New_13(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
       }, (error) => {
@@ -3019,7 +3216,7 @@ function mountLoginFallback(root){
       errorBox.className="error-box";
       submit.setAttribute("disabled", "disabled");
       submit.textContent="\u767b\u5165\u4e2d";
-      postJson(config.submitPath, request, (reply) => {
+      postJson_1(config.submitPath, request, (reply) => {
         const target=textOr(config.returnUrl, reply.returnUrl);
         globalThis.location.assign(target);
       }, (error) => {
@@ -3348,18 +3545,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3441,22 +3638,22 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
     }
@@ -3500,7 +3697,7 @@ function postJsonText(url, payloadJson, onOk, onError){
   options.body=textOr("{}", payloadJson);
   (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
-function postJson(url, body, onOk, onError){
+function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   const options=requestOptions();
@@ -3643,7 +3840,7 @@ function renderPageCreator(nav, activePath, pages){
       const request=New_36(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
-      postJson("/pages/api/register-page", request, (reply) => {
+      postJson_1("/pages/api/register-page", request, (reply) => {
         deletePendingThen(pendingId, () => {
           writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages));
           refresh(reply.pages);
@@ -3799,8 +3996,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -4068,9 +4265,9 @@ function GetFieldValues(o){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -4746,16 +4943,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -4896,8 +5093,8 @@ class FSharpList {
   static Empty=Create(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -4930,16 +5127,16 @@ function TryParse(s, r){
 }
 function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
@@ -4955,43 +5152,43 @@ function checkBounds(arr, n){
 }
 function New_4(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -5034,50 +5231,50 @@ function listEmpty(){
 }
 function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_9(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_10(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_11(pageId, keyJson, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
+    pageId:pageId, 
+    keyJson:keyJson, 
     displayName:displayName
   };
 }
 function New_12(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -5089,17 +5286,17 @@ function New_14(pageId, keyId){
 }
 function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
@@ -5241,53 +5438,53 @@ function unfold(f, s){
 }
 function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_19(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -5296,9 +5493,9 @@ function New_20(maxSequence, buckets){
 }
 function New_21(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -5382,30 +5579,30 @@ function OfArray(a){
 }
 function New_22(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
 function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId,
-    nodeAddress:nodeAddress,
-    status:status,
-    roles:roles,
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
@@ -5414,91 +5611,93 @@ function New_25(messages, nextAfterMessageId){
 }
 function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
 function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_28(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
 function New_29(messageId, fromId, body, createdAtUtc){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    body:body,
+    messageId:messageId, 
+    fromId:fromId, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
 function New_30(valueText, keyJson){
   return{valueText:valueText, keyJson:keyJson};
 }
-function New_31(runId, outcome, manifestPath, finalPath, notePath, summary){
+function New_31(runId, outcome, manifestPath, finalPath, stdoutPath, stderrPath, notePath, summary){
   return{
-    runId:runId,
-    outcome:outcome,
-    manifestPath:manifestPath,
-    finalPath:finalPath,
-    notePath:notePath,
+    runId:runId, 
+    outcome:outcome, 
+    manifestPath:manifestPath, 
+    finalPath:finalPath, 
+    stdoutPath:stdoutPath, 
+    stderrPath:stderrPath, 
+    notePath:notePath, 
     summary:summary
   };
 }
 function New_32(shape, label, badge, className){
   return{
-    shape:shape,
-    label:label,
-    badge:badge,
+    shape:shape, 
+    label:label, 
+    badge:badge, 
     className:className
   };
 }
 function New_33(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
 function New_34(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
   };
 }
 function New_35(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
     logoutPath:logoutPath
   };
 }
@@ -5548,13 +5747,13 @@ class T extends Object_1 {
 }
 function New_36(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -5645,7 +5844,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_42(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_43(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -5706,6 +5905,8 @@ let _c_1=Lazy((_i) => class $StartupCode_AIChatClient {
   static {
     _c_1=_i(this);
   }
+  static artifactReadMaxBytes;
+  static artifactReadEndpoint;
   static aiIntentBridgeParticipantId;
   static doc;
   static loadedMarkerName;
@@ -5713,38 +5914,40 @@ let _c_1=Lazy((_i) => class $StartupCode_AIChatClient {
     this.loadedMarkerName="CodexFsAiChatLoaded";
     this.doc=globalThis.document;
     this.aiIntentBridgeParticipantId="user.codexfs.web.ai-intent";
+    this.artifactReadEndpoint="/client-extensions/codexfs-ai-chat/artifact/read";
+    this.artifactReadMaxBytes=131072;
   }
 });
 function New_37(schema, target, perspective, engine, invocation, body, tags){
   return{
-    schema:schema,
-    target:target,
-    perspective:perspective,
-    engine:engine,
-    invocation:invocation,
-    body:body,
+    schema:schema, 
+    target:target, 
+    perspective:perspective, 
+    engine:engine, 
+    invocation:invocation, 
+    body:body, 
     tags:tags
   };
 }
 function New_38(mode, scope, participantId, groupId){
   return{
-    mode:mode,
-    scope:scope,
-    participantId:participantId,
+    mode:mode, 
+    scope:scope, 
+    participantId:participantId, 
     groupId:groupId
   };
 }
 function New_39(mode, participantId, senderPolicy){
   return{
-    mode:mode,
-    participantId:participantId,
+    mode:mode, 
+    participantId:participantId, 
     senderPolicy:senderPolicy
   };
 }
 function New_40(engine, model, reasoning){
   return{
-    engine:engine,
-    model:model,
+    engine:engine, 
+    model:model, 
     reasoning:reasoning
   };
 }
@@ -5837,12 +6040,15 @@ class Dictionary extends Object_1 {
     }
   }
 }
-function New_42(Node_1, Left, Right, Height, Count){
+function New_42(path, maxBytes){
+  return{path:path, maxBytes:maxBytes};
+}
+function New_43(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }

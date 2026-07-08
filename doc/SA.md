@@ -387,3 +387,7 @@ append page intent
 ```
 
 MVP 可讀取 `user.codexfs.web.ai-intent <-> target participant` thread 來呈現 output，但必須標示 thread identity 與 perspective。這是 read/render projection，不是 sender impersonation。Raw intent JSON 只可作 trace/debug，不可作使用者-facing output。
+
+### 14.4 Reply stdio artifact viewer
+
+`WEBR-011` adds the browser artifact inspection layer on top of the existing MessageFabric reply truth. MessageFabric continues to carry redacted final summary plus refs; the WebSharper bundle opens a floating `codexfs-stdio-panel` and reads final/stdout/stderr/note on demand through a registered PTCS client-extension JSON handler. The handler belongs to the host-side `useAIChat(...)` registration and is constrained to the configured artifact root, so it is not a generic file proxy and does not become a second chat fabric.

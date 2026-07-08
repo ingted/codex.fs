@@ -320,6 +320,10 @@ PTCS `codexfs-ai-chat` append page 的 `codex.fs.web.ai-intent.v1` value 只是 
 
 這不是使用者 option 選錯：`Target=Foreman`、`Invocation=Exec`、`Approval=Never` 是基本合法路徑。若 reply 暫時落在 service participant thread，例如 `user.codexfs.web.ai-intent <-> agent.codexfs.foreman`，Web UI 必須投影該 MessageFabric truth，並清楚標示 read/render perspective，不得要求使用者自行查 artifact path 或隱藏 participant id。
 
+### R-012 Reply stdio visibility
+
+AI Chat artifact reply 必須預設顯示本輪最後回覆正文，並提供可操作的本輪 artifact viewer。viewer 至少能讀取 stdout、stderr、final、note；refs 應預設 collapsed，raw stdio 不得直接塞入 MessageFabric body。viewer 必須透過 same-origin PTCS client-extension handler 讀取 host artifact root 下的相對路徑，不得讓 browser 讀任意本機檔案。
+
 ## 9. Package 初始邊界
 
 | Package / Tool | 用途 |

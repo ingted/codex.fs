@@ -159,7 +159,10 @@ module HostWebShell =
                 CommHub.createEmptyWithPcslRoot fullRoot
             | None -> CommHub.createEmpty()
 
-        hub.useAIChat() |> ignore
+        hub.useAIChat
+            { AIChatExtensionOptions.defaults with
+                ArtifactRoot = Some config.ArtifactRoot }
+        |> ignore
         registerDefaultForeman hub
         registerDefaultAiChatPage hub |> ignore
         hub

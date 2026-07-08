@@ -2,7 +2,7 @@
 
 版本：`0.1.0-alpha.6`
 狀態：Active
-最後更新：2026-07-05
+最後更新：2026-07-08
 
 ## 1. Operator Contract
 
@@ -20,6 +20,23 @@
 Cluster/production-like profiles must use LAN/DNS-reachable bind/advertise settings. Do not hand off `localhost` / `127.0.0.1` as the peer-facing URL.
 
 Browser chat is PTCS WebSharper chat room, not standalone `codex.fs.host`. The standalone host `/chat` route is a guard page; worker/user conversations must use PTCS participants over caller-owned `CommSpaMessageFabric` / `CommSpaActorFabric`.
+
+## 1.1 Current 18488 PTCS Webshell Handoff
+
+2026-07-08 12:14 +08:00 current live handoff:
+
+| Item | Value |
+| --- | --- |
+| URL | `http://10.28.112.93:18488/page/codexfs-ai-chat` |
+| PID | `28360` |
+| Runtime root | `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260708121312` |
+| App path | `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260708121312\app\codex.fs.host.tool.exe` |
+| Artifact root | `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260708121312\artifacts` |
+| PCSL root | `G:\codex.fs\src\codex.fs\.codex.fs\runtime-hosts\18488-20260708121312\pcsl` |
+| Verification | `dotnet fsi --exec .\misc\verifyAiIntentOutputProjection.fsx -- --existing-host-url "http://10.28.112.93:18488" --existing-artifact-root "G:/codex.fs/src/codex.fs/.codex.fs/runtime-hosts/18488-20260708121312/artifacts"` |
+| Screenshot | `G:\codex.fs\src\codex.fs\.playwright-mcp\webr011\webr010-ai-intent-output-projection-live18488.png` |
+
+This handoff includes WEBR-011: artifact reply cards show the last message, keep refs collapsed, and open a floating/resizable `codexfs-stdio-panel` that reads current-run final/stdout/stderr/note through the PTCS same-origin artifact handler.
 
 ## 2. Build And Pack
 
